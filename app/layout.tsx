@@ -1,5 +1,6 @@
 import type { Metadata, Viewport } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
+import { Analytics } from "@vercel/analytics/react";
 import "./globals.css";
 
 const geistSans = Geist({
@@ -34,6 +35,7 @@ export default function RootLayout({
     <html lang="ro" className={`${geistSans.variable} ${geistMono.variable}`}>
       <body className="min-h-dvh bg-background text-foreground">
         {children}
+        <Analytics />
       </body>
     </html>
   );
