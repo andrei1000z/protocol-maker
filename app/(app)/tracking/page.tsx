@@ -49,7 +49,7 @@ export default function TrackingPage() {
 
       // Exercise (today's plan)
       if (protocol.exercise?.weeklyPlan) {
-        const dayNames = ['Duminică', 'Luni', 'Marți', 'Miercuri', 'Joi', 'Vineri', 'Sâmbătă'];
+        const dayNames = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
         const today = dayNames[new Date().getDay()];
         protocol.exercise.weeklyPlan
           .filter((d: { day: string }) => d.day.toLowerCase() === today.toLowerCase())
@@ -105,12 +105,12 @@ export default function TrackingPage() {
     return acc;
   }, {});
 
-  const TYPE_LABELS: Record<string, string> = { SUPPLEMENT: 'Suplimente', EXERCISE: 'Exerciții', SLEEP: 'Somn', NUTRITION: 'Nutriție' };
+  const TYPE_LABELS: Record<string, string> = { SUPPLEMENT: 'Supplements', EXERCISE: 'Exercise', SLEEP: 'Sleep', NUTRITION: 'Nutrition' };
 
   return (
     <div className="max-w-2xl mx-auto px-4 py-8 space-y-6">
       <div className="text-center space-y-2">
-        <h1 className="text-2xl font-bold">Tracking Zilnic</h1>
+        <h1 className="text-2xl font-bold">Daily Tracking</h1>
         <p className="text-sm text-muted-foreground">{new Date().toLocaleDateString('ro-RO', { weekday: 'long', day: 'numeric', month: 'long' })}</p>
       </div>
 
@@ -156,8 +156,8 @@ export default function TrackingPage() {
 
       {items.length === 0 && (
         <div className="text-center py-12">
-          <p className="text-muted-foreground">Niciun protocol generat.</p>
-          <a href="/onboarding" className="text-accent text-sm underline mt-2 inline-block">Generează protocol</a>
+          <p className="text-muted-foreground">No protocol generated.</p>
+          <a href="/onboarding" className="text-accent text-sm underline mt-2 inline-block">Generate protocol</a>
         </div>
       )}
     </div>

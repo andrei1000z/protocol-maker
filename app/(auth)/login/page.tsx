@@ -20,13 +20,13 @@ export default function LoginPage() {
       if (mode === 'register') {
         const { error: err } = await supabase.auth.signUp({ email, password, options: { emailRedirectTo: `${window.location.origin}/auth/callback` } });
         if (err) setError(err.message);
-        else setMessage('Verifică email-ul pentru confirmare.');
+        else setMessage('Check your email for confirmation.');
       } else {
         const { error: err } = await supabase.auth.signInWithPassword({ email, password });
         if (err) setError(err.message);
         else window.location.href = '/dashboard';
       }
-    } catch { setError('Eroare de conexiune.'); }
+    } catch { setError('Connection error.'); }
     setLoading(false);
   };
 
@@ -45,7 +45,7 @@ export default function LoginPage() {
             {(['login', 'register'] as const).map((m) => (
               <button key={m} onClick={() => { setMode(m); setError(''); setMessage(''); }}
                 className={`flex-1 py-2 text-sm font-medium rounded-lg transition-colors ${mode === m ? 'bg-accent text-black' : 'text-muted-foreground'}`}>
-                {m === 'login' ? 'Autentificare' : 'Cont nou'}
+                {m === 'login' ? 'Sign In' : 'Sign Up'}
               </button>
             ))}
           </div>
@@ -53,12 +53,12 @@ export default function LoginPage() {
           <div className="space-y-3">
             <div>
               <label className="text-xs text-muted-foreground mb-1 block">Email</label>
-              <input type="email" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="email@exemplu.ro"
+              <input type="email" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="you@example.com"
                 className="w-full rounded-xl bg-background border border-card-border px-4 py-2.5 text-sm outline-none focus:border-accent transition-colors" />
             </div>
             <div>
-              <label className="text-xs text-muted-foreground mb-1 block">Parolă</label>
-              <input type="password" value={password} onChange={(e) => setPassword(e.target.value)} placeholder="min. 6 caractere"
+              <label className="text-xs text-muted-foreground mb-1 block">Password</label>
+              <input type="password" value={password} onChange={(e) => setPassword(e.target.value)} placeholder="min. 6 characters"
                 className="w-full rounded-xl bg-background border border-card-border px-4 py-2.5 text-sm outline-none focus:border-accent transition-colors" />
             </div>
           </div>
@@ -68,11 +68,11 @@ export default function LoginPage() {
 
           <button onClick={handleSubmit} disabled={loading || !email || password.length < 6}
             className="w-full py-3 rounded-xl bg-accent text-black font-semibold text-sm transition-all hover:bg-accent-dim active:scale-[0.98] disabled:opacity-40">
-            {loading ? 'Se procesează...' : mode === 'login' ? 'Intră în cont' : 'Creează cont'}
+            {loading ? 'Processing...' : mode === 'login' ? 'Sign In' : 'Sign Up'}
           </button>
         </div>
 
-        <p className="text-xs text-center text-muted">Prin crearea contului accepți că aceasta nu este sfat medical.</p>
+        <p className="text-xs text-center text-muted">By creating an account you agree this is not medical advice.</p>
       </div>
     </div>
   );

@@ -8,7 +8,7 @@ import clsx from 'clsx';
 const NAV = [
   { href: '/dashboard', label: 'Protocol', icon: LayoutDashboard },
   { href: '/tracking', label: 'Tracking', icon: CheckSquare },
-  { href: '/settings', label: 'Setări', icon: Settings },
+  { href: '/settings', label: 'Settings', icon: Settings },
 ];
 
 export function NavBar() {

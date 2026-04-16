@@ -55,6 +55,8 @@ export interface BiomarkerReference {
   interventionsIfLow: InterventionSet;
   interventionsIfHigh: InterventionSet;
   retestIntervalWeeks: number;
+  sexSpecific?: boolean;
+  ageAdjusted?: boolean;
 }
 
 export interface InterventionSet {
@@ -78,7 +80,9 @@ export interface ProtocolOutput {
     biologicalAge: number;
     chronologicalAge: number;
     agingVelocity: string;
+    agingVelocityNumber?: number;
     longevityScore: number;
+    summary?: string;
     topWins: string[];
     topRisks: string[];
     organSystemScores: Record<string, number>;
@@ -86,55 +90,92 @@ export interface ProtocolOutput {
   biomarkerReadout: {
     code: string;
     name: string;
+    shortName?: string;
     value: number;
     unit: string;
     classification: Classification;
     longevityOptimalRange: [number, number];
     labRange: [number, number];
     bryanValue?: number;
-    whyItMatters: string;
+    whyItMatters?: string;
     gap: number;
+  }[];
+  bryanComparison?: {
+    marker: string;
+    yourValue: number;
+    bryanValue: number;
+    gap: number;
+    verdict: string;
   }[];
   nutrition: {
     dailyCalories: number;
     macros: { protein: number; carbs: number; fat: number };
+    proteinPerKg?: number;
     eatingWindow: string;
-    meals: { name: string; description: string; ingredients: string[] }[];
-    foodsToAdd: { food: string; why: string }[];
+    meals: { name: string; time?: string; calories?: number; description: string; recipe?: string; keyNutrients?: string; ingredients?: string[] }[];
+    foodsToAdd: { food: string; why: string; frequency?: string }[];
     foodsToReduce: { food: string; why: string }[];
+    hydrationLiters?: number;
+    groceryListWeekly?: string[];
   };
   supplements: {
     name: string;
     dose: string;
     timing: string;
     form: string;
+    withFood?: boolean;
     justification: string;
     interactions: string[];
+    warnings?: string;
     monthlyCostRon: number;
+    emagSearchQuery?: string;
     priority: 'MUST' | 'STRONG' | 'OPTIONAL' | 'AVOID';
+    startWeek?: number;
   }[];
   exercise: {
-    weeklyPlan: { day: string; activity: string; duration: string; intensity: string }[];
+    weeklyPlan: { day: string; activity: string; exercises?: string[]; duration: string; intensity: string; notes?: string }[];
     zone2Target: number;
     strengthSessions: number;
-    notes: string[];
+    hiitSessions?: number;
+    dailyStepsTarget?: number;
+    warmupRoutine?: string[];
+    cooldownRoutine?: string[];
+    progressionNotes?: string;
+    notes?: string[];
   };
   sleep: {
     targetBedtime: string;
-    windDownRoutine: string[];
-    environment: string[];
+    targetWakeTime?: string;
+    targetDuration?: string;
+    windDownRoutine: (string | { time: string; action: string })[];
+    environment: (string | { item: string; why: string; emagQuery?: string })[];
     supplementsForSleep: string[];
     morningLightMinutes: number;
+    morningRoutine?: string[];
+    caffeineLimit?: string;
   };
+  universalTips?: {
+    category: string;
+    tips: { tip: string; why: string; difficulty: 'easy' | 'medium' | 'hard' }[];
+  }[];
+  dailySchedule?: {
+    time: string;
+    activity: string;
+    category: string;
+    duration: string;
+    notes: string;
+  }[];
   tracking: {
     daily: string[];
     weekly: string[];
+    devices?: { name: string; why: string; estimatedCostRon: number; emagQuery?: string; priority: string }[];
     retestSchedule: { marker: string; weeks: number; why: string }[];
   };
   doctorDiscussion: {
     rxSuggestions: string[];
     specialistReferrals: string[];
     redFlags: string[];
+    testsToOrder?: string[];
   };
   experimental?: {
     peptides: string[];
@@ -143,10 +184,19 @@ export interface ProtocolOutput {
   };
   roadmap: {
     week: string;
+    title?: string;
     actions: string[];
   }[];
   shoppingList: {
     category: string;
-    items: { name: string; estimatedCostRon: number; where: string; priority: string }[];
+    items: { name: string; estimatedCostRon: number; where: string; emagQuery?: string; priority: string; oneTimeOrMonthly?: string }[];
   }[];
+  costBreakdown?: {
+    monthlySupplements: number;
+    monthlyFood: number;
+    oneTimeEquipment: number;
+    quarterlyTesting: number;
+    totalMonthlyOngoing: number;
+    currency: string;
+  };
 }

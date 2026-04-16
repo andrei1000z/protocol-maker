@@ -6,16 +6,16 @@ import { GeneratingScreen } from '@/components/protocol/GeneratingScreen';
 import clsx from 'clsx';
 
 const ACTIVITY_LEVELS = [
-  { value: 'sedentary', label: 'Sedentar', desc: 'Birou, sub 2000 pași/zi' },
-  { value: 'light', label: 'Ușor activ', desc: '2-3 sesiuni/săpt, 5000 pași' },
-  { value: 'moderate', label: 'Moderat', desc: '3-5 sesiuni/săpt, 8000 pași' },
-  { value: 'active', label: 'Activ', desc: '5-6 sesiuni/săpt, 10000+ pași' },
-  { value: 'elite', label: 'Atlet', desc: 'Antrenament zilnic intens' },
+  { value: 'sedentary', label: 'Sedentary', desc: 'Office, under 2000 steps/day' },
+  { value: 'light', label: 'Lightly Active', desc: '2-3 sessions/week, 5000 steps' },
+  { value: 'moderate', label: 'Moderate', desc: '3-5 sessions/week, 8000 steps' },
+  { value: 'active', label: 'Active', desc: '5-6 sessions/week, 10000+ steps' },
+  { value: 'elite', label: 'Athlete', desc: 'Intense daily training' },
 ];
 
 const DIET_TYPES = ['omnivore', 'vegetarian', 'vegan', 'keto', 'carnivore', 'mediterranean', 'other'];
-const CONDITIONS = ['Diabet tip 2', 'Hipertensiune', 'Dislipidemie', 'Tiroidă', 'Autoimun', 'Cardiovascular', 'Depresie/Anxietate', 'Apnee somn', 'PCOS', 'Obezitate'];
-const GOALS = ['Longevitate / Healthspan', 'Compoziție corporală', 'Performanță cognitivă', 'Piele / Păr', 'Energie / Dispoziție', 'Performanță atletică', 'Fertilitate', 'Recuperare condiție'];
+const CONDITIONS = ['Type 2 Diabetes', 'Hypertension', 'Dyslipidemia', 'Thyroid', 'Autoimmune', 'Cardiovascular', 'Depression/Anxiety', 'Sleep Apnea', 'PCOS', 'Obesity'];
+const GOALS = ['Longevity / Healthspan', 'Body Composition', 'Cognitive Performance', 'Skin / Hair', 'Energy / Mood', 'Athletic Performance', 'Fertility', 'Fitness Recovery'];
 
 export default function OnboardingPage() {
   const [step, setStep] = useState(0);
@@ -129,12 +129,12 @@ export default function OnboardingPage() {
 
       window.location.href = '/dashboard';
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Eroare. Încearcă din nou.');
+      setError(err instanceof Error ? err.message : 'Error. Try again.');
       setLoading(false);
     }
   };
 
-  const STEPS = ['Profil', 'Biomarkeri', 'Lifestyle', 'Genetică', 'Obiective'];
+  const STEPS = ['Profile', 'Biomarkers', 'Lifestyle', 'Genetics', 'Goals'];
 
   if (loading) return <GeneratingScreen />;
 
@@ -157,44 +157,44 @@ export default function OnboardingPage() {
         {step === 0 && (
           <div className="space-y-5">
             <div>
-              <h1 className="text-2xl font-bold">Cine ești?</h1>
-              <p className="text-muted-foreground text-sm mt-1">Date de bază pentru calibrarea protocolului.</p>
+              <h1 className="text-2xl font-bold">Who are you?</h1>
+              <p className="text-muted-foreground text-sm mt-1">Basic data to calibrate your protocol.</p>
             </div>
             <div className="grid grid-cols-2 gap-3">
               <div>
-                <label className="text-xs text-muted-foreground">Vârstă</label>
+                <label className="text-xs text-muted-foreground">Age</label>
                 <input type="number" value={age} onChange={(e) => setAge(e.target.value)} placeholder="25" min={18} max={100}
                   className="w-full mt-1 rounded-xl bg-card border border-card-border px-3 py-2.5 text-sm outline-none focus:border-accent font-mono" />
               </div>
               <div>
-                <label className="text-xs text-muted-foreground">Sex biologic</label>
+                <label className="text-xs text-muted-foreground">Biological Sex</label>
                 <div className="flex gap-2 mt-1">
                   {(['male', 'female'] as const).map((s) => (
                     <button key={s} onClick={() => setSex(s)}
                       className={clsx('flex-1 py-2.5 rounded-xl text-sm font-medium transition-all', sex === s ? 'bg-accent text-black' : 'bg-card border border-card-border text-muted-foreground')}>
-                      {s === 'male' ? 'Masculin' : 'Feminin'}
+                      {s === 'male' ? 'Male' : 'Female'}
                     </button>
                   ))}
                 </div>
               </div>
               <div>
-                <label className="text-xs text-muted-foreground">Înălțime (cm)</label>
+                <label className="text-xs text-muted-foreground">Height (cm)</label>
                 <input type="number" value={heightCm} onChange={(e) => setHeightCm(e.target.value)} placeholder="180"
                   className="w-full mt-1 rounded-xl bg-card border border-card-border px-3 py-2.5 text-sm outline-none focus:border-accent font-mono" />
               </div>
               <div>
-                <label className="text-xs text-muted-foreground">Greutate (kg)</label>
+                <label className="text-xs text-muted-foreground">Weight (kg)</label>
                 <input type="number" value={weightKg} onChange={(e) => setWeightKg(e.target.value)} placeholder="80"
                   className="w-full mt-1 rounded-xl bg-card border border-card-border px-3 py-2.5 text-sm outline-none focus:border-accent font-mono" />
               </div>
             </div>
             <div>
-              <label className="text-xs text-muted-foreground">Ocupație</label>
-              <input type="text" value={occupation} onChange={(e) => setOccupation(e.target.value)} placeholder="Software engineer, medic, student..."
+              <label className="text-xs text-muted-foreground">Occupation</label>
+              <input type="text" value={occupation} onChange={(e) => setOccupation(e.target.value)} placeholder="Software engineer, doctor, student..."
                 className="w-full mt-1 rounded-xl bg-card border border-card-border px-3 py-2.5 text-sm outline-none focus:border-accent" />
             </div>
             <div>
-              <label className="text-xs text-muted-foreground mb-2 block">Nivel activitate</label>
+              <label className="text-xs text-muted-foreground mb-2 block">Activity Level</label>
               <div className="space-y-2">
                 {ACTIVITY_LEVELS.map(({ value, label, desc }) => (
                   <button key={value} onClick={() => setActivityLevel(value)}
@@ -211,10 +211,10 @@ export default function OnboardingPage() {
         {step === 1 && (
           <div className="space-y-5">
             <div>
-              <h1 className="text-2xl font-bold">Biomarkerii tăi</h1>
-              <p className="text-muted-foreground text-sm mt-1">Introdu valorile din analizele de sânge. <span className="text-accent">Opțional</span> — poți sări peste dacă nu ai analize recente.</p>
+              <h1 className="text-2xl font-bold">Your Biomarkers</h1>
+              <p className="text-muted-foreground text-sm mt-1">Enter your blood test values. <span className="text-accent">Optional</span> — skip if you don't have recent tests.</p>
               <button onClick={() => setStep(2)} className="mt-2 px-4 py-2 rounded-xl bg-card border border-card-border text-sm text-muted-foreground hover:text-accent hover:border-accent/50 transition-colors">
-                Nu am analize → Skip
+                No blood work → Skip
               </button>
             </div>
             {BIOMARKER_CATEGORIES.map((cat) => (
@@ -236,24 +236,24 @@ export default function OnboardingPage() {
                 </div>
               </div>
             ))}
-            <p className="text-xs text-muted-foreground">{Object.values(biomarkers).filter(Boolean).length} / 20 markeri completați</p>
+            <p className="text-xs text-muted-foreground">{Object.values(biomarkers).filter(Boolean).length} / 20 markers completed</p>
           </div>
         )}
 
         {step === 2 && (
           <div className="space-y-5">
             <div>
-              <h1 className="text-2xl font-bold">Cum trăiești?</h1>
-              <p className="text-muted-foreground text-sm mt-1">Stilul de viață influențează protocolul la fel de mult ca biomarkerii.</p>
+              <h1 className="text-2xl font-bold">Your Lifestyle</h1>
+              <p className="text-muted-foreground text-sm mt-1">Lifestyle affects your protocol as much as biomarkers.</p>
             </div>
             <div className="grid grid-cols-2 gap-3">
               <div>
-                <label className="text-xs text-muted-foreground">Somn (ore/noapte)</label>
+                <label className="text-xs text-muted-foreground">Sleep (hours/night)</label>
                 <input type="number" value={sleepHours} onChange={(e) => setSleepHours(e.target.value)} step="0.5" min={3} max={12}
                   className="w-full mt-1 rounded-xl bg-card border border-card-border px-3 py-2.5 text-sm outline-none focus:border-accent font-mono" />
               </div>
               <div>
-                <label className="text-xs text-muted-foreground">Calitate somn (1-10)</label>
+                <label className="text-xs text-muted-foreground">Sleep Quality (1-10)</label>
                 <div className="flex gap-1 mt-1">
                   {[...Array(10)].map((_, i) => (
                     <button key={i} onClick={() => setSleepQuality(i + 1)}
@@ -265,7 +265,7 @@ export default function OnboardingPage() {
               </div>
             </div>
             <div>
-              <label className="text-xs text-muted-foreground mb-2 block">Dietă</label>
+              <label className="text-xs text-muted-foreground mb-2 block">Diet</label>
               <div className="flex flex-wrap gap-2">
                 {DIET_TYPES.map((d) => (
                   <button key={d} onClick={() => setDietType(d)}
@@ -277,22 +277,22 @@ export default function OnboardingPage() {
             </div>
             <div className="grid grid-cols-2 gap-3">
               <div>
-                <label className="text-xs text-muted-foreground">Alcool (drinks/săpt)</label>
+                <label className="text-xs text-muted-foreground">Alcohol (drinks/week)</label>
                 <input type="number" value={alcohol} onChange={(e) => setAlcohol(e.target.value)} min={0}
                   className="w-full mt-1 rounded-xl bg-card border border-card-border px-3 py-2.5 text-sm outline-none focus:border-accent font-mono" />
               </div>
               <div>
-                <label className="text-xs text-muted-foreground">Cafeină (mg/zi)</label>
+                <label className="text-xs text-muted-foreground">Caffeine (mg/day)</label>
                 <input type="number" value={caffeine} onChange={(e) => setCaffeine(e.target.value)} min={0}
                   className="w-full mt-1 rounded-xl bg-card border border-card-border px-3 py-2.5 text-sm outline-none focus:border-accent font-mono" />
               </div>
               <div>
-                <label className="text-xs text-muted-foreground">Cardio (min/săpt)</label>
+                <label className="text-xs text-muted-foreground">Cardio (min/week)</label>
                 <input type="number" value={cardioMin} onChange={(e) => setCardioMin(e.target.value)} min={0}
                   className="w-full mt-1 rounded-xl bg-card border border-card-border px-3 py-2.5 text-sm outline-none focus:border-accent font-mono" />
               </div>
               <div>
-                <label className="text-xs text-muted-foreground">Forță (sesiuni/săpt)</label>
+                <label className="text-xs text-muted-foreground">Strength (sessions/week)</label>
                 <input type="number" value={strengthSessions} onChange={(e) => setStrengthSessions(e.target.value)} min={0}
                   className="w-full mt-1 rounded-xl bg-card border border-card-border px-3 py-2.5 text-sm outline-none focus:border-accent font-mono" />
               </div>
@@ -301,10 +301,10 @@ export default function OnboardingPage() {
               <button onClick={() => setSmoker(!smoker)} className={clsx('w-6 h-6 rounded-lg border-2 flex items-center justify-center', smoker ? 'bg-danger border-danger' : 'border-card-border')}>
                 {smoker && <span className="text-white text-xs">✓</span>}
               </button>
-              <span className="text-sm">Fumător</span>
+              <span className="text-sm">Smoker</span>
             </div>
             <div>
-              <label className="text-xs text-muted-foreground mb-2 block">Condiții diagnosticate</label>
+              <label className="text-xs text-muted-foreground mb-2 block">Diagnosed Conditions</label>
               <div className="flex flex-wrap gap-2">
                 {CONDITIONS.map((c) => (
                   <button key={c} onClick={() => toggleCondition(c)}
@@ -315,8 +315,8 @@ export default function OnboardingPage() {
               </div>
             </div>
             <div>
-              <label className="text-xs text-muted-foreground">Suplimente curente (separate cu virgulă)</label>
-              <input type="text" value={supplements} onChange={(e) => setSupplements(e.target.value)} placeholder="Vitamina D, Omega-3, Magneziu..."
+              <label className="text-xs text-muted-foreground">Current supplements (comma-separated)</label>
+              <input type="text" value={supplements} onChange={(e) => setSupplements(e.target.value)} placeholder="Vitamin D, Omega-3, Magnesium..."
                 className="w-full mt-1 rounded-xl bg-card border border-card-border px-3 py-2.5 text-sm outline-none focus:border-accent" />
             </div>
           </div>
@@ -325,13 +325,13 @@ export default function OnboardingPage() {
         {step === 3 && (
           <div className="space-y-5">
             <div>
-              <h1 className="text-2xl font-bold">Genetică</h1>
-              <p className="text-muted-foreground text-sm mt-1">Opțional — poți sări peste acest pas.</p>
+              <h1 className="text-2xl font-bold">Genetics</h1>
+              <p className="text-muted-foreground text-sm mt-1">Optional — you can skip this step.</p>
             </div>
             <div className="rounded-2xl bg-card border border-card-border p-8 text-center space-y-4">
               <div className="text-4xl">🧬</div>
-              <p className="text-sm text-muted-foreground">Upload-ul datelor genetice (23andMe, AncestryDNA) va fi disponibil în curând.</p>
-              <p className="text-xs text-muted">Vom analiza APOE, MTHFR, FTO, CYP1A2, VDR, COMT și alte SNP-uri relevante pentru longevitate.</p>
+              <p className="text-sm text-muted-foreground">Genetic data upload (23andMe, AncestryDNA) coming soon.</p>
+              <p className="text-xs text-muted">We'll analyze APOE, MTHFR, FTO, CYP1A2, VDR, COMT and other longevity-relevant SNPs.</p>
             </div>
           </div>
         )}
@@ -339,8 +339,8 @@ export default function OnboardingPage() {
         {step === 4 && (
           <div className="space-y-5">
             <div>
-              <h1 className="text-2xl font-bold">Obiectivele tale</h1>
-              <p className="text-muted-foreground text-sm mt-1">Ce vrei să optimizezi? Selectează cel puțin 1.</p>
+              <h1 className="text-2xl font-bold">Your Goals</h1>
+              <p className="text-muted-foreground text-sm mt-1">What do you want to optimize? Select at least 1.</p>
             </div>
             <div className="grid grid-cols-2 gap-2">
               {GOALS.map((g) => (
@@ -351,9 +351,9 @@ export default function OnboardingPage() {
               ))}
             </div>
             <div>
-              <label className="text-xs text-muted-foreground">Timp disponibil pe zi</label>
+              <label className="text-xs text-muted-foreground">Available time per day</label>
               <div className="flex gap-2 mt-1">
-                {[{ v: 30, l: '<30 min' }, { v: 60, l: '30-60 min' }, { v: 120, l: '1-2 ore' }, { v: 180, l: '2+ ore' }].map(({ v, l }) => (
+                {[{ v: 30, l: '<30 min' }, { v: 60, l: '30-60 min' }, { v: 120, l: '1-2 hours' }, { v: 180, l: '2+ hours' }].map(({ v, l }) => (
                   <button key={v} onClick={() => setTimeBudget(v)}
                     className={clsx('flex-1 py-2 rounded-xl text-xs font-medium transition-all', timeBudget === v ? 'bg-accent text-black' : 'bg-card border border-card-border text-muted-foreground')}>
                     {l}
@@ -362,7 +362,7 @@ export default function OnboardingPage() {
               </div>
             </div>
             <div>
-              <label className="text-xs text-muted-foreground">Buget lunar (RON)</label>
+              <label className="text-xs text-muted-foreground">Monthly budget (RON)</label>
               <div className="flex gap-2 mt-1">
                 {[{ v: 200, l: '<200' }, { v: 500, l: '200-500' }, { v: 1500, l: '500-1500' }, { v: 5000, l: '1500+' }].map(({ v, l }) => (
                   <button key={v} onClick={() => setMonthlyBudget(v)}
@@ -373,12 +373,12 @@ export default function OnboardingPage() {
               </div>
             </div>
             <div>
-              <label className="text-xs text-muted-foreground mb-2 block">Deschidere experimentală</label>
+              <label className="text-xs text-muted-foreground mb-2 block">Experimental openness</label>
               <div className="space-y-2">
                 {[
-                  { v: 'otc_only', l: 'Doar OTC', d: 'Suplimente disponibile fără rețetă' },
-                  { v: 'open_rx', l: 'Deschis la Rx', d: 'Inclusiv discuții despre medicamente prescrise' },
-                  { v: 'open_experimental', l: 'Experimental', d: 'Peptide, terapii avansate, off-label' },
+                  { v: 'otc_only', l: 'OTC Only', d: 'Over-the-counter supplements only' },
+                  { v: 'open_rx', l: 'Open to Rx', d: 'Including prescription medications discussion' },
+                  { v: 'open_experimental', l: 'Experimental', d: 'Peptides, advanced therapies, off-label' },
                 ].map(({ v, l, d }) => (
                   <button key={v} onClick={() => setExperimental(v)}
                     className={clsx('w-full p-3 rounded-xl text-left transition-all', experimental === v ? 'bg-accent/10 border border-accent/50' : 'bg-card border border-card-border')}>
@@ -397,14 +397,14 @@ export default function OnboardingPage() {
       <div className="px-6 pb-8 max-w-2xl mx-auto w-full flex gap-3">
         {step > 0 && (
           <button onClick={() => setStep(step - 1)} className="px-4 py-3 rounded-xl bg-card border border-card-border text-sm font-medium text-muted-foreground hover:text-foreground transition-colors">
-            ← Înapoi
+            ← Back
           </button>
         )}
         <button
           onClick={() => step < 4 ? setStep(step + 1) : handleFinish()}
           disabled={!canNext() || loading}
           className="flex-1 py-3 rounded-xl bg-accent text-black font-semibold text-sm transition-all hover:bg-accent-dim active:scale-[0.98] disabled:opacity-40">
-          {loading ? '⟳ Generez protocolul tău...' : step < 4 ? 'Continuă →' : '⚡ Generează Protocol'}
+          {loading ? '⟳ Generating your protocol...' : step < 4 ? 'Continue →' : '⚡ Generate Protocol'}
         </button>
       </div>
     </div>

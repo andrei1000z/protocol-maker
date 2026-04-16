@@ -68,18 +68,18 @@ export default function SettingsPage() {
 
   return (
     <div className="max-w-2xl mx-auto px-4 py-8 space-y-6">
-      <h1 className="text-2xl font-bold">Setări</h1>
+      <h1 className="text-2xl font-bold">Settings</h1>
 
       {/* Profile summary */}
       {profile && (
         <div className="rounded-2xl bg-card border border-card-border p-5 space-y-3">
-          <h2 className="text-sm font-semibold flex items-center gap-2">👤 Profil</h2>
+          <h2 className="text-sm font-semibold flex items-center gap-2">👤 Profile</h2>
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 text-center">
             {[
-              { label: 'Vârstă', value: profile.age },
+              { label: 'Age', value: profile.age },
               { label: 'Sex', value: profile.sex === 'male' ? 'M' : 'F' },
               { label: 'BMI', value: bmi },
-              { label: 'Activitate', value: profile.activity_level },
+              { label: 'Activity', value: profile.activity_level },
             ].map((item) => (
               <div key={item.label} className="p-3 rounded-xl bg-background border border-card-border">
                 <p className="text-lg font-bold font-mono">{String(item.value || '-')}</p>
@@ -92,11 +92,11 @@ export default function SettingsPage() {
 
       {/* Share */}
       <div className="rounded-2xl bg-card border border-card-border p-5 space-y-3">
-        <h2 className="text-sm font-semibold flex items-center gap-2"><Share2 className="w-4 h-4 text-accent" /> Partajare</h2>
+        <h2 className="text-sm font-semibold flex items-center gap-2"><Share2 className="w-4 h-4 text-accent" /> Share</h2>
         {!shareUrl ? (
           <button onClick={handleShare} disabled={!protocolId}
             className="w-full py-3 rounded-xl bg-accent/10 border border-accent/30 text-accent text-sm font-medium hover:bg-accent/20 transition-colors disabled:opacity-30">
-            Generează link public
+            Generate public link
           </button>
         ) : (
           <div className="flex items-center gap-2">
@@ -110,11 +110,11 @@ export default function SettingsPage() {
 
       {/* Actions */}
       <div className="rounded-2xl bg-card border border-card-border p-5 space-y-2">
-        <h2 className="text-sm font-semibold mb-3">Acțiuni</h2>
+        <h2 className="text-sm font-semibold mb-3">Actions</h2>
         {[
-          { icon: <RotateCcw className="w-4 h-4" />, label: 'Regenerează protocol', desc: 'Completează din nou onboarding-ul', onClick: handleRegen, color: 'text-accent' },
-          { icon: <Download className="w-4 h-4" />, label: 'Export date JSON', desc: 'Backup complet al datelor', onClick: handleExport, color: 'text-foreground' },
-          { icon: <LogOut className="w-4 h-4" />, label: 'Deconectare', desc: '', onClick: handleLogout, color: 'text-danger' },
+          { icon: <RotateCcw className="w-4 h-4" />, label: 'Regenerate protocol', desc: 'Re-do onboarding from scratch', onClick: handleRegen, color: 'text-accent' },
+          { icon: <Download className="w-4 h-4" />, label: 'Export JSON data', desc: 'Complete data backup', onClick: handleExport, color: 'text-foreground' },
+          { icon: <LogOut className="w-4 h-4" />, label: 'Log out', desc: '', onClick: handleLogout, color: 'text-danger' },
         ].map((action) => (
           <button key={action.label} onClick={action.onClick}
             className="w-full flex items-center gap-3 p-3 rounded-xl hover:bg-background transition-colors text-left">
@@ -127,7 +127,7 @@ export default function SettingsPage() {
         ))}
       </div>
 
-      <p className="text-xs text-center text-muted">Protocol AI Engine v1.0 • Nu este sfat medical</p>
+      <p className="text-xs text-center text-muted">Protocol AI Engine v1.0 • Not medical advice</p>
     </div>
   );
 }

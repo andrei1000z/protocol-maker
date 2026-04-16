@@ -3,16 +3,16 @@
 import { useEffect, useState } from 'react';
 
 const STEPS = [
-  { text: 'Analizez profilul tău...', duration: 1500 },
-  { text: 'Clasificarea biomarkerilor vs range-uri longevitate...', duration: 2000 },
-  { text: 'Detectez pattern-uri: metabolic, inflamator, hormonal...', duration: 2500 },
-  { text: 'Calculez vârsta biologică estimată...', duration: 1000 },
-  { text: 'Consult AI pentru sinteză protocol...', duration: 3000 },
-  { text: 'Cross-referencing 312 intervenții...', duration: 5000 },
-  { text: 'Personalizez pentru biomarkerii, bugetul și obiectivele tale...', duration: 5000 },
-  { text: 'Generez planul nutrițional...', duration: 3000 },
-  { text: 'Calculez stack-ul de suplimente...', duration: 3000 },
-  { text: 'Construiesc roadmap-ul pe 12 săptămâni...', duration: 2000 },
+  { text: 'Analyzing your profile...', duration: 1500 },
+  { text: 'Classifying biomarkers against longevity ranges...', duration: 2000 },
+  { text: 'Detecting patterns: metabolic, inflammatory, hormonal...', duration: 2500 },
+  { text: 'Calculating estimated biological age...', duration: 1000 },
+  { text: 'Consulting AI for protocol synthesis...', duration: 3000 },
+  { text: 'Cross-referencing 312 interventions...', duration: 5000 },
+  { text: 'Personalizing for your biomarkers, budget, and goals...', duration: 5000 },
+  { text: 'Generating nutrition plan...', duration: 3000 },
+  { text: 'Calculating supplement stack...', duration: 3000 },
+  { text: 'Building 12-week roadmap...', duration: 2000 },
 ];
 
 export function GeneratingScreen() {
@@ -41,8 +41,8 @@ export function GeneratingScreen() {
             <div className="absolute inset-0 border-2 border-accent border-t-transparent rounded-full animate-spin" />
             <div className="absolute inset-3 border-2 border-accent/40 border-b-transparent rounded-full animate-spin" style={{ animationDirection: 'reverse', animationDuration: '1.5s' }} />
           </div>
-          <h2 className="text-xl font-bold">Generez protocolul tău</h2>
-          <p className="text-sm text-muted-foreground">Acest proces durează 30-60 secunde</p>
+          <h2 className="text-xl font-bold">Generating your protocol</h2>
+          <p className="text-sm text-muted-foreground">This takes 30-60 seconds</p>
         </div>
 
         <div className="space-y-2">

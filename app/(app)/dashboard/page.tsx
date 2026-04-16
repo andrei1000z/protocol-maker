@@ -51,7 +51,7 @@ export default function DashboardPage() {
     <div className="flex items-center justify-center min-h-dvh">
       <div className="text-center space-y-4">
         <div className="w-10 h-10 border-2 border-accent border-t-transparent rounded-full animate-spin mx-auto" />
-        <p className="text-sm text-muted-foreground">Se încarcă protocolul...</p>
+        <p className="text-sm text-muted-foreground">Loading protocol...</p>
       </div>
     </div>
   );
@@ -59,8 +59,8 @@ export default function DashboardPage() {
   if (!data) return (
     <div className="flex items-center justify-center min-h-dvh px-6">
       <div className="text-center space-y-4">
-        <p className="text-xl">Niciun protocol generat încă.</p>
-        <a href="/onboarding" className="inline-block px-6 py-3 bg-accent text-black rounded-xl font-semibold">Generează Protocol</a>
+        <p className="text-xl">No protocol generated yet.</p>
+        <a href="/onboarding" className="inline-block px-6 py-3 bg-accent text-black rounded-xl font-semibold">Generate Protocol</a>
       </div>
     </div>
   );
@@ -76,7 +76,7 @@ export default function DashboardPage() {
       {/* Header */}
       <div className="text-center space-y-2">
         <h1 className="text-3xl font-bold"><span className="text-accent">Protocol</span></h1>
-        <p className="text-sm text-muted-foreground">Protocolul tău personalizat de longevitate</p>
+        <p className="text-sm text-muted-foreground">Your personalized longevity protocol</p>
       </div>
 
       {/* Section 1 — Diagnostic Summary */}
@@ -88,11 +88,11 @@ export default function DashboardPage() {
           </div>
           <div className="text-center p-4 rounded-xl bg-background border border-card-border">
             <p className="text-3xl font-bold font-mono">{biologicalAge}</p>
-            <p className="text-[10px] text-muted mt-1">VÂRSTĂ BIOLOGICĂ</p>
+            <p className="text-[10px] text-muted mt-1">BIOLOGICAL AGE</p>
           </div>
           <div className="text-center p-4 rounded-xl bg-background border border-card-border">
             <p className="text-3xl font-bold font-mono">{diag?.chronologicalAge}</p>
-            <p className="text-[10px] text-muted mt-1">VÂRSTĂ CRONOLOGICĂ</p>
+            <p className="text-[10px] text-muted mt-1">CHRONOLOGICAL AGE</p>
           </div>
         </div>
         {diag?.topWins && (
@@ -120,7 +120,7 @@ export default function DashboardPage() {
 
       {/* Section 2 — Biomarkers */}
       {p.biomarkerReadout && p.biomarkerReadout.length > 0 && (
-        <Section title="Biomarkeri" icon="🔬">
+        <Section title="Biomarkers" icon="🔬">
           <div className="space-y-2">
             {p.biomarkerReadout.map((b) => (
               <div key={b.code} className="flex items-center justify-between p-3 rounded-xl bg-background border border-card-border">
@@ -141,15 +141,15 @@ export default function DashboardPage() {
 
       {/* Section 3 — Nutrition */}
       {p.nutrition && (
-        <Section title="Nutriție" icon="🥗">
+        <Section title="Nutrition" icon="🥗">
           <div className="grid grid-cols-4 gap-2 text-center">
             <div className="p-3 rounded-xl bg-background border border-card-border">
               <p className="text-xl font-bold font-mono">{p.nutrition.dailyCalories}</p>
-              <p className="text-[10px] text-muted">kcal/zi</p>
+              <p className="text-[10px] text-muted">kcal/day</p>
             </div>
             <div className="p-3 rounded-xl bg-background border border-card-border">
               <p className="text-xl font-bold font-mono text-red-400">{p.nutrition.macros?.protein}g</p>
-              <p className="text-[10px] text-muted">Proteine</p>
+              <p className="text-[10px] text-muted">Protein</p>
             </div>
             <div className="p-3 rounded-xl bg-background border border-card-border">
               <p className="text-xl font-bold font-mono text-blue-400">{p.nutrition.macros?.carbs}g</p>
@@ -157,10 +157,10 @@ export default function DashboardPage() {
             </div>
             <div className="p-3 rounded-xl bg-background border border-card-border">
               <p className="text-xl font-bold font-mono text-amber-400">{p.nutrition.macros?.fat}g</p>
-              <p className="text-[10px] text-muted">Grăsimi</p>
+              <p className="text-[10px] text-muted">Fats</p>
             </div>
           </div>
-          {p.nutrition.eatingWindow && <p className="text-sm text-muted-foreground">Fereastră alimentară: <span className="text-accent font-mono">{p.nutrition.eatingWindow}</span></p>}
+          {p.nutrition.eatingWindow && <p className="text-sm text-muted-foreground">Eating window: <span className="text-accent font-mono">{p.nutrition.eatingWindow}</span></p>}
           {p.nutrition.meals?.map((m, i) => (
             <div key={i} className="p-3 rounded-xl bg-background border border-card-border">
               <p className="text-sm font-medium">{m.name}</p>
@@ -169,7 +169,7 @@ export default function DashboardPage() {
           ))}
           {p.nutrition.foodsToAdd?.length > 0 && (
             <div>
-              <p className="text-xs text-accent font-medium mb-1">+ Adaugă</p>
+              <p className="text-xs text-accent font-medium mb-1">+ Add to diet</p>
               {p.nutrition.foodsToAdd.map((f, i) => <p key={i} className="text-xs text-muted-foreground">• <span className="text-foreground">{f.food}</span> — {f.why}</p>)}
             </div>
           )}
@@ -178,7 +178,7 @@ export default function DashboardPage() {
 
       {/* Section 4 — Supplements */}
       {p.supplements && p.supplements.length > 0 && (
-        <Section title="Suplimente" icon="💊">
+        <Section title="Supplements" icon="💊">
           <div className="space-y-3">
             {p.supplements.map((s, i) => (
               <div key={i} className={clsx('p-4 rounded-xl border', s.priority === 'MUST' ? 'bg-accent/5 border-accent/30' : s.priority === 'STRONG' ? 'bg-blue-500/5 border-blue-500/30' : 'bg-card border-card-border')}>
@@ -189,19 +189,19 @@ export default function DashboardPage() {
                   </div>
                   <div className="text-right">
                     <span className={clsx('text-[10px] font-mono px-2 py-0.5 rounded-full', s.priority === 'MUST' ? 'bg-accent/20 text-accent' : s.priority === 'STRONG' ? 'bg-blue-500/20 text-blue-400' : 'bg-card-border text-muted')}>{s.priority}</span>
-                    {s.monthlyCostRon > 0 && <p className="text-[10px] text-muted mt-1">{s.monthlyCostRon} RON/lună</p>}
+                    {s.monthlyCostRon > 0 && <p className="text-[10px] text-muted mt-1">{s.monthlyCostRon} RON/mo</p>}
                   </div>
                 </div>
                 <p className="text-xs text-muted-foreground mt-2">{s.justification}</p>
                 <a href={`https://www.emag.ro/search/${encodeURIComponent(s.name + ' ' + (s.form || ''))}`}
                   target="_blank" rel="noopener noreferrer"
                   className="inline-flex items-center gap-1 mt-2 text-[10px] text-accent hover:underline">
-                  🛒 Caută pe eMAG
+                  🛒 Find on eMAG
                 </a>
               </div>
             ))}
             <p className="text-xs text-muted text-right">
-              Total estimat: {p.supplements.reduce((sum, s) => sum + (s.monthlyCostRon || 0), 0)} RON/lună
+              Estimated total: {p.supplements.reduce((sum, s) => sum + (s.monthlyCostRon || 0), 0)} RON/mo
             </p>
           </div>
         </Section>
@@ -209,7 +209,7 @@ export default function DashboardPage() {
 
       {/* Section 5 — Exercise */}
       {p.exercise && (
-        <Section title="Exerciții" icon="🏋️">
+        <Section title="Exercise" icon="🏋️">
           {p.exercise.weeklyPlan?.map((d, i) => (
             <div key={i} className="flex items-center gap-3 p-2 rounded-xl bg-background border border-card-border">
               <span className="text-xs font-mono text-accent w-14">{d.day}</span>
@@ -218,28 +218,28 @@ export default function DashboardPage() {
             </div>
           ))}
           <div className="flex gap-4 text-xs text-muted-foreground">
-            <span>Zone 2: <span className="text-accent font-mono">{p.exercise.zone2Target} min/săpt</span></span>
-            <span>Forță: <span className="text-accent font-mono">{p.exercise.strengthSessions}x/săpt</span></span>
+            <span>Zone 2: <span className="text-accent font-mono">{p.exercise.zone2Target} min/week</span></span>
+            <span>Strength: <span className="text-accent font-mono">{p.exercise.strengthSessions}x/week</span></span>
           </div>
         </Section>
       )}
 
       {/* Section 6 — Sleep */}
       {p.sleep && (
-        <Section title="Somn" icon="🌙">
+        <Section title="Sleep" icon="🌙">
           <p className="text-sm">Bedtime target: <span className="text-accent font-mono">{p.sleep.targetBedtime}</span></p>
-          <p className="text-sm">Lumină dimineața: <span className="text-accent font-mono">{p.sleep.morningLightMinutes} min</span></p>
-          {p.sleep.windDownRoutine?.map((s, i) => <p key={i} className="text-xs text-muted-foreground">• {s}</p>)}
+          <p className="text-sm">Morning light: <span className="text-accent font-mono">{p.sleep.morningLightMinutes} min</span></p>
+          {p.sleep.windDownRoutine?.map((s, i) => <p key={i} className="text-xs text-muted-foreground">• {typeof s === 'string' ? s : `${s.time}: ${s.action}`}</p>)}
         </Section>
       )}
 
       {/* Section 7 — Tracking */}
       {p.tracking && (
-        <Section title="Ce să monitorizezi" icon="📊">
-          {p.tracking.daily && <div><p className="text-xs text-accent font-medium mb-1">Zilnic</p>{p.tracking.daily.map((d, i) => <p key={i} className="text-xs text-muted-foreground">• {d}</p>)}</div>}
+        <Section title="What to Track" icon="📊">
+          {p.tracking.daily && <div><p className="text-xs text-accent font-medium mb-1">Daily</p>{p.tracking.daily.map((d, i) => <p key={i} className="text-xs text-muted-foreground">• {d}</p>)}</div>}
           {p.tracking.retestSchedule && (
-            <div><p className="text-xs text-accent font-medium mb-1">Retestare</p>
-              {p.tracking.retestSchedule.map((r, i) => <p key={i} className="text-xs text-muted-foreground">• <span className="text-foreground">{r.marker}</span> în {r.weeks} săpt — {r.why}</p>)}
+            <div><p className="text-xs text-accent font-medium mb-1">Retest Schedule</p>
+              {p.tracking.retestSchedule.map((r, i) => <p key={i} className="text-xs text-muted-foreground">• <span className="text-foreground">{r.marker}</span> în {r.weeks} weeks — {r.why}</p>)}
             </div>
           )}
         </Section>
@@ -247,9 +247,9 @@ export default function DashboardPage() {
 
       {/* Section 8 — Doctor Discussion */}
       {p.doctorDiscussion && (
-        <Section title="Discută cu medicul" icon="👨‍⚕️">
+        <Section title="Doctor Discussion" icon="👨‍⚕️">
           <div className="rounded-xl bg-warning/10 border border-warning/30 p-3">
-            <p className="text-xs text-warning font-medium mb-2">⚠️ Atenție: Aceste recomandări NU înlocuiesc consultul medical.</p>
+            <p className="text-xs text-warning font-medium mb-2">⚠️ Warning: These recommendations do NOT replace medical consultation.</p>
             {p.doctorDiscussion.redFlags?.map((f, i) => <p key={i} className="text-xs text-danger">🚩 {f}</p>)}
             {p.doctorDiscussion.rxSuggestions?.map((r, i) => <p key={i} className="text-xs text-muted-foreground mt-1">💊 {r}</p>)}
             {p.doctorDiscussion.specialistReferrals?.map((s, i) => <p key={i} className="text-xs text-muted-foreground mt-1">🏥 {s}</p>)}
@@ -259,7 +259,7 @@ export default function DashboardPage() {
 
       {/* Section 9 — Roadmap */}
       {p.roadmap && (
-        <Section title="Roadmap 12 Săptămâni" icon="🗺️">
+        <Section title="12-Week Roadmap" icon="🗺️">
           {p.roadmap.map((r, i) => (
             <div key={i} className="flex gap-3">
               <div className="w-1 rounded-full bg-accent/30 shrink-0" />
@@ -274,7 +274,7 @@ export default function DashboardPage() {
 
       {/* Section 10 — Shopping List */}
       {p.shoppingList && (
-        <Section title="Lista de cumpărături" icon="🛒">
+        <Section title="Shopping List" icon="🛒">
           {p.shoppingList.map((cat, i) => (
             <div key={i}>
               <p className="text-xs text-accent font-medium mb-1">{cat.category}</p>
@@ -291,9 +291,9 @@ export default function DashboardPage() {
 
       {/* Footer */}
       <div className="text-center py-8 space-y-2">
-        <p className="text-xs text-muted">Generat de <span className="text-accent">Protocol AI Engine</span></p>
-        <p className="text-[10px] text-muted">Disclaimer: Acesta nu este sfat medical. Consultă un medic înainte de orice schimbare.</p>
-        <a href="/onboarding" className="text-xs text-accent underline">Regenerează protocol</a>
+        <p className="text-xs text-muted">Generated by <span className="text-accent">Protocol AI Engine</span></p>
+        <p className="text-[10px] text-muted">Disclaimer: This is not medical advice. Consult a doctor before making changes.</p>
+        <a href="/onboarding" className="text-xs text-accent underline">Regenerate protocol</a>
       </div>
     </div>
   );

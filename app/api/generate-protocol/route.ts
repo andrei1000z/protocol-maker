@@ -4,7 +4,7 @@ import Groq from 'groq-sdk';
 import { classifyAll, calculateLongevityScore, estimateBiologicalAge } from '@/lib/engine/classifier';
 import { detectPatterns } from '@/lib/engine/patterns';
 import { BIOMARKER_DB } from '@/lib/engine/biomarkers';
-import { buildMasterPrompt } from '@/lib/engine/master-prompt';
+import { buildMasterPromptV2 as buildMasterPrompt } from '@/lib/engine/master-prompt';
 import { BiomarkerValue } from '@/lib/types';
 
 export async function POST(request: Request) {
