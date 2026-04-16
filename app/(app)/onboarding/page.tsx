@@ -68,7 +68,7 @@ export default function OnboardingPage() {
   const canNext = () => {
     switch (step) {
       case 0: return age && parseInt(age) >= 18 && heightCm && weightKg;
-      case 1: return Object.keys(biomarkers).filter((k) => biomarkers[k]).length >= 3;
+      case 1: return true;
       case 2: return true;
       case 3: return true;
       case 4: return goals.length > 0;
@@ -212,7 +212,10 @@ export default function OnboardingPage() {
           <div className="space-y-5">
             <div>
               <h1 className="text-2xl font-bold">Biomarkerii tăi</h1>
-              <p className="text-muted-foreground text-sm mt-1">Introdu valorile din analizele de sânge. Minimum 3 markeri. Cu cât mai mulți, cu atât protocolul e mai precis.</p>
+              <p className="text-muted-foreground text-sm mt-1">Introdu valorile din analizele de sânge. <span className="text-accent">Opțional</span> — poți sări peste dacă nu ai analize recente.</p>
+              <button onClick={() => setStep(2)} className="mt-2 px-4 py-2 rounded-xl bg-card border border-card-border text-sm text-muted-foreground hover:text-accent hover:border-accent/50 transition-colors">
+                Nu am analize → Skip
+              </button>
             </div>
             {BIOMARKER_CATEGORIES.map((cat) => (
               <div key={cat}>
