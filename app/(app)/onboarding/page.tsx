@@ -2,6 +2,7 @@
 
 import { useState } from 'react';
 import { BIOMARKER_DB, BIOMARKER_CATEGORIES } from '@/lib/engine/biomarkers';
+import { GeneratingScreen } from '@/components/protocol/GeneratingScreen';
 import clsx from 'clsx';
 
 const ACTIVITY_LEVELS = [
@@ -134,6 +135,8 @@ export default function OnboardingPage() {
   };
 
   const STEPS = ['Profil', 'Biomarkeri', 'Lifestyle', 'Genetică', 'Obiective'];
+
+  if (loading) return <GeneratingScreen />;
 
   return (
     <div className="min-h-dvh flex flex-col">

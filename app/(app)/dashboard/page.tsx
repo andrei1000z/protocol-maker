@@ -193,6 +193,11 @@ export default function DashboardPage() {
                   </div>
                 </div>
                 <p className="text-xs text-muted-foreground mt-2">{s.justification}</p>
+                <a href={`https://www.emag.ro/search/${encodeURIComponent(s.name + ' ' + (s.form || ''))}`}
+                  target="_blank" rel="noopener noreferrer"
+                  className="inline-flex items-center gap-1 mt-2 text-[10px] text-accent hover:underline">
+                  🛒 Caută pe eMAG
+                </a>
               </div>
             ))}
             <p className="text-xs text-muted text-right">
@@ -274,9 +279,9 @@ export default function DashboardPage() {
             <div key={i}>
               <p className="text-xs text-accent font-medium mb-1">{cat.category}</p>
               {cat.items?.map((item, j) => (
-                <div key={j} className="flex items-center justify-between py-1 text-xs">
-                  <span>{item.name}</span>
-                  <span className="text-muted font-mono">{item.estimatedCostRon} RON • {item.where}</span>
+                <div key={j} className="flex items-center justify-between py-1.5 text-xs border-b border-card-border last:border-0">
+                  <a href={`https://www.emag.ro/search/${encodeURIComponent(item.name)}`} target="_blank" rel="noopener noreferrer" className="hover:text-accent transition-colors">{item.name} ↗</a>
+                  <span className="text-muted font-mono shrink-0 ml-2">{item.estimatedCostRon} RON</span>
                 </div>
               ))}
             </div>
