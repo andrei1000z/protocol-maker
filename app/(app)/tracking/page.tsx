@@ -163,8 +163,15 @@ export default function TrackingPage() {
   }, [items, date, protocolId]);
 
   if (loading) return (
-    <div className="flex items-center justify-center min-h-[60vh]">
-      <div className="w-8 h-8 border-2 border-accent border-t-transparent rounded-full animate-spin" />
+    <div className="max-w-2xl mx-auto px-4 py-6 space-y-5">
+      <div className="h-7 w-40 mx-auto rounded-lg bg-card-border/30 animate-pulse" />
+      <div className="h-4 w-32 mx-auto rounded bg-card-border/30 animate-pulse" />
+      <div className="grid grid-cols-2 gap-3">
+        <div className="h-24 rounded-2xl bg-card border border-card-border animate-pulse" />
+        <div className="h-24 rounded-2xl bg-card border border-card-border animate-pulse" />
+      </div>
+      <div className="h-32 rounded-2xl bg-card border border-card-border animate-pulse" />
+      <div className="h-48 rounded-2xl bg-card border border-card-border animate-pulse" />
     </div>
   );
 

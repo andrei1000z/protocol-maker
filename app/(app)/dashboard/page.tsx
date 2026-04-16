@@ -69,11 +69,17 @@ export default function DashboardPage() {
   }, []);
 
   if (loading) return (
-    <div className="flex items-center justify-center min-h-[60vh]">
-      <div className="text-center space-y-4">
-        <div className="w-10 h-10 border-2 border-accent border-t-transparent rounded-full animate-spin mx-auto" />
-        <p className="text-sm text-muted-foreground">Loading protocol...</p>
+    <div className="max-w-3xl mx-auto px-4 py-6 space-y-5">
+      <div className="text-center space-y-2">
+        <div className="h-8 w-32 mx-auto rounded-xl bg-card-border/30 animate-pulse" />
+        <div className="h-4 w-48 mx-auto rounded-lg bg-card-border/30 animate-pulse" />
       </div>
+      <div className="rounded-2xl bg-card border border-card-border p-6">
+        <div className="grid grid-cols-3 gap-3">
+          {[1, 2, 3].map(i => <div key={i} className="p-4 rounded-xl bg-background border border-card-border"><div className="h-10 w-16 mx-auto rounded-lg bg-card-border/30 animate-pulse" /><div className="h-3 w-20 mx-auto mt-2 rounded bg-card-border/30 animate-pulse" /></div>)}
+        </div>
+      </div>
+      {[1, 2, 3, 4].map(i => <div key={i} className="rounded-2xl bg-card border border-card-border p-5 space-y-3"><div className="h-5 w-32 rounded bg-card-border/30 animate-pulse" /><div className="h-4 w-full rounded bg-card-border/30 animate-pulse" /><div className="h-20 w-full rounded-xl bg-card-border/30 animate-pulse" /></div>)}
     </div>
   );
 
