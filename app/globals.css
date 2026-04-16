@@ -1,17 +1,19 @@
 @import "tailwindcss";
 
 :root {
-  --background: #09090b;
+  --background: #000000;
   --foreground: #fafafa;
-  --card: #18181b;
-  --card-border: #27272a;
-  --primary: #3b82f6;
-  --primary-light: #60a5fa;
-  --success: #22c55e;
-  --warning: #f59e0b;
-  --danger: #ef4444;
+  --card: #0a0a0a;
+  --card-border: #1a1a1a;
+  --accent: #00ff88;
+  --accent-dim: #00cc6a;
   --muted: #71717a;
   --muted-foreground: #a1a1aa;
+  --danger: #ef4444;
+  --warning: #f59e0b;
+  --optimal: #00ff88;
+  --suboptimal: #f59e0b;
+  --critical: #ef4444;
 }
 
 @theme inline {
@@ -19,49 +21,32 @@
   --color-foreground: var(--foreground);
   --color-card: var(--card);
   --color-card-border: var(--card-border);
-  --color-primary: var(--primary);
-  --color-primary-light: var(--primary-light);
-  --color-success: var(--success);
-  --color-warning: var(--warning);
-  --color-danger: var(--danger);
+  --color-accent: var(--accent);
+  --color-accent-dim: var(--accent-dim);
   --color-muted: var(--muted);
   --color-muted-foreground: var(--muted-foreground);
+  --color-danger: var(--danger);
+  --color-warning: var(--warning);
+  --color-optimal: var(--optimal);
+  --color-suboptimal: var(--suboptimal);
+  --color-critical: var(--critical);
   --font-sans: var(--font-geist-sans);
   --font-mono: var(--font-geist-mono);
 }
 
 body {
-  background: var(--background);
-  color: var(--foreground);
+  background: #000;
+  color: #fafafa;
   font-family: var(--font-sans), system-ui, sans-serif;
-  overflow-x: hidden;
   -webkit-font-smoothing: antialiased;
-  -moz-osx-font-smoothing: grayscale;
 }
 
-* {
-  -webkit-tap-highlight-color: transparent;
-}
+* { -webkit-tap-highlight-color: transparent; }
+
+::-webkit-scrollbar { width: 4px; }
+::-webkit-scrollbar-track { background: #000; }
+::-webkit-scrollbar-thumb { background: #1a1a1a; border-radius: 2px; }
 
 input[type="number"]::-webkit-inner-spin-button,
-input[type="number"]::-webkit-outer-spin-button {
-  -webkit-appearance: none;
-  margin: 0;
-}
-
-input[type="number"] {
-  -moz-appearance: textfield;
-}
-
-::-webkit-scrollbar {
-  width: 4px;
-}
-
-::-webkit-scrollbar-track {
-  background: var(--background);
-}
-
-::-webkit-scrollbar-thumb {
-  background: var(--card-border);
-  border-radius: 2px;
-}
+input[type="number"]::-webkit-outer-spin-button { -webkit-appearance: none; }
+input[type="number"] { -moz-appearance: textfield; }
