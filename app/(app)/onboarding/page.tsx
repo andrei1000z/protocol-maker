@@ -67,7 +67,7 @@ export default function OnboardingPage() {
 
   const canNext = () => {
     switch (step) {
-      case 0: return age && parseInt(age) >= 18 && heightCm && weightKg;
+      case 0: return age && parseInt(age) >= 10 && heightCm && weightKg;
       case 1: return true;
       case 2: return true;
       case 3: return true;
