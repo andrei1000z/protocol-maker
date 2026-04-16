@@ -31,10 +31,11 @@ export async function GET(request: Request) {
 
     const supabase = await createClient();
 
-    const { data: link } = await supabase.from('share_links').select('protocol_id').eq('slug', slug).single();
+    const { data: link } = await supabase.from('share_links').select('protocol_id, view_count').eq('slug', slug).single();
     if (!link) return NextResponse.json({ error: 'Not found' }, { status: 404 });
 
-    await supabase.from('share_links').update({ view_count: 1 }).eq('slug', slug);
+    // Increment view count properly
+    await supabase.from('share_links').update({ view_count: (link.view_count || 0) + 1 }).eq('slug', slug);
 
     const { data: protocol } = await supabase.from('protocols').select('protocol_json, longevity_score, biological_age').eq('id', link.protocol_id).single();
     if (!protocol) return NextResponse.json({ error: 'Protocol not found' }, { status: 404 });

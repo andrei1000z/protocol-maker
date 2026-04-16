@@ -2,12 +2,13 @@
 
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { LayoutDashboard, CheckSquare, Settings, Share2 } from 'lucide-react';
+import { LayoutDashboard, CheckSquare, Settings, History } from 'lucide-react';
 import clsx from 'clsx';
 
 const NAV = [
   { href: '/dashboard', label: 'Protocol', icon: LayoutDashboard },
-  { href: '/tracking', label: 'Tracking', icon: CheckSquare },
+  { href: '/tracking', label: 'Track', icon: CheckSquare },
+  { href: '/history', label: 'History', icon: History },
   { href: '/settings', label: 'Settings', icon: Settings },
 ];
 

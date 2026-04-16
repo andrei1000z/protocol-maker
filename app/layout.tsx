@@ -8,9 +8,20 @@ const jetbrains = JetBrains_Mono({ variable: "--font-geist-mono", subsets: ["lat
 
 export const metadata: Metadata = {
   title: "Protocol — AI Longevity Engine",
-  description: "Hyper-personalized longevity protocols from your biomarker data. Powered by AI.",
+  description: "Your blood work. AI analysis. A longevity protocol built for YOU — not Bryan Johnson. 37 biomarkers, 12 health patterns, personalized in 60 seconds.",
   manifest: "/manifest.json",
   appleWebApp: { capable: true, statusBarStyle: "black-translucent", title: "Protocol" },
+  openGraph: {
+    title: "Protocol — AI Longevity Engine",
+    description: "Get a personalized longevity protocol calibrated to YOUR biomarkers. 37 markers analyzed, 12 patterns detected, protocol in 60 seconds.",
+    type: "website",
+    siteName: "Protocol",
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: "Protocol — AI Longevity Engine",
+    description: "Bryan Johnson spends $2M/year on longevity. You have your blood panel and AI.",
+  },
 };
 
 export const viewport: Viewport = {

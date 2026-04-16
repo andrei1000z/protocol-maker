@@ -2,6 +2,7 @@
 
 import { useState, useMemo } from 'react';
 import { createClient } from '@/lib/supabase/client';
+import Link from 'next/link';
 
 export default function LoginPage() {
   const [mode, setMode] = useState<'login' | 'register'>('login');
@@ -31,15 +32,28 @@ export default function LoginPage() {
   };
 
   return (
-    <div className="min-h-dvh flex items-center justify-center px-6">
+    <div className="min-h-dvh flex flex-col items-center justify-center px-6">
       <div className="w-full max-w-sm space-y-8">
-        <div className="text-center">
-          <h1 className="text-3xl font-bold tracking-tight">
-            <span className="text-accent">Protocol</span>
-          </h1>
-          <p className="text-sm text-muted-foreground mt-2">AI Longevity Engine</p>
+        {/* Branding */}
+        <div className="text-center space-y-3">
+          <Link href="/" className="inline-block">
+            <h1 className="text-4xl font-bold tracking-tight">
+              <span className="text-accent">Protocol</span>
+            </h1>
+          </Link>
+          <p className="text-sm text-muted-foreground max-w-xs mx-auto">
+            AI-powered longevity protocols calibrated to <span className="text-foreground">your</span> biomarkers.
+          </p>
+          <div className="flex items-center justify-center gap-4 text-[10px] text-muted">
+            <span>🔬 37 biomarkers</span>
+            <span>•</span>
+            <span>🧬 12 patterns</span>
+            <span>•</span>
+            <span>⚡ 60 seconds</span>
+          </div>
         </div>
 
+        {/* Auth card */}
         <div className="rounded-2xl bg-card border border-card-border p-6 space-y-5">
           <div className="flex rounded-xl bg-background p-1 border border-card-border">
             {(['login', 'register'] as const).map((m) => (
@@ -68,11 +82,14 @@ export default function LoginPage() {
 
           <button onClick={handleSubmit} disabled={loading || !email || password.length < 6}
             className="w-full py-3 rounded-xl bg-accent text-black font-semibold text-sm transition-all hover:bg-accent-dim active:scale-[0.98] disabled:opacity-40">
-            {loading ? 'Processing...' : mode === 'login' ? 'Sign In' : 'Sign Up'}
+            {loading ? 'Processing...' : mode === 'login' ? 'Sign In' : 'Create Account'}
           </button>
         </div>
 
-        <p className="text-xs text-center text-muted">By creating an account you agree this is not medical advice.</p>
+        <p className="text-[10px] text-center text-muted">
+          By continuing you agree this is not medical advice.{' '}
+          <Link href="/" className="text-accent hover:underline">Back to home</Link>
+        </p>
       </div>
     </div>
   );
