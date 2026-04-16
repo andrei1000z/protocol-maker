@@ -9,6 +9,8 @@ const jetbrains = JetBrains_Mono({ variable: "--font-geist-mono", subsets: ["lat
 export const metadata: Metadata = {
   title: "Protocol — AI Longevity Engine",
   description: "Hyper-personalized longevity protocols from your biomarker data. Powered by AI.",
+  manifest: "/manifest.json",
+  appleWebApp: { capable: true, statusBarStyle: "black-translucent", title: "Protocol" },
 };
 
 export const viewport: Viewport = {
@@ -21,7 +23,7 @@ export const viewport: Viewport = {
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
-    <html lang="ro" className={`${inter.variable} ${jetbrains.variable}`}>
+    <html lang="en" className={`${inter.variable} ${jetbrains.variable}`}>
       <body className="min-h-dvh bg-background text-foreground">
         {children}
         <Analytics />
