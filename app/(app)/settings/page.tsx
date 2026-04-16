@@ -87,7 +87,7 @@ export default function SettingsPage() {
       <div className="rounded-2xl bg-card border border-card-border p-5 space-y-1">
         <h2 className="text-sm font-semibold mb-3">Actions</h2>
         {[
-          { icon: <RotateCcw className="w-4 h-4" />, label: 'Regenerate protocol', desc: 'Re-do onboarding', onClick: () => { window.location.href = '/onboarding'; }, color: 'text-accent' },
+          { icon: <RotateCcw className="w-4 h-4" />, label: 'Regenerate protocol', desc: 'Re-do onboarding', onClick: async () => { await fetch('/api/reset-onboarding', { method: 'POST' }); window.location.href = '/onboarding'; }, color: 'text-accent' },
           { icon: <Download className="w-4 h-4" />, label: 'Export all data', desc: 'JSON backup', onClick: handleExport, color: 'text-foreground' },
           { icon: <LogOut className="w-4 h-4" />, label: 'Log out', desc: '', onClick: handleLogout, color: 'text-danger' },
         ].map(a => (
