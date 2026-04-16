@@ -455,7 +455,7 @@ export default function OnboardingPage() {
       </div>
 
       {/* Navigation */}
-      <div className="px-6 pb-8 max-w-2xl mx-auto w-full flex gap-3">
+      <div className="sticky bottom-16 md:bottom-0 z-30 bg-background/90 backdrop-blur-xl border-t border-card-border px-6 py-4 max-w-2xl mx-auto w-full flex gap-3">
         {step > 0 && (
           <button onClick={() => setStep(step === 2 && hasBloodWork === false ? 0 : step - 1)} className="px-4 py-3 rounded-xl bg-card border border-card-border text-sm font-medium text-muted-foreground hover:text-foreground transition-colors">
             ← Back
