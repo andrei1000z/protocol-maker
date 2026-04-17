@@ -111,6 +111,31 @@ export interface ProtocolOutput {
     topWins: string[];
     topRisks: string[];
     organSystemScores: Record<string, number>;
+    organSystemsDetailed?: {
+      key: string;
+      label: string;
+      description: string;
+      score: number;
+      estimated: boolean;
+      drivers: string[];
+      improvers: string[];
+    }[];
+    bryanSummary?: {
+      longevityScoreGap: number;
+      agingPaceGap: number;
+      bioAgePctDifference: number;
+      verdict: string;
+      keyGaps: { marker: string; your: number | string; bryan: number | string }[];
+    };
+    estimatedBiomarkers?: {
+      code: string;
+      shortName: string;
+      unit: string;
+      estimatedLow: number;
+      estimatedHigh: number;
+      expectedClassification: 'likely_optimal' | 'likely_borderline' | 'likely_off';
+      rationale: string;
+    }[];
   };
   biomarkerReadout: {
     code: string;

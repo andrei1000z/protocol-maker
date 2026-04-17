@@ -4,6 +4,7 @@ import Groq from 'groq-sdk';
 import Anthropic from '@anthropic-ai/sdk';
 import { z } from 'zod';
 import { classifyAll, calculateLongevityScore, estimateBiologicalAge, estimateAgingPace } from '@/lib/engine/classifier';
+import { computeOrganSystems, generateTopWins, generateTopRisks, estimateBiomarkers, buildBryanSummary } from '@/lib/engine/lifestyle-diagnostics';
 import { detectPatterns } from '@/lib/engine/patterns';
 import { BIOMARKER_DB } from '@/lib/engine/biomarkers';
 import { buildMasterPromptV2 } from '@/lib/engine/master-prompt';
@@ -140,6 +141,19 @@ export async function POST(request: Request) {
       finalScore = longevityScore;
     }
 
+    // Compute rich lifestyle-based diagnostics (organ systems, wins, risks, bryan)
+    // These ensure dashboard always has real data to render, even when AI is sparse or
+    // when the user has no bloodwork yet.
+    const organSystems = computeOrganSystems(profile, classified);
+    const topWins = generateTopWins(profile, classified, organSystems);
+    const topRisks = generateTopRisks(profile, classified, organSystems);
+    const bryanSummary = buildBryanSummary(finalScore, finalPace, chronoAge, finalBioAge);
+    const estimatedBiomarkers = classified.length === 0 ? estimateBiomarkers(profile) : [];
+
+    // Build organ scores object keyed by system (for radar chart)
+    const organScoresMap: Record<string, number> = {};
+    organSystems.forEach(o => { organScoresMap[o.key] = o.score; });
+
     protocolJson.diagnostic = {
       ...existingDiag,
       biologicalAge: finalBioAge,
@@ -147,6 +161,17 @@ export async function POST(request: Request) {
       agingVelocity: finalPace < 0.95 ? 'decelerated' : finalPace > 1.05 ? 'accelerated' : 'steady',
       chronologicalAge: chronoAge,
       longevityScore: finalScore,
+      // Always-populated sections (merge AI's if provided, else use our lifestyle-based)
+      topWins: Array.isArray(existingDiag.topWins) && existingDiag.topWins.length >= 2
+        ? [...(existingDiag.topWins as string[]).slice(0, 2), ...topWins.slice(0, 2)]
+        : topWins,
+      topRisks: Array.isArray(existingDiag.topRisks) && existingDiag.topRisks.length >= 2
+        ? [...(existingDiag.topRisks as string[]).slice(0, 2), ...topRisks.slice(0, 2)]
+        : topRisks,
+      organSystemScores: organScoresMap,
+      organSystemsDetailed: organSystems,  // full objects with descriptions + drivers + improvers
+      bryanSummary,
+      estimatedBiomarkers,
     };
 
     // Always add biomarker readout from our classifier
