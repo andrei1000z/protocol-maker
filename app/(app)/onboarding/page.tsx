@@ -1569,7 +1569,7 @@ export default function OnboardingPage() {
         )}
       </div>
 
-      <div className="fixed bottom-16 md:bottom-0 left-0 right-0 z-50 bg-background/95 backdrop-blur-xl border-t border-card-border px-6 py-4 pb-[calc(1rem+env(safe-area-inset-bottom))] flex gap-3 justify-center">
+      <div className="fixed bottom-0 left-0 right-0 z-50 bg-background/95 backdrop-blur-xl border-t border-card-border px-6 py-4 pb-[calc(1rem+env(safe-area-inset-bottom))] flex gap-3 justify-center">
         <div className="max-w-2xl w-full flex gap-3">
         {step > 0 && (
           <button onClick={handleBack} className="px-4 py-3 rounded-xl bg-card border border-card-border text-sm font-medium text-muted-foreground hover:text-foreground transition-colors">← Back</button>
