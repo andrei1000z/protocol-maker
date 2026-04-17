@@ -44,15 +44,26 @@ export async function POST(request: Request) {
     const { date, ...fields } = body;
     if (!date) return NextResponse.json({ error: 'date required' }, { status: 400 });
 
-    const { error } = await supabase.from('daily_metrics').upsert({
-      user_id: user.id,
-      date,
-      ...fields,
-      updated_at: new Date().toISOString(),
+    // Try upsert as-is. If DB rejects due to missing columns (pre-migration DB),
+    // strip the unknown column and retry — so the UI never breaks while users
+    // wait for the schema migration to land.
+    const attemptUpsert = async (data: Record<string, unknown>) => supabase.from('daily_metrics').upsert({
+      user_id: user.id, date, ...data, updated_at: new Date().toISOString(),
     }, { onConflict: 'user_id,date' });
 
-    if (error) return NextResponse.json({ error: error.message }, { status: 500 });
-    return NextResponse.json({ success: true });
+    let working = { ...fields };
+    for (let attempts = 0; attempts < 25; attempts++) {
+      const { error } = await attemptUpsert(working);
+      if (!error) return NextResponse.json({ success: true, strippedFields: Object.keys(fields).length - Object.keys(working).length });
+      // Postgres "column ... of relation ... does not exist" — strip that field and retry
+      const m = error.message.match(/column "?(\w+)"? of relation/i) || error.message.match(/(\w+) does not exist/i);
+      if (m && m[1] && m[1] in working) {
+        delete working[m[1]];
+        continue;
+      }
+      return NextResponse.json({ error: error.message }, { status: 500 });
+    }
+    return NextResponse.json({ error: 'Too many missing columns — run upgrade.sql in Supabase SQL Editor' }, { status: 500 });
   } catch (err) {
     return NextResponse.json({ error: String(err) }, { status: 500 });
   }

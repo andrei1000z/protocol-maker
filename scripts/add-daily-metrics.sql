@@ -55,6 +55,30 @@ create table if not exists public.daily_metrics (
   unique(user_id, date)  -- one row per user per day
 );
 
+-- Wearable-grade metrics (Galaxy Watch, Oura, WHOOP, Apple Watch, Garmin, Fitbit)
+alter table public.daily_metrics add column if not exists sleep_hours_planned real;
+alter table public.daily_metrics add column if not exists sleep_score integer;
+alter table public.daily_metrics add column if not exists deep_sleep_min integer;
+alter table public.daily_metrics add column if not exists light_sleep_min integer;
+alter table public.daily_metrics add column if not exists rem_sleep_min integer;
+alter table public.daily_metrics add column if not exists awake_min integer;
+alter table public.daily_metrics add column if not exists blood_oxygen_avg_sleep real;
+alter table public.daily_metrics add column if not exists skin_temp_deviation real;
+alter table public.daily_metrics add column if not exists hrv_sleep_avg integer;
+alter table public.daily_metrics add column if not exists bp_systolic_morning integer;
+alter table public.daily_metrics add column if not exists bp_diastolic_morning integer;
+alter table public.daily_metrics add column if not exists bp_systolic_evening integer;
+alter table public.daily_metrics add column if not exists bp_diastolic_evening integer;
+alter table public.daily_metrics add column if not exists avg_heart_rate integer;
+alter table public.daily_metrics add column if not exists min_heart_rate integer;
+alter table public.daily_metrics add column if not exists max_heart_rate integer;
+alter table public.daily_metrics add column if not exists avg_respiratory_rate real;
+alter table public.daily_metrics add column if not exists energy_score integer;
+alter table public.daily_metrics add column if not exists active_time_min integer;
+alter table public.daily_metrics add column if not exists activity_calories integer;
+alter table public.daily_metrics add column if not exists antioxidant_index integer;
+alter table public.daily_metrics add column if not exists ages_index real;
+
 -- ┌──────────────────────────────────────────────────────────────────────────┐
 -- │ CHECK CONSTRAINTS (for existing tables — add if missing)                 │
 -- └──────────────────────────────────────────────────────────────────────────┘

@@ -18,6 +18,30 @@ export interface DailyMetrics {
   stress_level?: number | null;
   habits_completed?: string[];
   notes?: string | null;
+
+  // Wearable-grade metrics (Galaxy Watch, Oura, WHOOP, Apple Watch, Garmin)
+  sleep_hours_planned?: number | null;
+  sleep_score?: number | null;
+  deep_sleep_min?: number | null;
+  light_sleep_min?: number | null;
+  rem_sleep_min?: number | null;
+  awake_min?: number | null;
+  blood_oxygen_avg_sleep?: number | null;
+  skin_temp_deviation?: number | null;
+  hrv_sleep_avg?: number | null;
+  bp_systolic_morning?: number | null;
+  bp_diastolic_morning?: number | null;
+  bp_systolic_evening?: number | null;
+  bp_diastolic_evening?: number | null;
+  avg_heart_rate?: number | null;
+  min_heart_rate?: number | null;
+  max_heart_rate?: number | null;
+  avg_respiratory_rate?: number | null;
+  energy_score?: number | null;
+  active_time_min?: number | null;
+  activity_calories?: number | null;
+  antioxidant_index?: number | null;
+  ages_index?: number | null;
 }
 
 export function useDailyMetrics(date: string) {

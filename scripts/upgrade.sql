@@ -76,7 +76,7 @@ alter table public.blood_tests add column if not exists notes text;
 alter table public.blood_tests add column if not exists deleted_at timestamptz;
 
 -- ┌──────────────────────────────────────────────────────────────────────────┐
--- │ 4. DAILY_METRICS — create if missing (covers full tracking module)       │
+-- │ 4. DAILY_METRICS — create if missing + expand with smartwatch metrics    │
 -- └──────────────────────────────────────────────────────────────────────────┘
 create table if not exists public.daily_metrics (
   id uuid default gen_random_uuid() primary key,
@@ -100,6 +100,74 @@ create table if not exists public.daily_metrics (
   updated_at timestamptz default now(),
   unique(user_id, date)
 );
+
+-- Smartwatch / wearable-grade metrics (Galaxy Watch, Oura, WHOOP, Apple Watch, Garmin)
+alter table public.daily_metrics add column if not exists sleep_hours_planned real;      -- target last night
+alter table public.daily_metrics add column if not exists sleep_score integer;            -- 0-100 from wearable
+alter table public.daily_metrics add column if not exists deep_sleep_min integer;
+alter table public.daily_metrics add column if not exists light_sleep_min integer;
+alter table public.daily_metrics add column if not exists rem_sleep_min integer;
+alter table public.daily_metrics add column if not exists awake_min integer;
+alter table public.daily_metrics add column if not exists blood_oxygen_avg_sleep real;    -- SpO2 % during sleep
+alter table public.daily_metrics add column if not exists skin_temp_deviation real;       -- °C vs recent avg
+alter table public.daily_metrics add column if not exists hrv_sleep_avg integer;          -- HRV during sleep
+alter table public.daily_metrics add column if not exists bp_systolic_morning integer;
+alter table public.daily_metrics add column if not exists bp_diastolic_morning integer;
+alter table public.daily_metrics add column if not exists bp_systolic_evening integer;
+alter table public.daily_metrics add column if not exists bp_diastolic_evening integer;
+alter table public.daily_metrics add column if not exists avg_heart_rate integer;         -- whole day avg
+alter table public.daily_metrics add column if not exists min_heart_rate integer;         -- lowest today
+alter table public.daily_metrics add column if not exists max_heart_rate integer;         -- peak today
+alter table public.daily_metrics add column if not exists avg_respiratory_rate real;      -- breaths/min
+alter table public.daily_metrics add column if not exists energy_score integer;           -- wearable energy 0-100
+alter table public.daily_metrics add column if not exists active_time_min integer;
+alter table public.daily_metrics add column if not exists activity_calories integer;
+alter table public.daily_metrics add column if not exists antioxidant_index integer;      -- Galaxy Watch 0-100
+alter table public.daily_metrics add column if not exists ages_index real;                -- Advanced Glycation End products
+
+-- Range constraints — silent skip if data violates (NOT VALID + VALIDATE pattern)
+do $$ begin
+  if not exists (select 1 from pg_constraint where conname = 'dm_sleep_score_range') then
+    alter table public.daily_metrics add constraint dm_sleep_score_range
+      check (sleep_score is null or sleep_score between 0 and 100) not valid;
+    alter table public.daily_metrics validate constraint dm_sleep_score_range;
+  end if;
+exception when others then null; end $$;
+
+do $$ begin
+  if not exists (select 1 from pg_constraint where conname = 'dm_spo2_range') then
+    alter table public.daily_metrics add constraint dm_spo2_range
+      check (blood_oxygen_avg_sleep is null or blood_oxygen_avg_sleep between 70 and 100) not valid;
+    alter table public.daily_metrics validate constraint dm_spo2_range;
+  end if;
+exception when others then null; end $$;
+
+do $$ begin
+  if not exists (select 1 from pg_constraint where conname = 'dm_energy_score_range') then
+    alter table public.daily_metrics add constraint dm_energy_score_range
+      check (energy_score is null or energy_score between 0 and 100) not valid;
+    alter table public.daily_metrics validate constraint dm_energy_score_range;
+  end if;
+exception when others then null; end $$;
+
+do $$ begin
+  if not exists (select 1 from pg_constraint where conname = 'dm_bp_sys_range') then
+    alter table public.daily_metrics add constraint dm_bp_sys_range
+      check ((bp_systolic_morning is null or bp_systolic_morning between 60 and 250)
+         and (bp_systolic_evening is null or bp_systolic_evening between 60 and 250)) not valid;
+    alter table public.daily_metrics validate constraint dm_bp_sys_range;
+  end if;
+exception when others then null; end $$;
+
+do $$ begin
+  if not exists (select 1 from pg_constraint where conname = 'dm_hr_range') then
+    alter table public.daily_metrics add constraint dm_hr_range
+      check ((avg_heart_rate is null or avg_heart_rate between 20 and 220)
+         and (min_heart_rate is null or min_heart_rate between 20 and 220)
+         and (max_heart_rate is null or max_heart_rate between 20 and 300)) not valid;
+    alter table public.daily_metrics validate constraint dm_hr_range;
+  end if;
+exception when others then null; end $$;
 
 -- ┌──────────────────────────────────────────────────────────────────────────┐
 -- │ 5. SHARE_LINKS                                                           │

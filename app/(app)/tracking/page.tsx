@@ -13,7 +13,9 @@ import { TabNav } from '@/components/tracking/Tabs';
 import { HabitsTab } from '@/components/tracking/HabitsTab';
 import { MetricsTab } from '@/components/tracking/MetricsTab';
 import { TrendsTab } from '@/components/tracking/TrendsTab';
+import { SmartLogSheet } from '@/components/tracking/SmartLogSheet';
 import { useDailyMetrics, useDailyMetricsRange, DailyMetrics } from '@/lib/hooks/useDailyMetrics';
+import { Sparkles } from 'lucide-react';
 
 interface ComplianceItem { type: string; name: string; completed: boolean; }
 
@@ -97,6 +99,16 @@ export default function TrackingPage() {
   const [history, setHistory] = useState<ComplianceEntry[]>([]);
   const [bloodTestsCount, setBloodTestsCount] = useState(0);
   const [protocolsCount, setProtocolsCount] = useState(0);
+  const [smartLogOpen, setSmartLogOpen] = useState(false);
+
+  // Time-aware button label
+  const bucketLabel = (() => {
+    const h = new Date().getHours();
+    if (h >= 5 && h < 11) return 'Log morning metrics';
+    if (h >= 11 && h < 17) return 'Log midday check-in';
+    if (h >= 17 && h < 23) return 'Log evening recap';
+    return 'Log before bed';
+  })();
 
   const thirtyDaysAgo = (() => { const d = new Date(); d.setDate(d.getDate() - 30); return d.toISOString().split('T')[0]; })();
   const { metrics: todayMetrics, save: saveMetrics } = useDailyMetrics(date);
@@ -209,9 +221,31 @@ export default function TrackingPage() {
   return (
     <div className="max-w-2xl mx-auto px-4 py-6 space-y-4">
       <div className="text-center space-y-1">
-        <h1 className="text-2xl font-bold">Daily Tracking</h1>
+        <h1 className="text-2xl font-bold tracking-tight">Daily Tracking</h1>
         <p className="text-sm text-muted-foreground">{new Date().toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' })}</p>
       </div>
+
+      {/* Smart log — big time-aware button */}
+      <button
+        onClick={() => setSmartLogOpen(true)}
+        className="w-full rounded-2xl hero-card border border-accent/30 p-5 flex items-center gap-4 hover:border-accent/50 transition-all group animate-fade-in-up"
+      >
+        <div className="w-12 h-12 rounded-xl bg-accent/15 flex items-center justify-center shrink-0 group-hover:bg-accent/20 transition-colors">
+          <Sparkles className="w-6 h-6 text-accent" />
+        </div>
+        <div className="text-left flex-1 min-w-0">
+          <p className="text-sm font-semibold tracking-tight">{bucketLabel}</p>
+          <p className="text-xs text-muted-foreground mt-0.5 truncate">Tap to log whatever your watch + body reported — we only show fields relevant to right now.</p>
+        </div>
+        <div className="text-xs text-accent font-mono pr-1">→</div>
+      </button>
+
+      <SmartLogSheet
+        open={smartLogOpen}
+        onClose={() => setSmartLogOpen(false)}
+        metrics={todayMetrics as DailyMetrics}
+        onSave={(updates) => saveMetrics(updates)}
+      />
 
       {/* Top stats always visible */}
       <div className="grid grid-cols-2 gap-3">
