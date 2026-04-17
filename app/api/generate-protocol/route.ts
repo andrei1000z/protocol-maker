@@ -313,13 +313,205 @@ function buildFallbackProtocol(profile: UserProfile, bioAge: number, score: numb
       { category: 'Movement', tips: [
         { tip: 'Walk 8,000+ steps daily', why: 'Strongest predictor of mortality — 51% reduction vs 4k steps', difficulty: 'easy' },
         { tip: 'Strength train 2-3x/week', why: 'Prevents sarcopenia, 20% mortality reduction', difficulty: 'medium' },
+        { tip: 'Walk 10 min after every meal', why: 'Reduces post-meal glucose spike by 30%', difficulty: 'easy' },
       ]},
       { category: 'Sleep', tips: [
         { tip: 'Same bedtime ±30 min nightly', why: 'Sleep consistency matters as much as duration', difficulty: 'medium' },
         { tip: 'Morning sunlight 10-15 min', why: 'Anchors circadian rhythm', difficulty: 'easy' },
+        { tip: 'No screens 60 min before bed', why: 'Blue light delays melatonin by 90 min', difficulty: 'hard' },
+      ]},
+      { category: 'Nutrition', tips: [
+        { tip: 'Eat 30+ different plants per week', why: 'Microbiome diversity = metabolic health', difficulty: 'medium' },
+        { tip: '2-3 tbsp olive oil daily', why: 'Polyphenols — 19% mortality reduction', difficulty: 'easy' },
+        { tip: 'Minimize ultra-processed food', why: 'Strongest dietary mortality risk factor', difficulty: 'hard' },
+      ]},
+      { category: 'Mindset', tips: [
+        { tip: 'Daily stress management (5-10 min)', why: 'Lowers cortisol 25%, improves sleep', difficulty: 'easy' },
+        { tip: 'Maintain social connections', why: 'Loneliness = 15 cigarettes/day mortality', difficulty: 'medium' },
       ]},
     ],
+    dailySchedule: buildFallbackDailySchedule(profile),
+    bryanComparison: buildFallbackBryanComparison(classified),
+    dailyBriefing: {
+      morningPriorities: [
+        'Morning sunlight 10 min + glass of water',
+        'Take Vitamin D3 + K2 with breakfast',
+        'Plan today\'s 8,000 steps',
+      ],
+      eveningReview: [
+        'Did I hit my step goal?',
+        'How was my energy at 2 PM?',
+        'Screens off 60 min before bed — done?',
+      ],
+    },
+    painPointSolutions: buildFallbackPainPoints(profile),
+    flexRules: buildFallbackFlexRules(profile),
+    weekByWeekPlan: [
+      { week: 1, focus: 'Foundation',
+        mondayActions: ['Start Vitamin D3 + Omega-3 + Magnesium with breakfast'],
+        wednesdayActions: ['First strength session (30 min upper body)'],
+        fridayActions: ['Track sleep with phone or app'],
+        weekendActions: ['Prep meals for next week', 'Morning sunlight walk 15 min'],
+        endOfWeekCheck: ['Did I hit 5 days of supplements?', 'Any side effects?'],
+      },
+      { week: 2, focus: 'Build habits',
+        mondayActions: ['Add walk after lunch (10 min)'],
+        wednesdayActions: ['Strength session (lower body)'],
+        fridayActions: ['Zone 2 cardio 30 min'],
+        weekendActions: ['Long walk or hike 45+ min'],
+        endOfWeekCheck: ['Are habits feeling automatic?'],
+      },
+      { week: 3, focus: 'Layer intensity',
+        mondayActions: ['Add 1 HIIT session this week'],
+        wednesdayActions: ['Full strength session 45 min'],
+        fridayActions: ['Zone 2 + strength combo'],
+        weekendActions: ['Track a full day of food'],
+        endOfWeekCheck: ['Am I recovering between workouts?'],
+      },
+      { week: 4, focus: 'First checkpoint',
+        mondayActions: ['Measure weight + waist'],
+        wednesdayActions: ['Review supplement adherence — any missed doses?'],
+        fridayActions: ['Check sleep data — avg hours + quality trend'],
+        weekendActions: ['Plan weeks 5-8 based on progress'],
+        endOfWeekCheck: ['Book retest for hsCRP if elevated'],
+      },
+    ],
+    doctorQuestions: [
+      ...(classified.filter(b => b.classification === 'CRITICAL').map(b => {
+        const ref = BIOMARKER_DB.find(r => r.code === b.code);
+        return `My ${ref?.shortName || b.code} is ${b.value} ${b.unit} — is this concerning and what should we do?`;
+      })),
+      'Based on my biomarkers, what annual screenings do you recommend?',
+      'Are there any drug-supplement interactions I should know about?',
+      'Given my family history, when should I start preventive testing (coronary calcium, colonoscopy, etc.)?',
+    ].slice(0, 5),
   };
+}
+
+function buildFallbackBryanComparison(classified: BiomarkerValue[]) {
+  return classified
+    .filter(b => {
+      const ref = BIOMARKER_DB.find(r => r.code === b.code);
+      return ref?.bryanJohnsonValue !== undefined;
+    })
+    .slice(0, 8)
+    .map(b => {
+      const ref = BIOMARKER_DB.find(r => r.code === b.code)!;
+      const bryanVal = ref.bryanJohnsonValue!;
+      const gap = Math.abs(b.value - bryanVal);
+      const lowerBetter = ['LDL', 'TRIG', 'HSCRP', 'HOMOCYS', 'HBA1C', 'GLUC', 'INSULIN', 'ALT', 'AST', 'GGT'].includes(b.code);
+      const ahead = lowerBetter ? b.value <= bryanVal : b.value >= bryanVal;
+      const close = gap < (bryanVal * 0.15);
+      const verdict = ahead ? 'Ahead of Bryan' : close ? 'Close to Bryan' : b.classification === 'CRITICAL' || b.classification === 'DEFICIENT' || b.classification === 'EXCESS' ? 'Priority gap' : 'Work needed';
+      return { marker: ref.shortName || ref.name, yourValue: b.value, bryanValue: bryanVal, gap, verdict };
+    });
+}
+
+function buildFallbackDailySchedule(profile: UserProfile) {
+  const wakeTime = profile.wakeTime || '07:00';
+  const [wh] = wakeTime.split(':').map(Number);
+  const bedHour = (wh - 8.5 + 24) % 24;
+
+  return [
+    { time: wakeTime, activity: 'Wake, get morning sunlight outside', category: 'mindset', duration: '10 min', notes: 'No phone yet. Cold splash on face.' },
+    { time: `${String(wh).padStart(2, '0')}:10`, activity: 'Glass of water + Vitamin D3 with breakfast fat', category: 'supplements', duration: '2 min', notes: '' },
+    { time: `${String((wh + 1) % 24).padStart(2, '0')}:00`, activity: profile.exerciseWindow === 'morning' ? 'Exercise window' : 'Breakfast (protein-forward)', category: profile.exerciseWindow === 'morning' ? 'exercise' : 'nutrition', duration: '45 min', notes: '' },
+    { time: '13:00', activity: 'Lunch — main meal', category: 'nutrition', duration: '30 min', notes: 'Walk 10 min after' },
+    { time: '17:00', activity: profile.exerciseWindow === 'evening' ? 'Exercise window' : 'Snack + supplements', category: profile.exerciseWindow === 'evening' ? 'exercise' : 'supplements', duration: '45 min', notes: '' },
+    { time: '18:30', activity: 'Dinner — lighter', category: 'nutrition', duration: '30 min', notes: 'Last meal 3h before bed' },
+    { time: `${String((Math.floor(bedHour) - 1 + 24) % 24).padStart(2, '0')}:00`, activity: 'Wind-down: dim lights, screens off', category: 'sleep', duration: '60 min', notes: 'Reading, stretching' },
+    { time: `${String(Math.floor(bedHour)).padStart(2, '0')}:30`, activity: 'Take Magnesium Glycinate', category: 'supplements', duration: '2 min', notes: '' },
+    { time: `${String(Math.floor(bedHour)).padStart(2, '0')}:45`, activity: 'Bed — lights out', category: 'sleep', duration: '8h', notes: '18-20°C, total darkness' },
+  ];
+}
+
+function buildFallbackPainPoints(profile: UserProfile) {
+  const painPoints = profile.painPoints;
+  if (!painPoints || painPoints.trim().length === 0) return [];
+
+  // Split by line/comma and create an entry per distinct concern
+  const concerns = painPoints.split(/[,.\n]+/).map(s => s.trim()).filter(s => s.length > 5).slice(0, 5);
+  return concerns.map(concern => {
+    const lower = concern.toLowerCase();
+    if (lower.includes('energy') || lower.includes('crash') || lower.includes('tired') || lower.includes('fog')) {
+      return {
+        problem: concern,
+        likelyCause: 'Post-meal glucose spike + insufficient protein breakfast + possible sleep debt',
+        solution: 'Higher-protein breakfast (35g+), 10 min walk after meals, avoid refined carbs at lunch, optimize sleep first',
+        supportingBiomarkers: ['GLUC', 'INSULIN', 'HBA1C'],
+        expectedTimeline: '1-2 weeks for first improvements, 4 weeks for full resolution',
+        checkpoints: ['Track 2 PM energy 1-10 daily', 'Compare week 1 vs week 4 averages'],
+      };
+    }
+    if (lower.includes('sleep') || lower.includes('insomnia') || lower.includes('fall asleep')) {
+      return {
+        problem: concern,
+        likelyCause: 'Elevated evening cortisol, blue light exposure, or inconsistent bedtime',
+        solution: 'Magnesium Glycinate 400mg 60 min before bed, no screens 90 min before, consistent bedtime ±30 min, bedroom at 18-19°C',
+        supportingBiomarkers: ['CORTISOL'],
+        expectedTimeline: '3-7 days for first improvements, 3 weeks for stable pattern',
+        checkpoints: ['Time-to-sleep tracked nightly', 'Morning readiness score'],
+      };
+    }
+    if (lower.includes('back') || lower.includes('stiff') || lower.includes('pain') || lower.includes('joint')) {
+      return {
+        problem: concern,
+        likelyCause: 'Prolonged sitting + low omega-3 + possible inflammation',
+        solution: 'Hip flexor stretches 2x/day, hourly movement breaks, Omega-3 2-3g/day, strengthen posterior chain',
+        supportingBiomarkers: ['HSCRP'],
+        expectedTimeline: '2-3 weeks',
+        checkpoints: ['Morning stiffness 1-10 daily', 'Weekly flexibility test'],
+      };
+    }
+    return {
+      problem: concern,
+      likelyCause: 'Multi-factorial — consult detected patterns and biomarker trends',
+      solution: 'Track daily for 2 weeks to identify triggers, address root causes (sleep, stress, nutrition) systematically',
+      supportingBiomarkers: [],
+      expectedTimeline: '4-8 weeks depending on root cause',
+      checkpoints: ['Daily severity tracking 1-10', 'Weekly pattern review'],
+    };
+  });
+}
+
+function buildFallbackFlexRules(profile: UserProfile) {
+  const nonNegotiables = profile.nonNegotiables;
+  if (!nonNegotiables || nonNegotiables.trim().length === 0) return [];
+
+  const items = nonNegotiables.split(/[,.\n]+/).map(s => s.trim()).filter(s => s.length > 3).slice(0, 5);
+  return items.map(item => {
+    const lower = item.toLowerCase();
+    if (lower.includes('pizza') || lower.includes('burger') || lower.includes('fast food')) {
+      return {
+        scenario: item,
+        strategy: '20 min walk before meal + 15 min walk after. Berberine 500mg with meal. Drink water between slices. Extend overnight fast to 14h the next day.',
+        damageControl: 'Day-after: light eating, extra fiber, skip alcohol.',
+        frequency: 'Up to 1x/week without penalty',
+      };
+    }
+    if (lower.includes('coffee') || lower.includes('caffeine')) {
+      return {
+        scenario: item,
+        strategy: 'Keep your morning coffee. Cutoff by 12:00. L-Theanine 200mg with coffee to smooth out peak.',
+        damageControl: 'If consumed late: magnesium at bedtime, chamomile tea',
+        frequency: 'Daily OK if before noon',
+      };
+    }
+    if (lower.includes('alcohol') || lower.includes('wine') || lower.includes('beer') || lower.includes('drink')) {
+      return {
+        scenario: item,
+        strategy: 'Hydrate 1 glass water between drinks. Eat before drinking. Take NAC 600mg before bed. Avoid sugary mixers.',
+        damageControl: 'Day-after: electrolytes, skip workout, hydrate aggressively',
+        frequency: 'Up to 2 drinks, 1-2x/week max',
+      };
+    }
+    return {
+      scenario: item,
+      strategy: 'Enjoy mindfully. Pair with protein+fiber to blunt glucose. Walk 10 min after.',
+      damageControl: 'Return to normal protocol next meal',
+      frequency: 'Within reason',
+    };
+  });
 }
 
 function buildFallbackMeals(dietType: string, calories: number) {
