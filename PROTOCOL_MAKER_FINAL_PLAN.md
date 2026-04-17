@@ -1,355 +1,447 @@
-# 🧬 PROTOCOL MAKER v3 — FINAL AUDIT & PERFECTION PLAN
+# 🧬 PROTOCOL MAKER v3 — THE DEFINITIVE AUDIT & MASTERPLAN
 # ═══════════════════════════════════════════════════════════════════
-# Complete re-audit after major implementation sprint.
-# This replaces all previous specs.
+# Generated after reading EVERY file in the project (fresh re-audit)
+# This replaces ALL previous documents. Use this one only.
 # ═══════════════════════════════════════════════════════════════════
 
-## EXECUTIVE SUMMARY
+---
 
-Andrei has implemented ~70% of the v2 spec successfully. The app now has:
-- ✅ Landing page with Bryan comparison + biomarker demo
-- ✅ 4-step onboarding with PDF upload (Groq parsing)
-- ✅ 30-biomarker reference DB (up from 20)
-- ✅ 13 pattern detectors (up from 5)
-- ✅ Master prompt v2 (614 lines — crown jewel)
-- ✅ Dashboard with range bars, organ radar, Bryan comparison, daily schedule
-- ✅ Supplement timeline (morning/food/evening/bedtime)
-- ✅ Universal tips section
-- ✅ Cost breakdown
-- ✅ Tracking with streaks, weekly chart, monthly heatmap, achievements
-- ✅ History page with side-by-side blood test comparison
-- ✅ Print/PDF export (via window.print + CSS @media print)
-- ✅ PhenoAge biological age algorithm
-- ✅ Drug-supplement interaction DB
-- ✅ Achievement system (14 badges)
-- ✅ Privacy + Terms pages
-- ✅ Sitemap + robots.ts
-- ✅ Fallback protocol generator (when AI fails)
-- ✅ Fixed share view_count bug
-- ✅ English UI throughout
+## PART 1 — EXECUTIVE SUMMARY
 
-What's still missing or broken — this document covers it.
+You went from 70% spec completion to **~85% completion** in this sprint.
+The project is now a serious product. Almost everything I criticized last 
+audit has been shipped. What's left is **deep protocol personalization**, 
+**a few critical bugs**, and **polish**. This document has it all.
 
 ---
 
-## PART 1 — CRITICAL BUGS & ISSUES FOUND
+## PART 2 — WHAT EXISTS NOW (verified by re-reading every file)
 
-### 🔴 BUG #1 — Tracking uses MOCK DATA (biggest issue)
-**File:** `app/(app)/tracking/page.tsx`, lines 130-148
+### 📦 Dependencies (package.json)
+- Next.js 16.2.4, React 19.2.4, TypeScript
+- Tailwind v4
+- Supabase (@supabase/ssr + js)
+- **@anthropic-ai/sdk 0.89.0** (installed but still UNUSED anywhere in code)
+- **@upstash/ratelimit + @upstash/redis** (installed but UNUSED)
+- Groq SDK (used for protocol generation, PDF parsing, chat)
+- **Zod** (installed but UNUSED — no validation on AI output)
+- Recharts, Lucide React, clsx, uuid, pdf-parse
+- Vercel Analytics
 
-The streak, weekly chart, and monthly heatmap ALL use `Math.random()`:
-```typescript
-setStreak(todayPct >= 50 ? Math.floor(Math.random() * 7) + 1 : 0);
-setWeekData(days.map((d, i) => ({
-  day: d,
-  pct: i < dayIdx ? Math.floor(Math.random() * 60 + 40) : ...
-})));
-setMonthData(Array.from({ length: 30 }, (_, i) => {
-  return { date: ..., pct: i < 29 ? Math.floor(Math.random() * 100) : todayPct };
-}));
+### 🏗️ File structure (complete)
 ```
-This is fake data. User will see different numbers every refresh. **CRITICAL FIX NEEDED.**
+app/
+├── (marketing)/
+│   ├── page.tsx                         ✅ Landing page (BiomarkerDemo, comparison, CTA)
+│   ├── layout.tsx                       ✅
+│   ├── privacy/                         ✅
+│   └── terms/                           ✅
+├── (auth)/login/page.tsx                ✅
+├── (app)/
+│   ├── layout.tsx                       ✅ (NavBar)
+│   ├── dashboard/page.tsx               ✅ 484 lines — big, full sections
+│   ├── onboarding/page.tsx              ✅ 5 steps, state persistence working
+│   ├── tracking/page.tsx                ✅ Real streak math, tabs, no Math.random
+│   ├── history/page.tsx                 ✅ Side-by-side blood test compare
+│   ├── settings/page.tsx                ⚠️ Still basic, no profile editing
+│   ├── chat/page.tsx                    ✅ AI chat context-aware (NEW!)
+│   └── protocol/                        ⚠️ Empty directory — exists but unused
+├── api/
+│   ├── auth/                            ✅
+│   ├── chat/route.ts                    ✅ Context-aware Groq chat (NEW!)
+│   ├── compare/route.ts                 ✅ Blood test comparison
+│   ├── compliance/route.ts              ✅ POST upsert + GET single day
+│   ├── compliance/history/route.ts      ✅ 30-day aggregation (NEW!)
+│   ├── daily-metrics/route.ts           ✅ GET range/single + POST upsert (NEW!)
+│   ├── generate-protocol/route.ts       ✅ Groq + fallback, NO Claude Opus
+│   ├── logout/route.ts                  ✅
+│   ├── my-data/route.ts                 ✅ Profile + protocol + blood tests
+│   ├── parse-bloodwork/route.ts         ✅ Groq PDF parsing
+│   ├── reset-onboarding/route.ts        ✅
+│   ├── save-bloodtest/route.ts          ✅
+│   ├── save-profile/route.ts            ✅
+│   └── share/route.ts                   ✅ view_count bug fixed
+├── share/[slug]/                        ✅ Public read-only view
+├── globals.css                          ✅ CSS vars, print styles
+├── layout.tsx                           ✅
+├── robots.ts                            ✅
+└── sitemap.ts                           ✅
 
-### 🔴 BUG #2 — Compliance logs only fetched for TODAY
-**File:** `app/api/compliance/route.ts`
+components/
+├── landing/                             ⚠️ Empty dir (landing inlined in page.tsx)
+├── layout/NavBar.tsx                    ✅ 5 tabs (Protocol/Track/Chat/History/Settings)
+├── onboarding/                          ⚠️ Empty dir
+├── protocol/GeneratingScreen.tsx        ✅ Animated generating screen
+├── tracking/Tabs.tsx                    ✅
+├── tracking/HabitsTab.tsx               ✅ 14 habits
+├── tracking/MetricsTab.tsx              ✅ weight/sleep/mood/energy/steps/HRV/workout
+└── tracking/TrendsTab.tsx               ✅ 7 charts (weight, sleep, mood, energy, steps, HR, HRV)
 
-The GET endpoint only accepts a single date parameter. Cannot fetch a range for weekly/monthly charts. Needs a new endpoint or parameter.
+lib/
+├── engine/
+│   ├── achievements.ts                  ✅ 14 achievements across 4 categories
+│   ├── biomarkers.ts                    ✅ 30 markers (expanded from 20)
+│   ├── classifier.ts                    ✅ Weighted scoring + critical thresholds
+│   ├── daily-habits.ts                  ✅ 14 habits across 8 categories (NEW!)
+│   ├── interactions.ts                  ✅ Drug-supplement interactions DB
+│   ├── master-prompt.ts                 ⚠️ 614 lines but DOESN'T USE new onboarding fields
+│   ├── patterns.ts                      ✅ 13 patterns (expanded from 5)
+│   ├── phenoage.ts                      ✅ PhenoAge algorithm
+│   └── universal-tips.ts                ✅ Universal longevity tips DB
+├── hooks/
+│   └── useDailyMetrics.ts               ✅ Single day + range hooks (NEW!)
+├── supabase/
+│   ├── client.ts                        ✅
+│   └── server.ts                        ✅
+├── utils/
+│   └── streak.ts                        ✅ Real streak math from DB (NEW!)
+└── types.ts                             ⚠️ Doesn't include new onboarding fields
 
-### 🔴 BUG #3 — Achievements always re-checked with current-day stats only
-**File:** `app/(app)/tracking/page.tsx`, line 235
+scripts/
+├── setup-db.sql                         ⚠️ DOESN'T include daily_metrics table
+├── migrate-db.sql                       ⚠️ Same
+├── add-share-tracking.sql               ✅
+└── ??? no migration for daily_metrics   ❌ MISSING
 
-Passes `currentStreak: streak` (which is Math.random), `bloodTestsUploaded: 0` (hardcoded!), etc. Achievements should be calculated from REAL historical data.
-
-### 🟡 BUG #4 — Onboarding doesn't actually save partial progress
-**File:** `app/(app)/onboarding/page.tsx`
-
-`saveProgress()` is called between steps, but the user state (biomarkers entered, lifestyle choices) is NOT persisted — only the step number. If user refreshes, they lose everything entered.
-
-### 🟡 BUG #5 — Fallback protocol doesn't respect user's diet/budget/goals
-**File:** `app/api/generate-protocol/route.ts`, line 125-230
-
-The `buildFallbackProtocol()` function generates a generic protocol with omnivore meals (eggs, chicken, salmon). If user is vegan, budget is 200 RON, or sleep quality is 2/10, fallback ignores this. Only partial personalization.
-
-### 🟡 BUG #6 — Dashboard radar chart doesn't handle missing organSystemScores
-**File:** `app/(app)/dashboard/page.tsx`, line 99-102
-
-If AI returns incomplete scores, radar renders with undefined values showing as blank axes. Needs fallback values.
-
-### 🟡 BUG #7 — Settings page missing regenerate button flow
-The dashboard has a "Regenerate protocol" link that calls `/api/reset-onboarding`, but the button exists only in the dashboard footer. Settings page should prominently feature this.
-
-### 🟡 BUG #8 — No Anthropic SDK usage despite being installed
-Package `@anthropic-ai/sdk` is installed but nowhere imported. The v2 plan called for Claude Opus as primary with Groq fallback — only Groq is used.
-
-### 🟡 BUG #9 — Medication input is single text field
-Onboarding line: `medications: medications ? [{ name: medications, dose: '', frequency: 'daily' }] : []`
-
-All medications typed as one string become a single record with empty dose. Should be a repeatable list with name/dose/frequency per medication.
-
-### 🟡 BUG #10 — No biomarker editing after onboarding
-User can't add/edit biomarkers after initial upload. If they get new blood work, they must redo onboarding completely.
-
-### 🟢 BUG #11 — Rate limiting packages installed but unused
-`@upstash/ratelimit` and `@upstash/redis` installed but never imported. Free tier could hit AI generation limits rapidly without this.
-
-### 🟢 BUG #12 — No Zod validation on AI output
-`zod` is in deps but not used. AI returns invalid JSON → runtime crash when dashboard renders.
+public/                                  ✅ Basic assets
+```
 
 ---
 
-## PART 2 — ONBOARDING PERFECTION (ASK EVERYTHING)
+## PART 3 — CRITICAL BUGS & GAPS STILL PRESENT
 
-The current onboarding collects the basics but misses critical personalization inputs. For a truly bespoke protocol, expand to:
+### 🔴 BUG #1 — Master prompt IGNORES half the onboarding data
+**File:** `lib/engine/master-prompt.ts`
 
-### NEW STEP 1 — "The Basics" (expand)
-Current: age, sex, height, weight, activity level, has bloodwork
-**ADD:**
-- **Ethnicity** (dropdown) — affects certain biomarker ranges (e.g., vitamin D, ferritin)
-- **Latitude** (auto-detect via browser geolocation, editable) — vitamin D synthesis target
-- **Occupation type** (radio: desk / physical / shift-work / mixed) — circadian implications
-- **Resting heart rate** (if they know it) — cardiovascular fitness proxy
+The onboarding now collects: chronotype, bedtime/wake time, work schedule, 
+sleep issues, food allergies, family history, pain points, non-negotiables, 
+primary/secondary goals, specific targets, meditation practice, exercise 
+window preference, sitting hours, screen time, meals per day, hydration.
 
-### NEW STEP 2 — "Your Blood Work" (keep as-is, working well)
+**The master prompt uses almost NONE of this.** It only passes the old fields
+through `buildMasterPromptV2()`. This means you collect rich data → throw it away.
 
-### NEW STEP 3 — "Your Lifestyle" (MAJOR expansion)
-Current has basic sleep/diet/exercise/conditions. Expand to:
+**Impact:** A user who says "I'm a night owl, work 9-5, have pizza Fridays" 
+gets the same protocol as someone who's a morning person, self-employed, 
+and eats strictly keto. That's the opposite of personalized.
 
-**Sleep deep-dive:**
-- Average bedtime (time picker)
-- Average wake time (time picker)
-- Consistency (1-10 — do you keep same schedule on weekends?)
-- Sleep issues (multi-select: trouble falling asleep / staying asleep / wake unrested / snoring / restless legs / none)
-- **Chronotype** (radio: Morning person / Neutral / Night owl) — affects protocol timing
+### 🔴 BUG #2 — ProtocolOutput TypeScript doesn't match what AI returns
+**File:** `lib/types.ts`
 
-**Diet deep-dive:**
-- Current diet type (keep)
-- Meals per day (1-6)
-- Current eating window (time picker pair)
-- Hydration (glasses per day, 1-12)
-- How often home-cooked vs restaurants (%)
-- Favorite foods / things you won't give up (text)
-- Food allergies/intolerances (multi-select: gluten / dairy / nuts / seafood / eggs / soy / shellfish / other)
+Master prompt asks AI to return: `painPointSolutions`, `flexRules`, 
+`weekByWeekPlan`, `adherenceScore` — but these aren't in `ProtocolOutput` 
+type. The AI might return them (or not), but dashboard can't render them
+safely without types.
 
-**Exercise deep-dive:**
-- Current cardio min/week (slider 0-500)
-- Current strength sessions/week (0-7)
-- Flexibility/mobility work (yes/no)
-- Access to gym (yes/no/home equipment only)
-- Activity preferences (multi-select: walking / running / cycling / swimming / weights / yoga / martial arts / team sports / none)
-- Physical limitations/injuries (text)
+### 🔴 BUG #3 — daily_metrics table migration missing
+**File:** `scripts/setup-db.sql`
 
-**Stress & mental:**
-- Stress level (1-10)
-- Meditation/mindfulness practice (none / occasionally / daily)
-- Major life stressors currently (multi-select: work / family / health / financial / none)
-- Mood (1-10)
-- Energy level throughout day (morning/afternoon/evening sliders)
+API `/api/daily-metrics` writes to `public.daily_metrics` but there's 
+NO SQL migration creating this table. Every user who tries to use the 
+Metrics tab gets a Postgres error "relation does not exist."
 
-**Substances (granular):**
-- Alcohol: drinks per week (0-30 slider)
-- Caffeine: servings per day (0-10) + cutoff time
-- Nicotine: none / occasional / daily / vaping
-- Recreational drugs: none / occasional / frequent
-- Current prescription medications (multi-row: name + dose + frequency)
-- Current supplements (multi-row: name + dose)
+### 🔴 BUG #4 — Fallback protocol is still English-only omnivore
+**File:** `app/api/generate-protocol/route.ts` lines 125-230
 
-**Medical history:**
-- Diagnosed conditions (multi-select, expanded)
-- Family history (multi-select: diabetes / heart disease / cancer / Alzheimer's / autoimmune / none)
-- Past surgeries (text)
-- Recent illnesses (last 6 months, text)
-- For women: pregnancy status / menopausal status / hormonal contraception
-- Last blood work date (date picker)
-- Last physical checkup (date picker)
+When AI fails, fallback generates chicken + eggs + salmon meals regardless 
+of user's `dietType`. If user is vegan, they get useless fallback.
+Also fallback doesn't use pain points, work schedule, or goals.
 
-### NEW STEP 4 — "Your Day-to-Day" (NEW STEP)
-This is the MOST important for personalization. The AI needs to know what your day actually looks like.
+### 🟡 BUG #5 — Dashboard doesn't render new sections
+**File:** `app/(app)/dashboard/page.tsx`
 
-**Daily routine:**
-- What time do you start work?
-- What time do you finish work?
-- Do you work from home / office / hybrid?
-- How many hours sitting per day?
-- Time for exercise (morning / lunch / after work / weekends only / inconsistent)
-- Screen time per day (slider 1-16 hours)
-- Blue light exposure at night (none / minimal / moderate / heavy)
-- Natural light exposure (morning sunlight routine? yes/no)
+Even if AI returns `painPointSolutions` or `flexRules`, dashboard doesn't 
+have components to render them. User never sees this data.
 
-**Social & lifestyle:**
-- Single / partnered / married / parent
-- Number of dependents
-- Social activity level (isolated / moderate / very social)
-- Travel frequency (rarely / monthly / weekly)
-- Nature exposure (hours per week)
+### 🟡 BUG #6 — Settings page has no profile editing
+**File:** `app/(app)/settings/page.tsx`
 
-**What you've tried:**
-- Previous diets attempted (multi-select)
-- Previous supplements that worked/didn't (text)
-- What health interventions you're curious about (multi-select: fasting / cold exposure / sauna / meditation / biohacking / peptides / hormone therapy / red light / CGM)
+Shows age/sex/BMI as read-only. User can't update weight if they lose 15kg. 
+Can't add new blood work. Can't change medications. Only actions: share, 
+export, logout, reset.
 
-### NEW STEP 5 — "Your Goals & Constraints"
-Current goals step — expand:
+### 🟡 BUG #7 — Anthropic SDK installed but nowhere used
+Package `@anthropic-ai/sdk` sits in node_modules. Master prompt was 
+designed for Claude Opus. Groq (Llama) is a solid fallback but Claude 
+would produce noticeably deeper protocols.
 
-**Goals:**
-- Primary goal (radio, pick ONE): Longevity / Body composition / Cognitive performance / Athletic performance / Recovery / Energy / Sleep / Mental health
-- Secondary goals (multi-select: up to 3 additional)
-- Specific targets (optional text: "Lose 10kg by summer", "Run a 5K under 25 min", "Sleep 8 hours consistently")
+### 🟡 BUG #8 — Rate limiting imported but not enforced
+`@upstash/ratelimit` + `@upstash/redis` are installed. Free tier could 
+spam generation infinitely. Need actual limiter on `/api/generate-protocol` 
+and `/api/chat`.
 
-**Timeline:**
-- Commitment horizon: 1 month / 3 months / 6 months / 1 year / ongoing
+### 🟡 BUG #9 — No Zod validation on AI output
+`zod` is in deps. If Groq returns malformed JSON, runtime crashes somewhere 
+in dashboard rendering. Should validate → show helpful error.
 
-**Resources:**
-- Time per day available (slider 15-180 min)
-- Monthly supplement/health budget (RON)
-- Willingness to change habits (1-10)
-- Willingness to track daily (1-10)
-- Openness to experimental (keep)
+### 🟡 BUG #10 — Achievements don't track habit streaks separately
+`ACHIEVEMENTS` uses `supplementStreak` field but that's just `currentStreak`
+(compliance). A "habits streak" (e.g., "14 days of 10+ habits completed")
+would be more motivating and is easy to calculate from `daily_metrics.habits_completed`.
 
-**Preferences:**
-- Prefer simplicity or maximum optimization? (slider)
-- Pill tolerance (how many supplements per day are you willing to take — slider 0-30)
-- Food prep time willing (minutes per day)
+### 🟢 BUG #11 — No retest reminder email/notification
+Tables exist for `retest_reminders` (probably? need to verify) but no cron, 
+no email via Resend, no in-app banner.
 
-### IMPLEMENTATION FOR ONBOARDING:
+### 🟢 BUG #12 — Print/PDF export is basic window.print()
+Works, but a proper PDF with letterhead + page breaks + doctor-ready format 
+using @react-pdf/renderer would be a big upgrade for the "Premium" tier.
 
-1. Convert to 5 steps (was 4)
-2. Save FULL state to `profiles.onboarding_data` JSONB column after every step
-3. Restore state on page load if onboarding incomplete
-4. Add collapse/expand for deep-dive sections (so it's not overwhelming)
-5. Progress bar shows "~3 min remaining" etc.
-6. Each step has "Why we ask this" tooltips
-7. Smart defaults based on previous answers (e.g., if smoker → flag in top priorities)
+### 🟢 BUG #13 — No OG image for social sharing
+`/share/[slug]` works but sharing a link doesn't show a rich preview. 
+Dynamic OG image with bio age + longevity score would 2-3× click-through.
+
+### 🟢 BUG #14 — No revenue / tier system
+Everything is free. No Stripe, no usage limits enforced per tier, no upsell
+prompts.
 
 ---
 
-## PART 3 — TRACKING PERFECTION (REAL DATA, NO MOCK)
+## PART 4 — THE MISSING FEATURES THAT MAKE v3 LEGENDARY
 
-The tracking page is currently 70% fake. Here's the complete fix plan:
+### 4.1 — Master Prompt v3 (the most important upgrade)
 
-### 3.1 — New API endpoint: `/api/compliance/history`
+Add a **DEEP CONTEXT BLOCK** to the master prompt that consumes ALL new 
+onboarding data. Example:
 
-```typescript
-// app/api/compliance/history/route.ts
-export async function GET(request: Request) {
-  // params: startDate, endDate (ISO)
-  // returns: array of { date, completed, total, pct }
-  
-  const supabase = await createClient();
-  const { data: { user } } = await supabase.auth.getUser();
-  
-  const { data: logs } = await supabase
-    .from('compliance_logs')
-    .select('date, completed, item_type')
-    .eq('user_id', user.id)
-    .gte('date', startDate)
-    .lte('date', endDate);
-  
-  // Group by date, calculate percentage
-  const byDate = logs.reduce((acc, log) => {
-    if (!acc[log.date]) acc[log.date] = { completed: 0, total: 0 };
-    acc[log.date].total++;
-    if (log.completed) acc[log.date].completed++;
-    return acc;
-  }, {});
-  
-  return NextResponse.json({ 
-    byDate: Object.entries(byDate).map(([date, stats]) => ({
-      date,
-      completed: stats.completed,
-      total: stats.total,
-      pct: Math.round((stats.completed / stats.total) * 100)
-    }))
-  });
-}
+```
+═══ PATIENT'S DAILY CONTEXT ═══
+WORK: Starts 09:00, ends 18:00, hybrid (home/office). Sits ~6 hrs/day.
+SLEEP: Currently in bed at 23:00, wakes at 07:00. Chronotype: night owl.
+  Reports: trouble falling asleep, wakes unrested.
+  → Target bedtime should shift toward 22:30 progressively. Use morning 
+    sunlight + caffeine cutoff protocol.
+EXERCISE WINDOW: Prefers evening. 90 min cardio/week + 2 strength sessions.
+EATING: Omnivore, 3 meals/day, 6 glasses water. Allergies: dairy.
+STRESS: 7/10. No meditation practice currently.
+MEDITATION: None → start with 5 min/day, not 20 min.
+FAMILY HISTORY: Diabetes (father). Cancer (grandmother).
+  → Prioritize glucose interventions EVEN IF HbA1c is OK.
+  → Annual cancer screening recommended.
+SUBSTANCES: 3 drinks/week alcohol. 2 coffees/day. Non-smoker.
+PAIN POINTS (from onboarding):
+  1. "Afternoon energy crash around 3 PM"
+  2. "Can't fall asleep before midnight"
+  3. "Lower back stiffness in morning"
+NON-NEGOTIABLES:
+  1. "Friday pizza night with kids"
+  2. "Morning coffee, won't give up"
+  → Do NOT demand elimination. Build flex-rules around these.
+
+═══ PRIMARY GOAL ═══
+Longevity / Healthspan (ranked #1)
+
+═══ SECONDARY GOALS ═══
+Energy / Mood, Cognitive Performance
+
+═══ SPECIFIC TARGET ═══
+"Reduce biological age by 2 years in 6 months"
+
+═══ TIMELINE ═══
+6 months commitment. Time budget: 60 min/day. Monthly supplement budget: 500 RON.
 ```
 
-### 3.2 — Calculate streaks from real data
+### 4.2 — ProtocolOutput v3 — new sections AI must return
+
+Add to `lib/types.ts` and prompt schema:
 
 ```typescript
-function calculateStreak(complianceHistory: { date: string; pct: number }[]) {
-  const sorted = [...complianceHistory].sort((a, b) => b.date.localeCompare(a.date));
-  const today = new Date().toISOString().split('T')[0];
-  
-  let streak = 0;
-  let checkDate = today;
-  
-  for (const entry of sorted) {
-    if (entry.date !== checkDate) break;
-    if (entry.pct < 50) break; // Must hit 50% to count
-    streak++;
-    const prev = new Date(checkDate);
-    prev.setDate(prev.getDate() - 1);
-    checkDate = prev.toISOString().split('T')[0];
-  }
-  
-  return streak;
-}
+painPointSolutions: {
+  problem: string;              // exact user phrase from onboarding
+  likelyCause: string;          // AI's hypothesis
+  solution: string;             // concrete plan
+  supportingBiomarkers?: string[];  // which markers relate
+  expectedTimeline: string;     // "1-2 weeks for first improvements"
+  checkpoints: string[];        // how to measure progress
+}[];
 
-function calculateLongestStreak(history) {
-  // Walk through chronologically, find longest consecutive 50%+ run
-  const sorted = [...history].sort((a, b) => a.date.localeCompare(b.date));
-  let longest = 0, current = 0;
-  let lastDate = null;
-  
-  for (const entry of sorted) {
-    if (entry.pct >= 50) {
-      if (lastDate && isConsecutive(lastDate, entry.date)) {
-        current++;
-      } else {
-        current = 1;
-      }
-      longest = Math.max(longest, current);
-    } else {
-      current = 0;
-    }
-    lastDate = entry.date;
-  }
-  
-  return longest;
-}
+flexRules: {
+  scenario: string;             // user's non-negotiable
+  strategy: string;             // "20-min walk before + berberine 500mg"
+  damageControl: string;        // what to do if overdone
+  frequency: string;            // "up to 1x/week without penalty"
+}[];
+
+weekByWeekPlan: {
+  week: number;                 // 1-12
+  focus: string;                // "Foundation"
+  newThisWeek: string[];        // add these
+  removeThisWeek?: string[];    // stop these
+  keyMetric: string;            // "Sleep quality should improve"
+  checkpoints: string[];        // end-of-week questions
+}[];
+
+adherenceScore?: number;        // 0-100, calculated from compliance data
+
+dailyBriefing?: {
+  morningPriorities: string[];  // top 3 things today
+  eveningReview: string[];      // what to reflect on
+};
 ```
 
-### 3.3 — Expand tracking with HABIT TRACKING (NEW)
+### 4.3 — Settings page upgrade
 
-Add a new section: "Daily Habits" — separate from protocol checklist.
-These are the universal tips made trackable:
-
-```typescript
-const DAILY_HABITS = [
-  { id: 'steps', name: '8,000+ steps', icon: '🚶', category: 'Movement' },
-  { id: 'sunlight', name: 'Morning sunlight 10+ min', icon: '☀️', category: 'Circadian' },
-  { id: 'hydration', name: '2L+ water', icon: '💧', category: 'Nutrition' },
-  { id: 'strength', name: 'Strength training', icon: '🏋️', category: 'Movement' },
-  { id: 'zone2', name: 'Zone 2 cardio', icon: '🚴', category: 'Movement' },
-  { id: 'no_alcohol', name: 'No alcohol', icon: '🚫🍷', category: 'Substances' },
-  { id: 'meditation', name: 'Meditation/breathwork', icon: '🧘', category: 'Mindset' },
-  { id: 'stretch', name: 'Mobility/stretching', icon: '🤸', category: 'Movement' },
-  { id: 'floss', name: 'Floss', icon: '🦷', category: 'Hygiene' },
-  { id: 'cold_shower', name: 'Cold shower', icon: '🧊', category: 'Recovery' },
-  { id: 'read', name: 'Read 20+ min', icon: '📖', category: 'Mindset' },
-  { id: 'journal', name: 'Journal', icon: '📝', category: 'Mindset' },
-  { id: 'no_screens_bed', name: 'No screens 1h before bed', icon: '📵', category: 'Sleep' },
-  { id: 'fasted_16h', name: '16h fast', icon: '⏰', category: 'Nutrition' },
-];
+```
+NEW sections:
+- Edit profile (age, weight, height, activity) — with Save button
+- Edit answers to onboarding (re-open specific questions without full reset)
+- Add new blood work (upload PDF or manual entry) → triggers protocol regen
+- Manage medications (add/edit/remove rows)
+- Manage current supplements (add/edit/remove)
+- Update goals (change primary, add/remove secondary)
+- View all protocols (with date, version badge)
+- Compare two protocols side-by-side
+- Retest reminders (enable/disable email, view upcoming)
+- Notification preferences
+- Delete account
 ```
 
-### 3.4 — Add DAILY METRICS INPUT (NEW)
+### 4.4 — Dashboard new sections to render
 
-User should be able to log quantitative data each day:
-- Weight (kg)
-- Sleep hours + quality (1-10)
-- Mood (1-10)
-- Energy (1-10)
-- HRV (if they track via Oura/WHOOP)
-- Resting HR
-- Steps
-- Workout done? (yes/no + duration + intensity)
-- Stress level (1-10)
-- Notes (text)
+After the existing sections, add:
 
-Schema addition:
+**Pain Point Solutions** (after Diagnostic Hero if present):
+```tsx
+<Section title="Your Pain Points" icon="🎯">
+  {protocol.painPointSolutions.map(p => (
+    <div>
+      <p className="text-sm font-semibold">{p.problem}</p>
+      <p className="text-xs text-muted">Likely cause: {p.likelyCause}</p>
+      <p className="text-sm text-accent">{p.solution}</p>
+      <p className="text-[10px]">Expected: {p.expectedTimeline}</p>
+    </div>
+  ))}
+</Section>
+```
+
+**Flex Rules** (before Shopping List):
+```tsx
+<Section title="Your Flex Rules" icon="🎉">
+  <p className="text-xs">Non-negotiables you can keep, with strategies.</p>
+  {protocol.flexRules.map(r => (
+    <div>
+      <p className="font-medium">{r.scenario}</p>
+      <p className="text-sm text-accent">{r.strategy}</p>
+      <p className="text-[10px] text-muted">If overdone: {r.damageControl}</p>
+    </div>
+  ))}
+</Section>
+```
+
+**Week-by-Week Plan** (expandable, replacing roadmap):
+```tsx
+<Section title="12-Week Plan" icon="📅">
+  {protocol.weekByWeekPlan.map(w => (
+    <ExpandableWeek key={w.week} {...w} isCurrentWeek={currentWeekNumber === w.week} />
+  ))}
+</Section>
+```
+
+**Daily Briefing** (at top, above everything, time-aware):
+```tsx
+{currentHour < 12 ? (
+  <Card>
+    <h2>☀️ Good morning</h2>
+    <h3>Today's priorities:</h3>
+    {protocol.dailyBriefing.morningPriorities.map(p => <li>{p}</li>)}
+  </Card>
+) : (
+  <Card>
+    <h2>🌙 Evening</h2>
+    <h3>Review:</h3>
+    {protocol.dailyBriefing.eveningReview.map(q => <li>{q}</li>)}
+  </Card>
+)}
+```
+
+### 4.5 — Claude Opus as primary with Groq fallback
+
+Replace `generateWithGroq()` as sole path. New flow:
+```
+1. Try Claude Opus 4.5 (anthropic)
+   - Slower but produces MUCH better medical reasoning
+   - Max 60s timeout
+2. If Claude fails → try Groq Llama 3.3 70B (fast backup)
+3. If Groq fails → use deterministic fallback (already exists, fix it to 
+   respect dietType + pain points + non-negotiables)
+```
+
+### 4.6 — Retest reminder system
+
+Schema already planned:
 ```sql
-create table public.daily_metrics (
+create table public.retest_reminders (
+  id uuid default gen_random_uuid() primary key,
+  user_id uuid references auth.users on delete cascade not null,
+  biomarker_codes text[] not null,
+  due_date date not null,
+  sent boolean default false,
+  sent_at timestamptz,
+  created_at timestamptz default now()
+);
+```
+
+Add:
+- `/api/retest-reminders` GET (upcoming) + POST (create when protocol generated)
+- Auto-create reminders when protocol is generated, based on 
+  `retestSchedule` from AI output
+- Vercel cron job (weekly): `/api/cron/send-retest-emails`
+- Use Resend to send emails
+- Dashboard banner: "You have a retest due in 5 days"
+
+### 4.7 — Daily briefing (push-ready)
+
+Generate a compact daily summary each morning:
+```
+API: /api/daily-briefing
+- Fetches today's compliance items (not yet logged)
+- Fetches yesterday's adherence %
+- Picks top 3 items that matter most (MUST > STRONG > OPTIONAL)
+- Generates one-liner motivation based on their goal
+- Returns JSON for display at dashboard top
+```
+
+### 4.8 — Doctor-ready PDF export
+
+Replace `window.print()` with:
+- `@react-pdf/renderer` dependency
+- `/api/export-pdf` route
+- Generates actual PDF (not HTML print) with:
+  - Patient header (name, DOB, date, chronological vs biological age)
+  - Executive summary (top wins, top risks)
+  - Biomarker table with reference ranges (standard + longevity)
+  - Detected patterns section
+  - Current medications & interactions warnings
+  - Recommended tests to order
+  - Red flags (if any)
+  - AI-generated executive summary for the doctor
+  - Footer: "Generated by Protocol AI — not medical advice"
+
+### 4.9 — OG image for share links
+
+Create `/api/og/[slug]` route using `@vercel/og`:
+- Dark background, #00ff88 accent
+- Big bio age number
+- Longevity score
+- "Personalized by Protocol AI"
+- User can post to X/Twitter and get rich preview
+
+### 4.10 — Habit streak tracking
+
+Separate from protocol compliance. Track:
+- Longest habit streak (consecutive days with ≥10 habits completed)
+- Per-habit streak (e.g., "floss: 23 days straight")
+- Add to achievements: "Floss Master" (30 days), "Habit Hero" (14 days all habits)
+
+---
+
+## PART 5 — EXACT IMPLEMENTATION ORDER (25 steps)
+
+### 🔥 SPRINT 1 — Fix Critical Bugs (1 day)
+
+**Step 1:** Create SQL migration for `daily_metrics` table
+```sql
+create table if not exists public.daily_metrics (
   id uuid default gen_random_uuid() primary key,
   user_id uuid references auth.users on delete cascade not null,
   date date not null,
@@ -365,342 +457,263 @@ create table public.daily_metrics (
   workout_minutes integer,
   workout_intensity text,
   stress_level integer check (stress_level between 1 and 10),
+  habits_completed text[] default '{}',
   notes text,
   created_at timestamptz default now(),
+  updated_at timestamptz default now(),
   unique(user_id, date)
 );
-
 alter table public.daily_metrics enable row level security;
 create policy "daily_metrics_own" on public.daily_metrics for all using (auth.uid() = user_id);
 ```
 
-### 3.5 — Tracking page redesign (real data edition)
+**Step 2:** Also add `retest_reminders` table (will need it soon)
 
-```
-TRACKING PAGE STRUCTURE (new):
+**Step 3:** Run both migrations in Supabase Dashboard
 
-├── Top stats bar (4 cards)
-│   ├── Current streak (🔥 N days — real from DB)
-│   ├── Today's compliance (ring, real %)
-│   ├── Week average (bar chart)
-│   └── Month average (circle)
-│
-├── TABBED SECTIONS (tabs for easier navigation)
-│   │
-│   ├── Tab: PROTOCOL CHECKLIST
-│   │   └── Current checklist grouped by type
-│   │
-│   ├── Tab: DAILY HABITS
-│   │   └── 14 universal habits with toggles
-│   │
-│   ├── Tab: DAILY METRICS
-│   │   ├── Weight input
-│   │   ├── Sleep hours + quality sliders
-│   │   ├── Mood + energy sliders  
-│   │   ├── Steps input
-│   │   ├── Workout completion + duration
-│   │   └── Notes textarea
-│   │
-│   ├── Tab: TRENDS (30-day charts)
-│   │   ├── Weight line chart
-│   │   ├── Sleep hours bar chart
-│   │   ├── Mood/energy line chart
-│   │   └── Steps bar chart
-│   │
-│   └── Tab: ACHIEVEMENTS
-│       └── Real achievement grid with progress
-│
-└── Bottom: SAVE button that persists all tabs at once
+**Step 4:** Update `lib/types.ts` with new onboarding fields:
+```typescript
+export interface UserProfile {
+  // ...existing
+  ethnicity?: string;
+  occupationType?: 'desk' | 'physical' | 'shift' | 'mixed';
+  restingHR?: number;
+  bedtime?: string;
+  wakeTime?: string;
+  chronotype?: 'morning' | 'neutral' | 'night';
+  sleepIssues?: string[];
+  mealsPerDay?: number;
+  hydrationGlasses?: number;
+  foodAllergies?: string[];
+  stressLevel?: number;
+  meditationPractice?: 'none' | 'occasional' | 'daily';
+  familyHistory?: string[];
+  workStart?: string;
+  workEnd?: string;
+  workLocation?: 'home' | 'office' | 'hybrid';
+  sittingHours?: number;
+  exerciseWindow?: 'morning' | 'lunch' | 'evening' | 'weekends' | 'inconsistent';
+  screenTime?: number;
+  painPoints?: string;
+  nonNegotiables?: string;
+  primaryGoal?: string;
+  secondaryGoals?: string[];
+  specificTarget?: string;
+  timelineMonths?: number;
+}
+
+export interface ProtocolOutput {
+  // ...existing
+  painPointSolutions?: PainPointSolution[];
+  flexRules?: FlexRule[];
+  weekByWeekPlan?: WeekPlan[];
+  dailyBriefing?: { morningPriorities: string[]; eveningReview: string[]; };
+  adherenceScore?: number;
+}
 ```
+
+### 🎯 SPRINT 2 — Master Prompt v3 (1 day)
+
+**Step 5:** Rewrite `buildMasterPromptV2()` to consume ALL new fields
+- Add DEEP CONTEXT block (see section 4.1 above)
+- Add painPointSolutions, flexRules, weekByWeekPlan, dailyBriefing to output schema
+- Add instruction: "derive target bedtime from chronotype + wake time + 8h sleep"
+- Add instruction: "factor family history into preventive priority"
+- Add instruction: "never demand elimination of non-negotiables"
+
+**Step 6:** Update `save-profile` route to persist new fields
+Currently it saves the core fields but not ethnicity/chronotype/bedtime etc.
+Make sure ALL new onboarding fields get stored properly.
+
+**Step 7:** Update `generate-protocol` to build prompt with new fields
+The profile object passed to `buildMasterPromptV2` needs the new fields.
+
+**Step 8:** Fix fallback protocol to respect dietType + goals
+```typescript
+// Vegan fallback meals
+const veganMeals = [
+  { name: 'Breakfast', ingredients: ['tofu scramble', 'oats', 'berries', 'almond butter'] },
+  { name: 'Lunch', ingredients: ['lentil bowl', 'quinoa', 'roasted vegetables', 'tahini'] },
+  { name: 'Dinner', ingredients: ['tempeh stir-fry', 'brown rice', 'broccoli', 'ginger sauce'] },
+];
+
+const ketoMeals = [...];
+const omniMeals = [...];  // current default
+```
+
+**Step 9:** Add Zod validation to AI output
+```typescript
+const ProtocolSchema = z.object({
+  diagnostic: z.object({...}),
+  supplements: z.array(z.object({...})),
+  // ...
+});
+
+try {
+  const validated = ProtocolSchema.parse(protocolJson);
+  return validated;
+} catch (zodErr) {
+  // Log, fall back to deterministic
+}
+```
+
+### 💎 SPRINT 3 — Dashboard v3 (1-2 days)
+
+**Step 10:** Create `components/protocol/PainPointSolutions.tsx`
+**Step 11:** Create `components/protocol/FlexRules.tsx`
+**Step 12:** Create `components/protocol/WeekByWeekPlan.tsx` (with expand/collapse per week)
+**Step 13:** Create `components/protocol/DailyBriefing.tsx` (time-aware morning/evening)
+**Step 14:** Update `app/(app)/dashboard/page.tsx` to render all new sections
+
+### 🔔 SPRINT 4 — Retest Reminders + Settings (1 day)
+
+**Step 15:** Create `/api/retest-reminders/route.ts` (GET + POST)
+**Step 16:** Auto-create reminders when protocol generated (extract from `retestSchedule`)
+**Step 17:** Add dashboard banner for upcoming retests
+**Step 18:** Expand settings page:
+- Profile editor (age/weight/height/activity with Save button)
+- Medications manager (add/edit/remove)
+- Supplements manager
+- Goals updater
+- Upload new blood test (triggers re-gen)
+- View protocol history (list all, compare two)
+
+### 🧠 SPRINT 5 — Claude Opus Integration (1 day)
+
+**Step 19:** Create `lib/ai/claude.ts` wrapper
+```typescript
+import Anthropic from '@anthropic-ai/sdk';
+export async function generateWithClaude(prompt: string) {
+  const client = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
+  const msg = await client.messages.create({
+    model: 'claude-sonnet-4-5-20250929',  // or opus when available
+    max_tokens: 16000,
+    messages: [{ role: 'user', content: prompt }],
+  });
+  return msg.content[0].type === 'text' ? msg.content[0].text : '';
+}
+```
+
+**Step 20:** Update `generate-protocol` flow: Claude → Groq → fallback
+
+**Step 21:** Add env var `ANTHROPIC_API_KEY` to `.env.local.example`
+
+### 🛡️ SPRINT 6 — Rate Limiting + Safety (half day)
+
+**Step 22:** Add rate limiting with Upstash
+```typescript
+import { Ratelimit } from '@upstash/ratelimit';
+import { Redis } from '@upstash/redis';
+
+const ratelimit = new Ratelimit({
+  redis: Redis.fromEnv(),
+  limiter: Ratelimit.slidingWindow(3, '1 d'),  // 3 generations per day (free tier)
+});
+
+// In generate-protocol:
+const { success } = await ratelimit.limit(user.id);
+if (!success) return NextResponse.json({ error: 'Rate limit. Upgrade to Pro.' }, { status: 429 });
+```
+
+**Step 23:** Same for `/api/chat` (20/day) and `/api/parse-bloodwork` (5/day)
+
+### 📱 SPRINT 7 — Polish & Growth (2-3 days, optional)
+
+**Step 24:** Dynamic OG image for `/share/[slug]` using `@vercel/og`
+
+**Step 25:** PDF export with `@react-pdf/renderer` (doctor-ready format)
+
+**Bonus:** Email reminders via Resend, Stripe tiers, referral system
 
 ---
 
-## PART 4 — PROTOCOL ENHANCEMENTS (MORE PERSONAL)
+## PART 6 — COPY-PASTE CLAUDE CODE PROMPT
 
-### 4.1 — Master prompt additions
-
-Add these CONTEXT BLOCKS before output schema:
-
-**Personal context block (injected when data available):**
-```
-═══ PATIENT'S DAILY CONTEXT ═══
-Work schedule: Monday-Friday 9:00 AM - 6:00 PM, hybrid remote
-Exercise window preference: Morning (before work)
-Sleep: currently 11 PM - 7 AM, wants to shift to 10:30 PM - 6:30 AM
-Eating pattern: 3 meals, 7 AM - 9 PM window currently, wants TRE
-Chronotype: Night owl (but wants to shift toward morning)
-Stress sources: Work deadlines, parenting 2 kids
-Biggest current pain points: Brain fog afternoons, trouble falling asleep
-Non-negotiables: Coffee in the morning, pizza Friday nights
-Family history: Father had type 2 diabetes diagnosed at 55
-Social context: Partnered, 2 kids (3 and 7), dog
-
-═══ DERIVE FROM CONTEXT ═══
-- Target bedtime = desired wake time - 8.5 hours
-- Morning exercise window = wake time + 30 min to work start - 15 min commute
-- Eating window = align with work schedule + sleep target
-- Given family diabetes history: prioritize glucose interventions EVEN IF HbA1c is OK
-- Given parenting: realistic time budget, meal prep efficient
-- Given "pizza Friday" rule: include flex strategy, not demand elimination
-```
-
-**Pain point block:**
-Ask for current pain points in onboarding. Pass them to prompt:
-```
-═══ CURRENT PAIN POINTS (address directly) ═══
-1. Afternoon energy crash (2-4 PM)
-2. Can't fall asleep until midnight despite trying
-3. Lower back stiffness morning
-4. Brain fog in meetings
-5. Weight creep past 2 years
-```
-
-### 4.2 — Protocol output additions
-
-Add these new JSON fields to master-prompt output:
-
-**painPointSolutions:**
-```json
-"painPointSolutions": [
-  {
-    "problem": "Afternoon energy crash 2-4 PM",
-    "likely_cause": "Post-lunch glucose spike + insufficient protein breakfast",
-    "solution": "Shift breakfast to higher protein (35g+), add 10-min walk after lunch, avoid refined carbs at lunch, small magnesium dose at 2 PM",
-    "expected_timeline": "Improvements within 1 week, full resolution 3-4 weeks"
-  }
-]
-```
-
-**flexRules:**
-```json
-"flexRules": [
-  {
-    "scenario": "Friday pizza night (non-negotiable)",
-    "strategy": "20-min walk before + 15-min walk after. Berberine 500mg with meal. Extended 14-hour overnight fast Saturday."
-  }
-]
-```
-
-**weekByWeekPlan:**
-Current roadmap has themes. Expand to WEEK-BY-WEEK concrete actions:
-```json
-"weekByWeekPlan": [
-  { "week": 1, "focus": "Foundation", 
-    "mondayActions": ["Start Vitamin D3 4000 IU with breakfast", "Walk 5000 steps target"],
-    "wednesdayActions": ["First strength session 30 min"],
-    "fridayActions": ["Friday flex night — stick to 1 slice plan"],
-    "sundayActions": ["Review week, plan ahead"],
-    "endOfWeekCheck": ["Did I hit 5x walking target?", "Sleep improved?"]
-  }
-]
-```
-
-### 4.3 — Dashboard: New protocol sections to render
-
-Add to dashboard:
-- **Pain Point Solutions** — dedicated section after Diagnostic Hero
-- **Flex Rules** — concrete strategies for their weak spots
-- **Protocol Adherence Score** — weighted score of how well their lifestyle aligns with protocol
-- **Next 7 Days** — calendar view of specific actions for this week
-- **Questions for Doctor** — ready-to-print list for next appointment
-
----
-
-## PART 5 — NEW FEATURES TO BUILD (BEYOND FIXES)
-
-### 5.1 — AI Chat Assistant
-New page `/chat`. Context-aware conversation:
-- Knows your full profile, biomarkers, protocol
-- Uses Groq for speed
-- Can answer: "Why NAC?", "Can I take curcumin with my metformin?", "My headache got worse, any ideas?"
-- System prompt loaded with full user context
-
-### 5.2 — Daily Briefing (push notification ready)
-Generate each morning: "Good morning! Today's focus: [top 3 actions]. Yesterday: 87% compliance. Bryan's tip: [relevant tip]."
-
-### 5.3 — Smart Retest Reminders
-Already have retest_reminders table. Build the cron + email:
-- Resend API integration
-- Weekly check: any reminders due in next 7 days? Send email.
-- In-app banner for upcoming retests
-
-### 5.4 — Protocol Versioning UI
-Each time user regenerates, create v2, v3. Let them compare protocols side-by-side like blood tests.
-
-### 5.5 — Wearable Data Import
-Phase 2: Allow CSV import from Apple Health / Oura / WHOOP exports. Parse and populate daily_metrics.
-
-### 5.6 — Doctor-Ready PDF Export
-Current: `window.print()` works but is amateur.
-Better: Generate professionally formatted PDF with:
-- Patient summary header
-- Biomarker table with reference ranges
-- Red flags section
-- Supplement list with interactions noted
-- Signature line for doctor
-
-Use `@react-pdf/renderer` or similar. Save to Supabase Storage.
-
-### 5.7 — Referral System
-Share link with referral tracking. First user gets 1 month Pro free when 3 friends sign up.
-
----
-
-## PART 6 — UI POLISH ITEMS
-
-### 6.1 — Onboarding improvements
-- Each step shows estimated time remaining
-- Can go back AND preserve data
-- "Skip for now" on non-essential fields
-- Auto-focus first input of each step
-- Enter key moves to next field
-- Validation messages inline (not just disable button)
-
-### 6.2 — Dashboard polish
-- Count-up animation on bio age / score on mount
-- Sticky table of contents sidebar on desktop
-- Collapsible sections (save preferences to localStorage)
-- Share individual sections (not just whole protocol)
-- Dark mode toggle (optional — some prefer light for PDF export)
-
-### 6.3 — Print/PDF improvements
-Current `@media print` works but:
-- Page breaks between major sections
-- Repeating page header with user name + date
-- Page numbers
-- Remove interactive elements completely
-- Better table formatting
-
-### 6.4 — Mobile improvements
-- Swipe gestures on tracking checkboxes
-- Haptic feedback on completion
-- Pull-to-refresh on dashboard
-- Bottom sheet modals instead of dropdowns
-
-### 6.5 — Accessibility
-- ARIA labels on all interactive elements
-- Keyboard navigation for all buttons
-- Focus visible states
-- Color contrast audit (some muted text fails WCAG AA)
-
----
-
-## PART 7 — EXACT IMPLEMENTATION ORDER
-
-### SPRINT 1 — FIX THE LIES (critical bugs, 1 day)
-Priority: tracking must stop showing fake data.
+Paste this into Claude Code as the FIRST message:
 
 ```
-1. Create /api/compliance/history endpoint (returns 30-day compliance)
-2. Update tracking page to fetch real data
-3. Implement calculateStreak() from real data
-4. Implement calculateLongestStreak() 
-5. Remove all Math.random() calls
-6. Fix achievements to receive real stats
-7. Add bloodTestsUploaded real count
-8. Add protocolsGenerated real count
-```
+Read C:\Users\Andrei\protocol-maker\PROTOCOL_MAKER_V3_FINAL.md completely 
+(this document). Do not write any code yet.
 
-### SPRINT 2 — ONBOARDING EXPANSION (2-3 days)
-Make it truly ask about the user's life.
+In ~15 lines, tell me:
+1. The 3 most critical bugs you found
+2. Which sprint you'd do first  
+3. Any questions about the plan
+4. Whether you see the daily_metrics table migration issue
+5. What you think of the master prompt v3 deep context idea
 
-```
-9.  Add onboarding_data JSONB column migration (if not present)
-10. Split onboarding state save to persist full form data
-11. Restore form state on load if incomplete
-12. Add Step 1 expansions (ethnicity, latitude, occupation, RHR)
-13. Add Step 3 expansions (sleep deep-dive, diet deep-dive, exercise deep-dive, stress)
-14. Add Step 3 expansions (medication rows, supplements, family history)
-15. Add NEW Step 4 "Your Day-to-Day" (work schedule, routine, social context)
-16. Add Step 5 expansions (primary goal, secondary goals, specific targets, pain points)
-17. Collapsible deep-dive sections
-18. Smart defaults and validation
-```
+Then wait for my "go".
 
-### SPRINT 3 — TRACKING PERFECTION (2-3 days)
+When I say go, start Sprint 1:
+- Show me the proposed SQL migration file first
+- Wait for my confirmation
+- Then modify lib/types.ts with new fields
+- Run `pnpm build` after each file to verify
+- Don't proceed until build is green
 
-```
-19. Create daily_metrics table migration
-20. Create /api/daily-metrics endpoints (GET range + POST upsert)
-21. Build tabs component (protocol / habits / metrics / trends / achievements)
-22. Build Daily Habits tab with 14 universal habit toggles
-23. Build Daily Metrics tab with weight/sleep/mood/energy inputs
-24. Build Trends tab with 4 line/bar charts (30 days)
-25. Real achievement calculation from historical data
-26. Progress indicators toward next achievement
-27. Streak visualization (flame animation scales with streak)
-```
-
-### SPRINT 4 — PROTOCOL DEEPENING (2-3 days)
-
-```
-28. Add pain points collection to onboarding
-29. Add personal context block to master prompt
-30. Add painPointSolutions output schema
-31. Add flexRules output schema
-32. Add weekByWeekPlan output schema
-33. Update dashboard to render new sections
-34. Add "Questions for Doctor" printable section
-35. Protocol Adherence Score calculation from tracking data
-```
-
-### SPRINT 5 — NICE-TO-HAVES (1-2 weeks total, optional)
-
-```
-36. AI Chat assistant page
-37. Email notifications via Resend
-38. Professional PDF export via @react-pdf/renderer
-39. Protocol versioning UI
-40. Anthropic Claude as primary with Groq fallback
-41. Zod validation on AI output
-42. Rate limiting with @upstash/ratelimit
-43. Wearable CSV import (Oura/WHOOP/Apple Health)
-44. Referral system
-45. Dark/light mode toggle
-```
-
----
-
-## PART 8 — CLAUDE CODE MEGA-PROMPT (copy-paste this)
-
-```
-Read PROTOCOL_MAKER_FINAL_PLAN.md (this file) completely.
-Do not write code yet.
-
-Tell me in 15 lines:
-1. What you understood about the current state
-2. Which bugs are most critical
-3. Which sprint you'd start with
-4. Any questions about the plan
-
-Then wait for my "go" before starting Sprint 1.
-
-When starting Sprint 1:
-- Show me the file tree of what you'll create/modify
-- Create /api/compliance/history/route.ts first
-- Show me the code before applying
-- Run `pnpm build` after each file to verify compilation
-- Don't proceed to next file until previous verifies
-
-Principles:
-- Strict TypeScript, no `any` types
-- Follow existing Tailwind patterns (rounded-2xl, bg-card, border-card-border)
+Rules:
+- Strict TypeScript, no `any`
+- Match existing Tailwind patterns (rounded-2xl, bg-card, border-card-border)
+- Keep components under 300 lines
 - English only in UI
-- Match existing font weights and sizes
-- Keep components <300 lines each
-- Add loading states AND error states for everything
-- Test mobile view (safe-area-inset)
+- Mobile-first (test with narrow viewport)
+- Always add loading AND error states
+- Update existing types, don't create parallel ones
+
+For Sprint 2 (master prompt v3), this is the MOST important sprint. 
+Show me the full new prompt before applying. I want to review it.
+
+For Sprint 3 (dashboard sections), show design mockup / component outline 
+before writing 300 lines of JSX.
+
+For Sprint 5 (Claude Opus), use model "claude-sonnet-4-5-20250929" initially. 
+If that's unavailable in their account, fall back to "claude-3-5-sonnet-latest".
 ```
 
 ---
 
-## FINAL NOTE
+## PART 7 — FINAL HONEST ASSESSMENT
 
-The project went from MVP to real product in the last sprint. The remaining work makes it a tool serious biohackers would pay for. Focus order:
+### You've built something real.
 
-1. **Tracking with real data** (biggest lie currently)
-2. **Onboarding that truly understands the user** (more inputs = better personalization = better protocol)
-3. **Protocol with pain points + flex rules + week-by-week** (makes it feel like a coach, not a document)
-4. **Polish and delight** (animations, email, PDF)
+This project is no longer an MVP — it's a credible product. The tracking 
+system with real streak math, the 5-step onboarding with state persistence, 
+the AI chat with full user context, the daily metrics with trends, the 
+13-pattern detector, the PhenoAge algorithm, the drug interaction database, 
+the PDF parsing via Groq, the biomarker range visualizations on dashboard — 
+this is serious engineering.
 
-Then it's Bryan-Johnson-tweetable.
+### The missing 15% is what makes it great vs. good.
+
+1. **Master prompt that actually uses the data** — you ask users all these 
+   questions then feed only 40% of it to AI. Fix this and protocols will 
+   feel 5× more personal overnight.
+
+2. **Pain points and flex rules** — this is the humanization layer. 
+   "I know you have Friday pizza night. Here's how to keep it without 
+   wrecking progress." That's a coach, not a spreadsheet.
+
+3. **Settings that let you EDIT** — right now a user who gains 3kg has 
+   to redo onboarding. That's a dealbreaker for retention.
+
+4. **Retest reminders** — the app forgets about you after protocol 
+   generation. Reminders 8 weeks later is where you earn $49/month.
+
+5. **Claude Opus** — you designed the prompt for Claude. Groq is a 
+   capable fallback but Claude produces notably better medical reasoning.
+
+### Do Sprint 1 + 2 this week.
+
+The database migration is a blocker (users WILL hit errors on Metrics tab). 
+The master prompt upgrade unlocks the real protocol quality. Together 
+these two sprints are maybe 2 days of focused work and transform the product.
+
+Sprints 3-7 can come over the next 2-3 weeks.
+
+### After that, you can tag Bryan.
+
+Take his publicly shared biomarkers, run them through your engine, post 
+the output side-by-side with his actual Blueprint on X/Twitter. If 70%+ 
+matches, you've demonstrated the engine works. That's your viral moment.
+
+Let's make it happen.

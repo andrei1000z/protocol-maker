@@ -15,8 +15,13 @@ export async function POST(request: Request) {
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) return NextResponse.json({ error: 'Not authenticated' }, { status: 401 });
 
-    const { profile, biomarkers } = await request.json();
+    const { profile: rawProfile, biomarkers } = await request.json();
     const biomarkerValues: BiomarkerValue[] = biomarkers || [];
+
+    // Flatten onboardingData into top-level fields for the prompt's pick() helper
+    // (it checks top-level first, then onboardingData, so this preserves typed fields)
+    const onboardingData = rawProfile.onboardingData || {};
+    const profile = { ...onboardingData, ...rawProfile };
 
     // Local classification (instant, never fails)
     const classified = classifyAll(biomarkerValues);
@@ -133,19 +138,12 @@ function buildFallbackProtocol(profile: UserProfile, bioAge: number, score: numb
       dailyCalories: calories,
       macros: { protein, carbs, fat },
       eatingWindow: '10:00 - 18:00 (8h window)',
-      meals: [
-        { name: 'Breakfast', time: '10:00', calories: Math.round(calories * 0.3), description: 'Protein + complex carbs + healthy fats', recipe: '3 eggs, oats 60g, berries, almonds' },
-        { name: 'Lunch', time: '13:00', calories: Math.round(calories * 0.4), description: 'Main meal: protein + vegetables + complex carbs', recipe: 'Chicken 200g, rice 150g, broccoli, olive oil 1 tbsp' },
-        { name: 'Dinner', time: '17:30', calories: Math.round(calories * 0.3), description: 'Light protein + vegetables', recipe: 'Salmon 150g, sweet potato 200g, green salad' },
-      ],
-      foodsToAdd: [
-        { food: 'Fatty fish (salmon, sardines) 3x/week', why: 'Omega-3 for inflammation and heart health' },
-        { food: 'Berries daily', why: 'Polyphenols for anti-aging' },
-        { food: 'Extra virgin olive oil 2-3 tbsp', why: 'Polyphenols, heart health (Bryan takes 45ml/day)' },
-      ],
+      meals: buildFallbackMeals(profile.dietType, calories),
+      foodsToAdd: buildFallbackFoodsToAdd(profile.dietType),
       foodsToReduce: [
         { food: 'Processed foods', why: 'Drive inflammation and metabolic dysfunction' },
         { food: 'Refined sugar', why: 'Spikes insulin and glucose' },
+        { food: 'Seed oils (sunflower, corn, soybean)', why: 'Omega-6 inflammation' },
       ],
     },
     supplements: [
@@ -237,4 +235,80 @@ function buildFallbackProtocol(profile: UserProfile, bioAge: number, score: numb
       ]},
     ],
   };
+}
+
+function buildFallbackMeals(dietType: string, calories: number) {
+  const pct = (x: number) => Math.round(calories * x);
+
+  if (dietType === 'vegan') {
+    return [
+      { name: 'Breakfast', time: '10:00', calories: pct(0.3), description: 'Plant protein + complex carbs + healthy fats', recipe: 'Tofu scramble 150g, oats 60g, berries 100g, walnuts 30g, chia 1 tbsp' },
+      { name: 'Lunch', time: '13:00', calories: pct(0.4), description: 'Legume bowl with grains and roasted vegetables', recipe: 'Black lentils 80g dry, quinoa 60g dry, roasted broccoli + cauliflower 200g, tahini 2 tbsp, olive oil 1 tbsp' },
+      { name: 'Dinner', time: '17:30', calories: pct(0.3), description: 'Tempeh or tofu stir-fry with greens', recipe: 'Tempeh 150g, brown rice 80g dry, mixed greens, ginger-soy sauce, avocado half' },
+    ];
+  }
+  if (dietType === 'vegetarian') {
+    return [
+      { name: 'Breakfast', time: '10:00', calories: pct(0.3), description: 'Eggs + whole grains + fruit', recipe: '3 eggs, oats 60g, berries, Greek yogurt 150g, almonds 20g' },
+      { name: 'Lunch', time: '13:00', calories: pct(0.4), description: 'Legume + grain bowl with vegetables', recipe: 'Lentils 80g dry, quinoa 60g, roasted vegetables, feta 40g, olive oil' },
+      { name: 'Dinner', time: '17:30', calories: pct(0.3), description: 'Halloumi or paneer with vegetables', recipe: 'Halloumi 120g, sweet potato 200g, large salad with olive oil' },
+    ];
+  }
+  if (dietType === 'keto') {
+    return [
+      { name: 'Breakfast', time: '10:00', calories: pct(0.3), description: 'High-fat, zero-carb start', recipe: '3 eggs + bacon 60g, avocado half, spinach sautéed in butter' },
+      { name: 'Lunch', time: '13:00', calories: pct(0.4), description: 'Fatty protein + non-starchy vegetables', recipe: 'Salmon 200g, large salad with olive oil + avocado, macadamia nuts 30g' },
+      { name: 'Dinner', time: '17:30', calories: pct(0.3), description: 'Ribeye or fatty fish with leafy greens', recipe: 'Ribeye 200g, broccoli in butter, asparagus' },
+    ];
+  }
+  if (dietType === 'carnivore') {
+    return [
+      { name: 'Breakfast', time: '10:00', calories: pct(0.35), description: 'Animal protein + eggs', recipe: '4 eggs, bacon 80g, liver 50g once weekly' },
+      { name: 'Lunch', time: '13:00', calories: pct(0.35), description: 'Red meat with animal fat', recipe: 'Ribeye or ground beef 250g, tallow' },
+      { name: 'Dinner', time: '17:30', calories: pct(0.3), description: 'Fatty fish or lamb', recipe: 'Salmon 200g or lamb chops, bone broth' },
+    ];
+  }
+  if (dietType === 'mediterranean') {
+    return [
+      { name: 'Breakfast', time: '10:00', calories: pct(0.3), description: 'Greek-style breakfast', recipe: 'Greek yogurt 200g, berries, walnuts, olive oil drizzle, whole-grain bread 1 slice' },
+      { name: 'Lunch', time: '13:00', calories: pct(0.4), description: 'Fish + legumes + vegetables', recipe: 'Sardines or grilled fish 150g, chickpeas 100g, Greek salad, olive oil 2 tbsp' },
+      { name: 'Dinner', time: '17:30', calories: pct(0.3), description: 'Lean protein + whole grains', recipe: 'Grilled chicken 150g or fish, farro 80g, roasted vegetables' },
+    ];
+  }
+  // Default: omnivore
+  return [
+    { name: 'Breakfast', time: '10:00', calories: pct(0.3), description: 'Protein + complex carbs + healthy fats', recipe: '3 eggs, oats 60g, berries, almonds 20g' },
+    { name: 'Lunch', time: '13:00', calories: pct(0.4), description: 'Main meal: lean protein + vegetables + complex carbs', recipe: 'Chicken 200g, rice 150g, broccoli, olive oil 1 tbsp' },
+    { name: 'Dinner', time: '17:30', calories: pct(0.3), description: 'Light protein + vegetables', recipe: 'Salmon 150g, sweet potato 200g, large green salad' },
+  ];
+}
+
+function buildFallbackFoodsToAdd(dietType: string) {
+  const base = [
+    { food: 'Berries daily (2 cups)', why: 'Polyphenols for anti-aging + low glycemic load' },
+    { food: 'Extra virgin olive oil 2-3 tbsp', why: 'Polyphenols, heart health (Bryan takes 45ml/day)' },
+    { food: 'Dark leafy greens daily', why: 'Folate, magnesium, nitrates for cardiovascular health' },
+    { food: 'Nuts (walnuts, almonds) 30g/day', why: 'Omega-3, magnesium, satiety' },
+  ];
+  if (dietType === 'vegan') {
+    return [
+      { food: 'Ground flax or chia seeds 2 tbsp/day', why: 'Plant omega-3 (ALA). Pair with algal DHA/EPA supplement.' },
+      ...base,
+      { food: 'Legumes 3-4 servings/week', why: 'Fiber + plant protein for longevity' },
+      { food: 'Fermented foods (tempeh, kimchi, sauerkraut)', why: 'Gut microbiome diversity' },
+    ];
+  }
+  if (dietType === 'keto' || dietType === 'carnivore') {
+    return [
+      { food: 'Fatty fish (salmon, sardines) 3x/week', why: 'Omega-3 EPA/DHA, vitamin D' },
+      ...base.filter(b => !b.food.includes('Berries')),
+      { food: 'Organ meats (liver, heart) weekly', why: 'Micronutrient density, B12, retinol' },
+      { food: 'Fermented dairy if tolerated', why: 'Gut microbiome' },
+    ];
+  }
+  return [
+    { food: 'Fatty fish (salmon, sardines) 3x/week', why: 'Omega-3 for inflammation and heart health' },
+    ...base,
+    { food: 'Fermented foods (yogurt, kimchi, kefir)', why: 'Gut microbiome diversity' },
+  ];
 }

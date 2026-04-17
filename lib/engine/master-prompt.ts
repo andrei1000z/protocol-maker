@@ -307,70 +307,156 @@ export function buildMasterPromptV2(
     ? profile.currentSupplements.join(', ')
     : 'None reported';
 
-  // Rich onboarding context (if available)
+  // ═══ DEEP CONTEXT EXTRACTION (v3) ═══
+  // Prefer top-level typed fields; fall back to onboardingData blob if not set
   const od = (profile as UserProfile & { onboardingData?: Record<string, unknown> }).onboardingData || {};
-  const chronotype = od.chronotype as string | undefined;
-  const bedtime = od.bedtime as string | undefined;
-  const wakeTime = od.wakeTime as string | undefined;
-  const sleepIssues = (od.sleepIssues as string[] | undefined) || [];
-  const workStart = od.workStart as string | undefined;
-  const workEnd = od.workEnd as string | undefined;
-  const workLocation = od.workLocation as string | undefined;
-  const sittingHours = od.sittingHours as number | undefined;
-  const exerciseWindow = od.exerciseWindow as string | undefined;
-  const screenTime = od.screenTime as number | undefined;
-  const stressLevel = od.stressLevel as number | undefined;
-  const meditationPractice = od.meditationPractice as string | undefined;
-  const familyHistory = (od.familyHistory as string[] | undefined) || [];
-  const foodAllergies = (od.foodAllergies as string[] | undefined) || [];
-  const painPoints = od.painPoints as string | undefined;
-  const nonNegotiables = od.nonNegotiables as string | undefined;
-  const primaryGoal = od.primaryGoal as string | undefined;
-  const specificTarget = od.specificTarget as string | undefined;
-  const timelineMonths = od.timelineMonths as number | undefined;
-  const ethnicity = od.ethnicity as string | undefined;
-  const restingHR = od.restingHR as number | undefined;
+  const pick = <T,>(key: string, fallback?: T): T | undefined =>
+    (profile as unknown as Record<string, unknown>)[key] as T ?? (od[key] as T) ?? fallback;
+
+  const chronotype = pick<string>('chronotype');
+  const bedtime = pick<string>('bedtime');
+  const wakeTime = pick<string>('wakeTime');
+  const sleepIssues = pick<string[]>('sleepIssues', []) || [];
+  const workStart = pick<string>('workStart');
+  const workEnd = pick<string>('workEnd');
+  const workLocation = pick<string>('workLocation');
+  const sittingHours = pick<number>('sittingHours');
+  const exerciseWindow = pick<string>('exerciseWindow');
+  const screenTime = pick<number>('screenTime');
+  const stressLevel = pick<number>('stressLevel');
+  const meditationPractice = pick<string>('meditationPractice');
+  const familyHistory = pick<string[]>('familyHistory', []) || [];
+  const foodAllergies = pick<string[]>('foodAllergies', []) || [];
+  const painPoints = pick<string>('painPoints');
+  const nonNegotiables = pick<string>('nonNegotiables');
+  const primaryGoal = pick<string>('primaryGoal');
+  const specificTarget = pick<string>('specificTarget');
+  const timelineMonths = pick<number>('timelineMonths');
+  const ethnicity = pick<string>('ethnicity') || profile.ethnicity;
+  const restingHR = pick<number>('restingHR');
+  const occupationType = pick<string>('occupationType');
+  const mealsPerDay = pick<number>('mealsPerDay');
+  const hydrationGlasses = pick<number>('hydrationGlasses');
+
+  // Derive target bedtime (8.5h before wake time)
+  let derivedBedtime: string | undefined;
+  if (wakeTime) {
+    const [h, m] = wakeTime.split(':').map(Number);
+    const wakeMinutes = h * 60 + m;
+    const bedMinutes = (wakeMinutes - 8.5 * 60 + 24 * 60) % (24 * 60);
+    const bh = Math.floor(bedMinutes / 60);
+    const bm = Math.round(bedMinutes % 60);
+    derivedBedtime = `${String(bh).padStart(2, '0')}:${String(bm).padStart(2, '0')}`;
+  }
+
+  // Derive eating window (last meal 3h before bed, 10h window)
+  let derivedEatingWindow: string | undefined;
+  if (derivedBedtime) {
+    const [bh, bm] = derivedBedtime.split(':').map(Number);
+    const lastMealMinutes = (bh * 60 + bm - 3 * 60 + 24 * 60) % (24 * 60);
+    const firstMealMinutes = (lastMealMinutes - 10 * 60 + 24 * 60) % (24 * 60);
+    const fh = Math.floor(firstMealMinutes / 60);
+    const lh = Math.floor(lastMealMinutes / 60);
+    derivedEatingWindow = `${String(fh).padStart(2, '0')}:00 - ${String(lh).padStart(2, '0')}:00 (10h window, last meal 3h before bed)`;
+  }
+
+  // Derive work-tethered exercise window
+  let optimalExerciseSlot: string | undefined;
+  if (exerciseWindow === 'morning' && workStart) {
+    const [wh, wm] = workStart.split(':').map(Number);
+    const exerciseStart = (wh * 60 + wm - 75 + 24 * 60) % (24 * 60);
+    const eh = Math.floor(exerciseStart / 60);
+    const em = Math.round(exerciseStart % 60);
+    optimalExerciseSlot = `${String(eh).padStart(2, '0')}:${String(em).padStart(2, '0')} — 45 min window before work starts`;
+  } else if (exerciseWindow === 'evening' && workEnd) {
+    optimalExerciseSlot = `${workEnd} — right after work, before dinner`;
+  } else if (exerciseWindow === 'lunch' && workStart && workEnd) {
+    optimalExerciseSlot = 'Lunch hour — 30-45 min workout window';
+  }
 
   const personalContext = `
-═══ PATIENT'S DAILY CONTEXT ═══
-${workStart || workEnd ? `Work schedule: ${workStart || '?'} - ${workEnd || '?'}${workLocation ? ` (${workLocation})` : ''}` : ''}
-${sittingHours !== undefined ? `Sitting hours/day: ${sittingHours}` : ''}
-${screenTime !== undefined ? `Screen time/day: ${screenTime} hours` : ''}
-${exerciseWindow ? `Preferred exercise window: ${exerciseWindow}` : ''}
-${bedtime && wakeTime ? `Current sleep schedule: ${bedtime} → ${wakeTime}` : ''}
-${chronotype ? `Chronotype: ${chronotype} person` : ''}
-${sleepIssues.length > 0 ? `Sleep issues: ${sleepIssues.join(', ')}` : ''}
-${stressLevel !== undefined ? `Stress level: ${stressLevel}/10` : ''}
-${meditationPractice ? `Meditation practice: ${meditationPractice}` : ''}
-${familyHistory.length > 0 ? `Family history: ${familyHistory.join(', ')} — FACTOR THIS INTO RISK STRATIFICATION` : ''}
-${foodAllergies.length > 0 ? `Food allergies/intolerances: ${foodAllergies.join(', ')} — NEVER recommend these foods` : ''}
-${ethnicity ? `Ethnicity: ${ethnicity} — adjust biomarker ranges if relevant` : ''}
-${restingHR ? `Resting HR: ${restingHR} bpm` : ''}
+═══════════════════════════════════════════════
+    PATIENT'S DAILY CONTEXT (USE ALL OF THIS)
+═══════════════════════════════════════════════
 
-═══ DERIVE FROM CONTEXT ═══
-- Target bedtime = wake time - 8.5 hours (unless user states different preference)
-- Eating window = align with work schedule + sleep target (TRE 8-10h when possible)
-- Exercise timing = within preferred window ${exerciseWindow ? `(${exerciseWindow})` : ''}
-- ${familyHistory.includes('Diabetes') ? 'FAMILY HISTORY of diabetes: prioritize glucose/insulin interventions EVEN IF biomarkers are currently OK' : ''}
-- ${familyHistory.includes('Heart disease') ? 'FAMILY HISTORY of heart disease: prioritize CV risk reduction (ApoB, Lp(a), hsCRP)' : ''}
-- ${familyHistory.includes("Alzheimer's") ? "FAMILY HISTORY of Alzheimer's: prioritize brain health (omega-3, sleep, exercise, glucose control)" : ''}
+👤 IDENTITY
+${ethnicity ? `- Ethnicity: ${ethnicity} (adjust biomarker reference ranges where applicable — e.g. vitamin D thresholds vary by skin tone, ferritin varies by sex)` : ''}
+${restingHR ? `- Resting HR: ${restingHR} bpm ${restingHR < 55 ? '(excellent cardiovascular fitness)' : restingHR > 75 ? '(elevated — indicates poor cardio fitness or stress)' : '(normal)'}` : ''}
+
+💼 WORK
+${workStart && workEnd ? `- Schedule: ${workStart} - ${workEnd} (${workLocation || 'unknown location'})` : '- Work schedule: not specified'}
+${sittingHours !== undefined ? `- Sedentary: ${sittingHours} hrs/day sitting ${sittingHours > 8 ? '→ CRITICAL: must include hourly movement breaks + evening walk' : ''}` : ''}
+${occupationType ? `- Type: ${occupationType}${occupationType === 'shift' ? ' → circadian misalignment likely, sleep protocol must account for this' : ''}` : ''}
+${screenTime !== undefined ? `- Screen time: ${screenTime} hrs/day${screenTime > 10 ? ' → eye strain + blue light at night highly likely' : ''}` : ''}
+
+😴 SLEEP
+${bedtime && wakeTime ? `- Current: ${bedtime} → ${wakeTime}` : ''}
+${derivedBedtime ? `- Target bedtime (derived from 8.5h rule): ${derivedBedtime}` : ''}
+${chronotype ? `- Chronotype: ${chronotype} person${chronotype === 'night' ? ' → protocol should GRADUALLY shift bedtime earlier, NOT demand immediate change. Use morning 10,000 lux light therapy + strict caffeine cutoff by 12:00.' : chronotype === 'morning' ? ' → can schedule workouts + demanding work early' : ''}` : ''}
+${sleepIssues.length > 0 ? `- Issues: ${sleepIssues.join(', ')}${sleepIssues.includes('Trouble falling asleep') ? ' → magnesium glycinate 400mg + L-theanine 200mg 60 min before bed, no screens 90 min before' : ''}${sleepIssues.includes('Waking in the night') ? ' → check cortisol pattern, reduce alcohol, consistent bedtime' : ''}${sleepIssues.includes('Wake up unrested') ? ' → investigate sleep apnea possibility, track sleep stages, check iron/B12' : ''}${sleepIssues.includes('Snoring') ? ' → STRONGLY recommend sleep study for apnea screening' : ''}` : ''}
+
+🏃 EXERCISE
+${exerciseWindow ? `- Preferred window: ${exerciseWindow}` : ''}
+${optimalExerciseSlot ? `- Derived optimal slot: ${optimalExerciseSlot}` : ''}
+- Current: ${profile.cardioMinutesPerWeek || 0} min cardio/week + ${profile.strengthSessionsPerWeek || 0} strength sessions/week
+
+🍽️ NUTRITION
+- Diet: ${profile.dietType}${foodAllergies.length > 0 ? ` | Allergies: ${foodAllergies.join(', ')} — NEVER recommend these foods` : ''}
+${mealsPerDay ? `- Meals/day: ${mealsPerDay}` : ''}
+${hydrationGlasses ? `- Hydration: ${hydrationGlasses} glasses/day${hydrationGlasses < 6 ? ' → INADEQUATE, target 8-10' : ''}` : ''}
+${derivedEatingWindow ? `- Suggested eating window: ${derivedEatingWindow}` : ''}
+
+🧠 MENTAL & STRESS
+${stressLevel !== undefined ? `- Stress level: ${stressLevel}/10${stressLevel >= 7 ? ' → CRITICAL: stress management must be in top 3 priorities (cortisol disruption, sleep impact, immune suppression)' : ''}` : ''}
+${meditationPractice ? `- Meditation: ${meditationPractice}${meditationPractice === 'none' && stressLevel && stressLevel >= 6 ? ' → prescribe START SMALL (5 min/day), not 20 min immediately' : ''}` : ''}
+
+🧬 FAMILY HISTORY (drives preventive priority)
+${familyHistory.length > 0 ? familyHistory.map(h => {
+  if (h.toLowerCase().includes('diabetes')) return `- Diabetes: PRIORITIZE glucose/insulin optimization. Aggressive HbA1c target <5.2. Consider CGM. Berberine + metformin discussion with doctor EVEN IF biomarkers are currently OK.`;
+  if (h.toLowerCase().includes('heart')) return `- Heart disease: PRIORITIZE CV risk reduction. Push ApoB + Lp(a) testing. Aggressive LDL target <70. Coronary calcium score recommended after age 40.`;
+  if (h.toLowerCase().includes('alzheimer')) return `- Alzheimer's: PRIORITIZE brain health. Omega-3 ≥2g, sleep optimization, aerobic exercise, glucose control, APOE testing discussion.`;
+  if (h.toLowerCase().includes('cancer')) return `- Cancer: PRIORITIZE screening (annual check), reduce inflammatory markers (hsCRP <0.5), optimize sleep, fasting considerations, vitamin D ≥50.`;
+  if (h.toLowerCase().includes('autoimmune')) return `- Autoimmune: consider gluten/dairy trial elimination, optimize vitamin D, check thyroid antibodies, anti-inflammatory diet.`;
+  return `- ${h}: factor into screening schedule`;
+}).join('\n') : '- None reported'}
+
+💊 CURRENT MEDS & SUPPLEMENTS
+- Medications: ${medicationList}
+- Supplements already taking: ${supplementList}
+(DO NOT double-stack. Check interactions before adding anything that conflicts with their meds.)
 `;
 
   const painPointsBlock = painPoints ? `
-═══ CURRENT PAIN POINTS (address directly in painPointSolutions) ═══
+═══ CURRENT PAIN POINTS — USER'S OWN WORDS ═══
 ${painPoints}
+
+INSTRUCTION: For EACH distinct pain point above, produce one entry in painPointSolutions with:
+- problem (verbatim quote or close paraphrase)
+- likelyCause (your hypothesis based on their biomarkers + context)
+- solution (concrete, actionable steps — not vague)
+- supportingBiomarkers (which markers support this hypothesis)
+- expectedTimeline (realistic: "1-2 weeks for first improvements")
+- checkpoints (what to measure each week to know it's working)
 ` : '';
 
   const nonNegotiablesBlock = nonNegotiables ? `
-═══ NON-NEGOTIABLES (build flex strategies, don't demand elimination) ═══
+═══ NON-NEGOTIABLES — DO NOT DEMAND ELIMINATION ═══
 ${nonNegotiables}
+
+INSTRUCTION: For EACH non-negotiable above, produce one entry in flexRules with:
+- scenario (the non-negotiable itself)
+- strategy (specific mitigation: walks, timing, supplements that blunt damage)
+- damageControl (what to do the day after if overdone)
+- frequency (how often this is OK without penalty, e.g., "1x/week max")
+
+Example: "Friday pizza night" → Strategy: "20 min walk before + 15 min walk after. Berberine 500mg with meal. Water between slices. Extended 14h overnight fast Saturday."
 ` : '';
 
   const goalsBlock = primaryGoal || specificTarget || timelineMonths ? `
 ═══ GOAL DETAILS ═══
-${primaryGoal ? `Primary goal: ${primaryGoal}` : ''}
-${specificTarget ? `Specific target: "${specificTarget}" — measure progress toward this directly` : ''}
-${timelineMonths ? `Timeline: ${timelineMonths} month${timelineMonths > 1 ? 's' : ''} commitment` : ''}
+${primaryGoal ? `Primary goal (drives priority): ${primaryGoal}` : ''}
+${specificTarget ? `Specific target (quantifiable): "${specificTarget}" — weave this into roadmap milestones and tracking metrics` : ''}
+${timelineMonths ? `Timeline: ${timelineMonths} month${timelineMonths > 1 ? 's' : ''} commitment — pace interventions accordingly. ${timelineMonths <= 3 ? 'Front-load high-impact changes.' : 'Build gradually, sustainable over time.'}` : ''}
 ` : '';
 
   return `IDENTITY:
@@ -628,17 +714,25 @@ Return ONLY valid JSON matching this EXACT structure. No markdown, no backticks,
   ${painPoints ? `"painPointSolutions": [
     {
       "problem": "<verbatim from patient's pain points>",
-      "likelyCause": "<root cause analysis based on their biomarkers + lifestyle>",
-      "solution": "<specific, actionable intervention>",
-      "expectedTimeline": "<e.g. 'Improvements within 1 week, full resolution 3-4 weeks'>"
+      "likelyCause": "<hypothesis based on their biomarkers + context>",
+      "solution": "<specific, actionable intervention with doses/timing>",
+      "supportingBiomarkers": ["<marker codes that support this hypothesis>"],
+      "expectedTimeline": "<e.g. '1-2 weeks for first improvements, 4-6 weeks for resolution'>",
+      "checkpoints": ["<specific weekly measurable check>"]
     }
   ],` : ''}
   ${nonNegotiables ? `"flexRules": [
     {
       "scenario": "<verbatim non-negotiable from patient>",
-      "strategy": "<specific mitigation that keeps the habit but minimizes damage>"
+      "strategy": "<specific mitigation with tactics: walks, supplements, timing>",
+      "damageControl": "<what to do the day after if overdone>",
+      "frequency": "<e.g. 'up to 1x/week max without penalty'>"
     }
   ],` : ''}
+  "dailyBriefing": {
+    "morningPriorities": ["<top 3 things to focus on TODAY, written as energizing one-liners>"],
+    "eveningReview": ["<3 reflection questions to ask at end of day>"]
+  },
   "weekByWeekPlan": [
     { "week": 1, "focus": "<theme>",
       "mondayActions": ["<specific action>"],
@@ -657,6 +751,14 @@ FINAL REMINDERS:
 - Every supplement justification MUST cite a specific biomarker with its actual value
 - Respect the ${profile.monthlyBudgetRon} RON/month budget — do NOT exceed it
 - Adapt nutrition to ${profile.dietType} diet — do NOT force veganism
+${painPoints ? '- painPointSolutions MUST be populated with ALL pain points from the patient' : ''}
+${nonNegotiables ? '- flexRules MUST be populated with ALL non-negotiables — NEVER tell them to eliminate these' : ''}
+${chronotype === 'night' ? '- Chronotype: night owl. Do NOT demand instant 10 PM bedtime. Shift gradually over 2-4 weeks using morning light + caffeine cutoff.' : ''}
+${chronotype === 'morning' ? '- Chronotype: morning person. Schedule hardest tasks and workouts early.' : ''}
+${familyHistory.some(h => h.toLowerCase().includes('diabetes')) ? '- FAMILY HISTORY of diabetes is present → glucose priority even without current dysfunction' : ''}
+${familyHistory.some(h => h.toLowerCase().includes('heart')) ? '- FAMILY HISTORY of heart disease → push ApoB/Lp(a) testing' : ''}
+${stressLevel && stressLevel >= 7 ? '- HIGH STRESS (7+/10) → stress management in top 3 priorities. Cortisol-lowering interventions (ashwagandha, magnesium, meditation 5-10 min).' : ''}
+${sittingHours && sittingHours > 8 ? '- SEDENTARY job (8+h sitting) → explicit hourly movement breaks + daily walk protocol required' : ''}
 - ${profile.smoker ? 'SMOKING is their #1 health risk — address this prominently' : ''}
 - ${(profile.alcoholDrinksPerWeek || 0) > 7 ? 'Alcohol consumption is elevated — address reduction prominently' : ''}
 - ${(profile.sleepHoursAvg || 7) < 6 ? 'Sleep deprivation detected — make this the #1 priority' : ''}

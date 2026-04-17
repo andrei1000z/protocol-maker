@@ -12,24 +12,49 @@ export interface UserProfile {
   ethnicity?: string;
   latitude?: number;
   occupation?: string;
+  occupationType?: 'desk' | 'physical' | 'shift' | 'mixed';
+  restingHR?: number;
   activityLevel: ActivityLevel;
   sleepHoursAvg?: number;
   sleepQuality?: number;
+  bedtime?: string;
+  wakeTime?: string;
+  chronotype?: 'morning' | 'neutral' | 'night';
+  sleepIssues?: string[];
   dietType: DietType;
+  mealsPerDay?: number;
+  hydrationGlasses?: number;
+  foodAllergies?: string[];
   alcoholDrinksPerWeek?: number;
   caffeineMgPerDay?: number;
   smoker: boolean;
   cardioMinutesPerWeek?: number;
   strengthSessionsPerWeek?: number;
+  stressLevel?: number;
+  meditationPractice?: 'none' | 'occasional' | 'daily';
   conditions: string[];
+  familyHistory?: string[];
   medications: { name: string; dose: string; frequency: string }[];
   currentSupplements: string[];
   allergies: string[];
+  workStart?: string;
+  workEnd?: string;
+  workLocation?: 'home' | 'office' | 'hybrid';
+  sittingHours?: number;
+  exerciseWindow?: 'morning' | 'lunch' | 'evening' | 'weekends' | 'inconsistent';
+  screenTime?: number;
+  painPoints?: string;
+  nonNegotiables?: string;
+  primaryGoal?: string;
+  secondaryGoals?: string[];
+  specificTarget?: string;
+  timelineMonths?: number;
   goals: string[];
   timeBudgetMin: number;
   monthlyBudgetRon: number;
   experimentalOpenness: ExperimentalLevel;
   onboardingCompleted: boolean;
+  onboardingData?: Record<string, unknown>;
 }
 
 export interface BiomarkerValue {
@@ -219,4 +244,9 @@ export interface ProtocolOutput {
     endOfWeekCheck?: string[];
   }[];
   doctorQuestions?: string[];
+  dailyBriefing?: {
+    morningPriorities: string[];
+    eveningReview: string[];
+  };
+  adherenceScore?: number;
 }
