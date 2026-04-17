@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
 import Groq from 'groq-sdk';
+import { z } from 'zod';
 import { classifyAll, calculateLongevityScore, estimateBiologicalAge } from '@/lib/engine/classifier';
 import { detectPatterns } from '@/lib/engine/patterns';
 import { BIOMARKER_DB } from '@/lib/engine/biomarkers';
@@ -8,6 +9,27 @@ import { buildMasterPromptV2 } from '@/lib/engine/master-prompt';
 import { BiomarkerValue, UserProfile } from '@/lib/types';
 
 export const maxDuration = 60;
+
+// Loose Zod schema — accept what AI returns, normalize what we care about
+const ProtocolShape = z.object({
+  diagnostic: z.object({
+    biologicalAge: z.number().optional(),
+    chronologicalAge: z.number().optional(),
+    longevityScore: z.number().optional(),
+    topWins: z.array(z.string()).optional(),
+    topRisks: z.array(z.string()).optional(),
+  }).passthrough().optional(),
+  nutrition: z.object({
+    dailyCalories: z.number().optional(),
+    macros: z.object({ protein: z.number(), carbs: z.number(), fat: z.number() }).optional(),
+  }).passthrough().optional(),
+  supplements: z.array(z.object({
+    name: z.string(),
+    dose: z.string().optional(),
+    timing: z.string().optional(),
+    priority: z.string().optional(),
+  }).passthrough()).optional(),
+}).passthrough();
 
 export async function POST(request: Request) {
   try {
@@ -36,7 +58,15 @@ export async function POST(request: Request) {
 
     try {
       const prompt = buildMasterPromptV2(profile, classified, patterns, BIOMARKER_DB, longevityScore, biologicalAge);
-      protocolJson = await generateWithGroq(prompt);
+      const rawJson = await generateWithGroq(prompt);
+
+      // Zod validation — loose passthrough, just confirm shape is sane
+      const validated = ProtocolShape.safeParse(rawJson);
+      if (!validated.success) {
+        console.error('AI output failed Zod validation:', validated.error.flatten());
+        throw new Error('AI returned malformed JSON structure');
+      }
+      protocolJson = rawJson;
     } catch (err) {
       aiError = err instanceof Error ? err.message : String(err);
       console.error('AI generation failed, using fallback:', aiError);
