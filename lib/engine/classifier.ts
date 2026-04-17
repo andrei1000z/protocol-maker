@@ -1,5 +1,6 @@
 import { BiomarkerValue, Classification } from '../types';
 import { getBiomarkerRef } from './biomarkers';
+import { calculatePhenoAge, extractPhenoAgeInputs } from './phenoage';
 
 export function classifyBiomarker(value: BiomarkerValue): BiomarkerValue {
   const ref = getBiomarkerRef(value.code);
@@ -90,13 +91,16 @@ export function calculateLongevityScore(classified: BiomarkerValue[]): number {
 export function estimateBiologicalAge(chronologicalAge: number, classified: BiomarkerValue[]): number {
   if (classified.length === 0) return chronologicalAge;
 
+  // Try PhenoAge algorithm first (most accurate if we have the required markers)
+  const phenoInputs = extractPhenoAgeInputs(classified);
+  const phenoAge = calculatePhenoAge(phenoInputs, chronologicalAge);
+  if (phenoAge !== null && phenoAge > 0 && phenoAge < 120) {
+    return phenoAge;
+  }
+
+  // Fallback: score-based estimate
   const score = calculateLongevityScore(classified);
-
-  // Score 100 = 5 years younger, Score 0 = 10 years older
-  // Score 50 = chronological age
   const offset = ((50 - score) / 50) * 7.5;
-
-  // Critical markers have extra aging impact
   const criticalCount = classified.filter(b => b.classification === 'CRITICAL').length;
   const criticalPenalty = criticalCount * 1.5;
 

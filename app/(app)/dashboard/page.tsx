@@ -108,7 +108,12 @@ export default function DashboardPage() {
       {/* Hero diagnostic */}
       <div className="rounded-2xl bg-card border border-card-border p-6">
         <div className="text-center mb-6">
-          <h1 className="text-sm font-medium text-muted-foreground">Your Longevity Protocol</h1>
+          <div className="flex items-center justify-between">
+            <h1 className="text-sm font-medium text-muted-foreground">Your Longevity Protocol</h1>
+            <button onClick={() => window.print()} className="no-print text-xs px-3 py-1.5 rounded-lg bg-card border border-card-border hover:border-accent/30 text-muted-foreground hover:text-accent transition-colors">
+              📄 Print / PDF
+            </button>
+          </div>
           {diag?.summary && <p className="text-xs text-muted-foreground mt-2 max-w-md mx-auto">{diag.summary}</p>}
         </div>
         <div className="grid grid-cols-3 gap-3">

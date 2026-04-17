@@ -50,3 +50,12 @@ body {
 input[type="number"]::-webkit-inner-spin-button,
 input[type="number"]::-webkit-outer-spin-button { -webkit-appearance: none; }
 input[type="number"] { -moz-appearance: textfield; }
+
+@media print {
+  nav, header, .no-print { display: none !important; }
+  body { background: white !important; color: black !important; }
+  .bg-card, .bg-background { background: white !important; border-color: #ccc !important; }
+  .text-accent { color: #00aa55 !important; }
+  .text-muted, .text-muted-foreground { color: #555 !important; }
+  .rounded-2xl, .rounded-xl { border: 1px solid #ddd !important; page-break-inside: avoid; }
+}

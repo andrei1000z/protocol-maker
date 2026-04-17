@@ -3,6 +3,7 @@
 import { useEffect, useState, useCallback } from 'react';
 import clsx from 'clsx';
 import { Check, Pill, Dumbbell, Moon, Apple, Flame, TrendingUp } from 'lucide-react';
+import { ACHIEVEMENTS, checkAchievements } from '@/lib/engine/achievements';
 
 interface ComplianceItem { type: string; name: string; completed: boolean; }
 
@@ -212,6 +213,35 @@ export default function TrackingPage() {
 
       <WeeklyChart data={weekData} />
       <MonthlyHeatmap data={monthData} />
+
+      {/* Achievements */}
+      <div className="rounded-2xl bg-card border border-card-border p-4">
+        <h3 className="text-sm font-semibold mb-3">🏆 Achievements</h3>
+        <div className="grid grid-cols-3 sm:grid-cols-4 gap-2">
+          {ACHIEVEMENTS.map((a) => {
+            const earned = checkAchievements({
+              totalDaysTracked: 1,
+              currentStreak: streak,
+              longestStreak: streak,
+              perfectDays: pct >= 100 ? 1 : 0,
+              bloodTestsUploaded: 0,
+              protocolsGenerated: 1,
+              supplementStreak: streak,
+              weeklyCompliance: pct,
+              monthlyAvgCompliance: pct,
+            }).some((e) => e.id === a.id);
+            return (
+              <div key={a.id} title={`${a.name}: ${a.description}`}
+                className={clsx('aspect-square rounded-xl border flex flex-col items-center justify-center gap-1 transition-all',
+                  earned ? (a.tier === 'legendary' ? 'bg-amber-500/10 border-amber-500/30' : a.tier === 'gold' ? 'bg-accent/10 border-accent/30' : 'bg-card border-card-border')
+                  : 'bg-background border-card-border opacity-30')}>
+                <span className="text-xl">{a.icon}</span>
+                <span className="text-[8px] text-center leading-tight px-1">{a.name}</span>
+              </div>
+            );
+          })}
+        </div>
+      </div>
 
       {/* Items grouped by type */}
       {Object.entries(grouped).map(([type, typeItems]) => (

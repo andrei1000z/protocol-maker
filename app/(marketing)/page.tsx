@@ -143,9 +143,16 @@ export default function LandingPage() {
       </section>
 
       {/* Footer */}
-      <footer className="border-t border-card-border py-8 text-center">
+      <footer className="border-t border-card-border py-8 text-center space-y-3">
+        <div className="flex items-center justify-center gap-4 text-xs text-muted-foreground">
+          <Link href="/privacy" className="hover:text-accent">Privacy</Link>
+          <span>•</span>
+          <Link href="/terms" className="hover:text-accent">Terms</Link>
+          <span>•</span>
+          <a href="https://github.com/andrei1000z/protocol-maker" className="hover:text-accent">GitHub</a>
+        </div>
         <p className="text-xs text-muted">Protocol AI Engine • Not medical advice • Consult your doctor before making changes</p>
-        <p className="text-[10px] text-muted mt-2">Built with Groq AI + Next.js + Supabase</p>
+        <p className="text-[10px] text-muted">Built with Groq AI + Next.js + Supabase</p>
       </footer>
     </div>
   );
