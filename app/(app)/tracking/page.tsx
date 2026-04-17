@@ -9,6 +9,11 @@ import {
   getWeeklyData, getMonthlyHeatmap, calculateMonthlyAverage,
   ComplianceEntry,
 } from '@/lib/utils/streak';
+import { TabNav } from '@/components/tracking/Tabs';
+import { HabitsTab } from '@/components/tracking/HabitsTab';
+import { MetricsTab } from '@/components/tracking/MetricsTab';
+import { TrendsTab } from '@/components/tracking/TrendsTab';
+import { useDailyMetrics, useDailyMetricsRange, DailyMetrics } from '@/lib/hooks/useDailyMetrics';
 
 interface ComplianceItem { type: string; name: string; completed: boolean; }
 
@@ -18,6 +23,14 @@ const ICONS: Record<string, React.ReactNode> = {
   SLEEP: <Moon className="w-4 h-4" />,
   NUTRITION: <Apple className="w-4 h-4" />,
 };
+
+const TABS = [
+  { id: 'protocol', label: 'Protocol', icon: '📋' },
+  { id: 'habits', label: 'Habits', icon: '✅' },
+  { id: 'metrics', label: 'Metrics', icon: '📊' },
+  { id: 'trends', label: 'Trends', icon: '📈' },
+  { id: 'achievements', label: 'Awards', icon: '🏆' },
+];
 
 function StreakCounter({ streak, longest }: { streak: number; longest: number }) {
   return (
@@ -71,19 +84,13 @@ function MonthlyHeatmap({ data }: { data: { date: string; pct: number }[] }) {
             )} />
         ))}
       </div>
-      <div className="flex items-center justify-end gap-1 mt-2">
-        <span className="text-[9px] text-muted">Less</span>
-        {['bg-card-border/30', 'bg-accent/20', 'bg-accent/40', 'bg-accent/60', 'bg-accent'].map((c) => (
-          <div key={c} className={clsx('w-3 h-3 rounded-sm', c)} />
-        ))}
-        <span className="text-[9px] text-muted">More</span>
-      </div>
     </div>
   );
 }
 
 export default function TrackingPage() {
   const [date] = useState(new Date().toISOString().split('T')[0]);
+  const [activeTab, setActiveTab] = useState('protocol');
   const [items, setItems] = useState<ComplianceItem[]>([]);
   const [protocolId, setProtocolId] = useState('');
   const [loading, setLoading] = useState(true);
@@ -91,13 +98,13 @@ export default function TrackingPage() {
   const [bloodTestsCount, setBloodTestsCount] = useState(0);
   const [protocolsCount, setProtocolsCount] = useState(0);
 
+  const thirtyDaysAgo = (() => { const d = new Date(); d.setDate(d.getDate() - 30); return d.toISOString().split('T')[0]; })();
+  const { metrics: todayMetrics, save: saveMetrics } = useDailyMetrics(date);
+  const { metrics: rangeMetrics } = useDailyMetricsRange(thirtyDaysAgo, date);
+
   useEffect(() => {
     async function load() {
-      // Fetch protocol + compliance history (30 days) in parallel
-      const thirtyDaysAgo = new Date();
-      thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
-      const startDate = thirtyDaysAgo.toISOString().split('T')[0];
-
+      const startDate = thirtyDaysAgo;
       const [dataRes, compTodayRes, historyRes] = await Promise.all([
         fetch('/api/my-data').then(r => r.json()),
         fetch(`/api/compliance?date=${date}`).then(r => r.json()),
@@ -148,9 +155,9 @@ export default function TrackingPage() {
       setLoading(false);
     }
     load();
-  }, [date]);
+  }, [date, thirtyDaysAgo]);
 
-  const toggle = useCallback(async (index: number) => {
+  const toggleCompliance = useCallback(async (index: number) => {
     const item = items[index];
     const newCompleted = !item.completed;
     setItems(prev => prev.map((it, i) => i === index ? { ...it, completed: newCompleted } : it));
@@ -159,38 +166,34 @@ export default function TrackingPage() {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ itemType: item.type, itemName: item.name, date, completed: newCompleted, protocolId }),
     });
-
-    // Refresh today's entry in history
     setHistory(prev => {
       const todayCompleted = items.filter((it, i) => i === index ? newCompleted : it.completed).length;
       const total = items.length;
       const pct = total > 0 ? Math.round((todayCompleted / total) * 100) : 0;
       const existing = prev.find(h => h.date === date);
-      if (existing) {
-        return prev.map(h => h.date === date ? { ...h, completed: todayCompleted, total, pct } : h);
-      }
+      if (existing) return prev.map(h => h.date === date ? { ...h, completed: todayCompleted, total, pct } : h);
       return [...prev, { date, completed: todayCompleted, total, pct }];
     });
   }, [items, date, protocolId]);
 
+  const toggleHabit = useCallback((habitId: string) => {
+    const current = todayMetrics.habits_completed ?? [];
+    const updated = current.includes(habitId) ? current.filter(h => h !== habitId) : [...current, habitId];
+    saveMetrics({ habits_completed: updated });
+  }, [todayMetrics.habits_completed, saveMetrics]);
+
   if (loading) return (
     <div className="max-w-2xl mx-auto px-4 py-6 space-y-5">
       <div className="h-7 w-40 mx-auto rounded-lg bg-card-border/30 animate-pulse" />
-      <div className="h-4 w-32 mx-auto rounded bg-card-border/30 animate-pulse" />
-      <div className="grid grid-cols-2 gap-3">
-        <div className="h-24 rounded-2xl bg-card border border-card-border animate-pulse" />
-        <div className="h-24 rounded-2xl bg-card border border-card-border animate-pulse" />
-      </div>
-      <div className="h-32 rounded-2xl bg-card border border-card-border animate-pulse" />
-      <div className="h-48 rounded-2xl bg-card border border-card-border animate-pulse" />
+      <div className="grid grid-cols-2 gap-3"><div className="h-24 rounded-2xl bg-card animate-pulse" /><div className="h-24 rounded-2xl bg-card animate-pulse" /></div>
+      <div className="h-32 rounded-2xl bg-card animate-pulse" />
     </div>
   );
 
-  const completed = items.filter((i) => i.completed).length;
+  const completed = items.filter(i => i.completed).length;
   const total = items.length;
   const pct = total > 0 ? Math.round((completed / total) * 100) : 0;
 
-  // REAL stats from history (no more Math.random)
   const streak = calculateStreak(history);
   const longestStreak = calculateLongestStreak(history);
   const perfectDays = countPerfectDays(history);
@@ -198,17 +201,19 @@ export default function TrackingPage() {
   const monthData = getMonthlyHeatmap(history);
   const monthlyAvg = calculateMonthlyAverage(history);
 
-  const grouped = items.reduce<Record<string, ComplianceItem[]>>((acc, item) => { (acc[item.type] = acc[item.type] || []).push(item); return acc; }, {});
+  const grouped = items.reduce<Record<string, ComplianceItem[]>>((acc, item) => {
+    (acc[item.type] = acc[item.type] || []).push(item); return acc;
+  }, {});
   const TYPE_LABELS: Record<string, string> = { SUPPLEMENT: 'Supplements', EXERCISE: 'Exercise', SLEEP: 'Sleep', NUTRITION: 'Nutrition' };
 
   return (
-    <div className="max-w-2xl mx-auto px-4 py-6 space-y-5">
+    <div className="max-w-2xl mx-auto px-4 py-6 space-y-4">
       <div className="text-center space-y-1">
         <h1 className="text-2xl font-bold">Daily Tracking</h1>
         <p className="text-sm text-muted-foreground">{new Date().toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' })}</p>
       </div>
 
-      {/* Top stats */}
+      {/* Top stats always visible */}
       <div className="grid grid-cols-2 gap-3">
         <StreakCounter streak={streak} longest={longestStreak} />
         <div className="flex items-center justify-center py-3 px-4 rounded-2xl bg-card border border-card-border">
@@ -226,71 +231,76 @@ export default function TrackingPage() {
           <div className="ml-3">
             <p className="text-sm font-bold">{completed}/{total}</p>
             <p className="text-[10px] text-muted">today</p>
-            <p className="text-[9px] text-muted mt-1">30d avg: {monthlyAvg}%</p>
+            <p className="text-[9px] text-muted mt-1">30d: {monthlyAvg}%</p>
           </div>
         </div>
       </div>
 
-      <WeeklyChart data={weekData} />
-      <MonthlyHeatmap data={monthData} />
+      <TabNav tabs={TABS} active={activeTab} onChange={setActiveTab} />
 
-      {/* Items grouped by type */}
-      {Object.entries(grouped).map(([type, typeItems]) => (
-        <div key={type} className="rounded-2xl bg-card border border-card-border p-4 space-y-1">
-          <div className="flex items-center gap-2 mb-2">
-            <span className="text-accent">{ICONS[type]}</span>
-            <h3 className="text-sm font-semibold">{TYPE_LABELS[type] || type}</h3>
-            <span className="text-xs text-muted ml-auto font-mono">{typeItems.filter((i) => i.completed).length}/{typeItems.length}</span>
-          </div>
-          {typeItems.map((item, i) => {
-            const globalIndex = items.indexOf(item);
-            return (
-              <button key={i} onClick={() => toggle(globalIndex)}
-                className="flex items-center gap-3 w-full py-2.5 px-3 rounded-xl hover:bg-background transition-colors text-left">
-                <div className={clsx('w-6 h-6 rounded-lg border-2 flex items-center justify-center shrink-0 transition-all',
-                  item.completed ? 'bg-accent border-accent' : 'border-card-border')}>
-                  {item.completed && <Check className="w-4 h-4 text-black" />}
-                </div>
-                <span className={clsx('text-sm transition-colors', item.completed ? 'text-muted line-through' : 'text-foreground')}>{item.name}</span>
-              </button>
-            );
-          })}
-        </div>
-      ))}
-
-      {/* Achievements - REAL stats */}
-      <div className="rounded-2xl bg-card border border-card-border p-4">
-        <h3 className="text-sm font-semibold mb-3">🏆 Achievements</h3>
-        <div className="grid grid-cols-3 sm:grid-cols-4 gap-2">
-          {ACHIEVEMENTS.map((a) => {
-            const earned = checkAchievements({
-              totalDaysTracked: history.filter(h => h.total > 0).length,
-              currentStreak: streak,
-              longestStreak,
-              perfectDays,
-              bloodTestsUploaded: bloodTestsCount,
-              protocolsGenerated: protocolsCount,
-              supplementStreak: streak,
-              weeklyCompliance: pct,
-              monthlyAvgCompliance: monthlyAvg,
-            }).some((e) => e.id === a.id);
-            return (
-              <div key={a.id} title={`${a.name}: ${a.description}`}
-                className={clsx('aspect-square rounded-xl border flex flex-col items-center justify-center gap-1 transition-all',
-                  earned ? (a.tier === 'legendary' ? 'bg-amber-500/10 border-amber-500/30' : a.tier === 'gold' ? 'bg-accent/10 border-accent/30' : 'bg-card border-card-border')
-                  : 'bg-background border-card-border opacity-30')}>
-                <span className="text-xl">{a.icon}</span>
-                <span className="text-[8px] text-center leading-tight px-1">{a.name}</span>
+      {activeTab === 'protocol' && (
+        <>
+          <WeeklyChart data={weekData} />
+          <MonthlyHeatmap data={monthData} />
+          {Object.entries(grouped).map(([type, typeItems]) => (
+            <div key={type} className="rounded-2xl bg-card border border-card-border p-4 space-y-1">
+              <div className="flex items-center gap-2 mb-2">
+                <span className="text-accent">{ICONS[type]}</span>
+                <h3 className="text-sm font-semibold">{TYPE_LABELS[type] || type}</h3>
+                <span className="text-xs text-muted ml-auto font-mono">{typeItems.filter(i => i.completed).length}/{typeItems.length}</span>
               </div>
-            );
-          })}
-        </div>
-      </div>
+              {typeItems.map((item, i) => {
+                const globalIndex = items.indexOf(item);
+                return (
+                  <button key={i} onClick={() => toggleCompliance(globalIndex)}
+                    className="flex items-center gap-3 w-full py-2.5 px-3 rounded-xl hover:bg-background transition-colors text-left">
+                    <div className={clsx('w-6 h-6 rounded-lg border-2 flex items-center justify-center shrink-0 transition-all',
+                      item.completed ? 'bg-accent border-accent' : 'border-card-border')}>
+                      {item.completed && <Check className="w-4 h-4 text-black" />}
+                    </div>
+                    <span className={clsx('text-sm transition-colors', item.completed ? 'text-muted line-through' : 'text-foreground')}>{item.name}</span>
+                  </button>
+                );
+              })}
+            </div>
+          ))}
+          {items.length === 0 && (
+            <div className="text-center py-12">
+              <p className="text-muted-foreground">No protocol generated.</p>
+              <a href="/onboarding" className="text-accent text-sm underline mt-2 inline-block">Generate protocol</a>
+            </div>
+          )}
+        </>
+      )}
 
-      {items.length === 0 && (
-        <div className="text-center py-12">
-          <p className="text-muted-foreground">No protocol generated.</p>
-          <a href="/onboarding" className="text-accent text-sm underline mt-2 inline-block">Generate protocol</a>
+      {activeTab === 'habits' && <HabitsTab completed={todayMetrics.habits_completed ?? []} onToggle={toggleHabit} />}
+
+      {activeTab === 'metrics' && <MetricsTab metrics={todayMetrics as DailyMetrics} onChange={(updates) => saveMetrics(updates)} />}
+
+      {activeTab === 'trends' && <TrendsTab metrics={rangeMetrics as DailyMetrics[]} />}
+
+      {activeTab === 'achievements' && (
+        <div className="rounded-2xl bg-card border border-card-border p-4">
+          <h3 className="text-sm font-semibold mb-3">🏆 Achievements</h3>
+          <div className="grid grid-cols-3 sm:grid-cols-4 gap-2">
+            {ACHIEVEMENTS.map((a) => {
+              const earned = checkAchievements({
+                totalDaysTracked: history.filter(h => h.total > 0).length,
+                currentStreak: streak, longestStreak, perfectDays,
+                bloodTestsUploaded: bloodTestsCount, protocolsGenerated: protocolsCount,
+                supplementStreak: streak, weeklyCompliance: pct, monthlyAvgCompliance: monthlyAvg,
+              }).some(e => e.id === a.id);
+              return (
+                <div key={a.id} title={`${a.name}: ${a.description}`}
+                  className={clsx('aspect-square rounded-xl border flex flex-col items-center justify-center gap-1 transition-all',
+                    earned ? (a.tier === 'legendary' ? 'bg-amber-500/10 border-amber-500/30' : a.tier === 'gold' ? 'bg-accent/10 border-accent/30' : 'bg-card border-card-border')
+                    : 'bg-background border-card-border opacity-30')}>
+                  <span className="text-xl">{a.icon}</span>
+                  <span className="text-[8px] text-center leading-tight px-1">{a.name}</span>
+                </div>
+              );
+            })}
+          </div>
         </div>
       )}
     </div>
