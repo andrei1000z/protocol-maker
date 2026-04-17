@@ -35,6 +35,7 @@ export async function POST(request: Request) {
       experimental_openness: body.experimentalOpenness,
       onboarding_completed: body.onboardingCompleted ?? false,
       onboarding_step: body.onboardingStep ?? 0,
+      onboarding_data: body.onboardingData ?? {},
     }).eq('id', user.id);
 
     if (error) return NextResponse.json({ error: error.message }, { status: 500 });
