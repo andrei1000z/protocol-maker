@@ -1,33 +1,150 @@
 'use client';
 
-import { useEffect, useState } from 'react';
-import { FileText, TrendingUp, TrendingDown, Minus, Calendar } from 'lucide-react';
+import { useEffect, useState, useMemo } from 'react';
+import {
+  FileText, TrendingUp, TrendingDown, Minus, Calendar, GitCompareArrows,
+  Activity, Sparkles, Clock,
+} from 'lucide-react';
 import { BIOMARKER_DB } from '@/lib/engine/biomarkers';
 import clsx from 'clsx';
+import { LineChart, Line, ResponsiveContainer, XAxis, YAxis, CartesianGrid, Tooltip } from 'recharts';
 
+// ─────────────────────────────────────────────────────────────────────────────
+// Types
+// ─────────────────────────────────────────────────────────────────────────────
 interface BloodTest {
   id: string;
   taken_at: string;
   biomarkers: { code: string; value: number; unit: string }[];
 }
 
+interface ProtocolRow {
+  id: string;
+  created_at: string;
+  longevity_score: number | null;
+  biological_age: number | null;
+  biological_age_decimal: number | null;
+  aging_pace: number | null;
+  model_used: string | null;
+  generation_source: string | null;
+}
+
+// Lower = better for these codes
+const LOWER_BETTER = new Set([
+  'LDL', 'TRIG', 'HSCRP', 'HOMOCYS', 'HBA1C', 'GLUC', 'INSULIN',
+  'ALT', 'AST', 'GGT', 'CREAT', 'URIC_ACID', 'WBC', 'CORTISOL', 'APOB',
+]);
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Shared card
+// ─────────────────────────────────────────────────────────────────────────────
+function Section({ icon: Icon, title, subtitle, children, action }: {
+  icon: React.ElementType; title: string; subtitle?: string; children: React.ReactNode; action?: React.ReactNode;
+}) {
+  return (
+    <div className="glass-card rounded-2xl p-5 sm:p-6 space-y-4 animate-fade-in-up">
+      <div className="flex items-start justify-between gap-4">
+        <div className="flex items-start gap-3 flex-1 min-w-0">
+          <div className="w-9 h-9 rounded-xl bg-accent/10 border border-accent/20 flex items-center justify-center shrink-0">
+            <Icon className="w-4 h-4 text-accent" />
+          </div>
+          <div className="flex-1 min-w-0">
+            <h2 className="text-base sm:text-lg font-semibold tracking-tight">{title}</h2>
+            {subtitle && <p className="text-xs text-muted-foreground mt-0.5">{subtitle}</p>}
+          </div>
+        </div>
+        {action && <div className="shrink-0">{action}</div>}
+      </div>
+      {children}
+    </div>
+  );
+}
+
+function Stat({ label, value, trend, tone = 'default' }: {
+  label: string; value: React.ReactNode; trend?: React.ReactNode; tone?: 'default' | 'accent' | 'danger' | 'warning';
+}) {
+  const color = tone === 'accent' ? 'text-accent' : tone === 'danger' ? 'text-danger' : tone === 'warning' ? 'text-warning' : 'text-foreground';
+  return (
+    <div className="metric-tile">
+      <p className="text-[10px] text-muted uppercase tracking-widest">{label}</p>
+      <p className={clsx('text-2xl sm:text-3xl font-bold font-mono tabular-nums mt-2 leading-none', color)}>{value}</p>
+      {trend && <div className="mt-2 text-[11px]">{trend}</div>}
+    </div>
+  );
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Page
+// ─────────────────────────────────────────────────────────────────────────────
 export default function HistoryPage() {
   const [tests, setTests] = useState<BloodTest[]>([]);
+  const [protocols, setProtocols] = useState<ProtocolRow[]>([]);
   const [selected, setSelected] = useState<[string | null, string | null]>([null, null]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    fetch('/api/my-data').then(r => r.json()).then(d => {
-      setTests(d.bloodTests || []);
+    Promise.all([
+      fetch('/api/my-data').then(r => r.json()),
+      fetch('/api/protocol-history').then(r => r.json()).catch(() => ({ protocols: [] })),
+    ]).then(([dataRes, protocolRes]) => {
+      const rawTests = (dataRes.bloodTests || []) as BloodTest[];
+      // Sort ascending (oldest first) for natural timeline reading
+      const sortedTests = [...rawTests].sort((a, b) => new Date(a.taken_at).getTime() - new Date(b.taken_at).getTime());
+      setTests(sortedTests);
+      setProtocols(protocolRes.protocols || []);
       setLoading(false);
-    });
+    }).catch(() => setLoading(false));
   }, []);
 
-  if (loading) return <div className="flex items-center justify-center min-h-[60vh]"><div className="w-8 h-8 border-2 border-accent border-t-transparent rounded-full animate-spin" /></div>;
+  // Derived data — protocol timeline chart
+  const protocolChartData = useMemo(() =>
+    protocols.map(p => ({
+      date: new Date(p.created_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric' }),
+      score: p.longevity_score,
+      bioAge: p.biological_age_decimal ?? p.biological_age,
+      pace: p.aging_pace,
+    })), [protocols]
+  );
 
-  const getTest = (id: string) => tests.find(t => t.id === id);
-  const test1 = selected[0] ? getTest(selected[0]) : null;
-  const test2 = selected[1] ? getTest(selected[1]) : null;
+  // Biggest biomarker changes (when ≥2 blood tests exist)
+  const biomarkerChanges = useMemo(() => {
+    if (tests.length < 2) return [];
+    const first = tests[0];
+    const latest = tests[tests.length - 1];
+    const map1 = new Map(first.biomarkers.map(b => [b.code, b.value]));
+    const map2 = new Map(latest.biomarkers.map(b => [b.code, b.value]));
+    const changes: { code: string; name: string; from: number; to: number; pctChange: number; improved: boolean; unit: string }[] = [];
+    for (const [code, v2] of map2.entries()) {
+      const v1 = map1.get(code);
+      if (v1 === undefined || v1 === 0) continue;
+      const ref = BIOMARKER_DB.find(r => r.code === code);
+      const pctChange = ((v2 - v1) / v1) * 100;
+      const lowerBetter = LOWER_BETTER.has(code);
+      const improved = lowerBetter ? pctChange < 0 : pctChange > 0;
+      changes.push({
+        code,
+        name: ref?.shortName || code,
+        from: v1,
+        to: v2,
+        pctChange,
+        improved,
+        unit: ref?.unit || '',
+      });
+    }
+    return changes.sort((a, b) => Math.abs(b.pctChange) - Math.abs(a.pctChange)).slice(0, 10);
+  }, [tests]);
+
+  if (loading) return (
+    <div className="max-w-3xl mx-auto px-4 sm:px-6 py-6 space-y-4">
+      {[1, 2, 3].map(i => (
+        <div key={i} className="glass-card rounded-2xl p-6 animate-pulse">
+          <div className="h-6 w-48 bg-surface-3 rounded mb-3" />
+          <div className="h-4 w-full bg-surface-3 rounded mb-2" />
+          <div className="h-24 w-full bg-surface-3 rounded-xl" />
+        </div>
+      ))}
+    </div>
+  );
 
   const toggleSelect = (id: string) => {
     if (selected[0] === id) setSelected([null, selected[1]]);
@@ -37,92 +154,329 @@ export default function HistoryPage() {
     else setSelected([selected[1], id]);
   };
 
+  const getTest = (id: string) => tests.find(t => t.id === id);
+  const test1 = selected[0] ? getTest(selected[0]) : null;
+  const test2 = selected[1] ? getTest(selected[1]) : null;
+
   const compareMarkers = () => {
     if (!test1 || !test2) return [];
     const map1 = new Map(test1.biomarkers.map(b => [b.code, b.value]));
     const map2 = new Map(test2.biomarkers.map(b => [b.code, b.value]));
     const allCodes = [...new Set([...map1.keys(), ...map2.keys()])];
-
     return allCodes.map(code => {
       const ref = BIOMARKER_DB.find(r => r.code === code);
       const v1 = map1.get(code);
       const v2 = map2.get(code);
       const delta = v1 !== undefined && v2 !== undefined ? v2 - v1 : null;
-      const isLowerBetter = ['LDL', 'TRIG', 'HSCRP', 'HOMOCYS', 'HBA1C', 'GLUC', 'INSULIN', 'ALT', 'AST', 'GGT', 'CREAT', 'URIC_ACID', 'WBC', 'CORTISOL'].includes(code);
-      const improved = delta !== null ? (isLowerBetter ? delta < 0 : delta > 0) : null;
-
-      return { code, name: ref?.shortName || code, v1, v2, delta, improved, unit: ref?.unit || '' };
+      const pctChange = v1 !== undefined && v2 !== undefined && v1 !== 0 ? ((v2 - v1) / v1) * 100 : null;
+      const lowerBetter = LOWER_BETTER.has(code);
+      const improved = delta !== null ? (lowerBetter ? delta < 0 : delta > 0) : null;
+      return { code, name: ref?.shortName || code, v1, v2, delta, pctChange, improved, unit: ref?.unit || '' };
+    }).sort((a, b) => {
+      // Sort: improved markers first, then neutral, then declined
+      const rank = (x: typeof a) => x.improved === true ? 0 : x.improved === false ? 2 : 1;
+      return rank(a) - rank(b);
     });
   };
 
+  // Overall stats
+  const daysTracked = tests.length > 0
+    ? Math.round((Date.now() - new Date(tests[0].taken_at).getTime()) / 864e5)
+    : 0;
+  const latestScore = protocols.length > 0 ? protocols[protocols.length - 1].longevity_score : null;
+  const earliestScore = protocols.length > 0 ? protocols[0].longevity_score : null;
+  const scoreDelta = (latestScore !== null && earliestScore !== null && protocols.length >= 2)
+    ? latestScore - earliestScore
+    : null;
+  const totalBiomarkers = new Set(tests.flatMap(t => t.biomarkers.map(b => b.code))).size;
+
   return (
-    <div className="max-w-2xl mx-auto px-4 py-6 space-y-5">
-      <div>
-        <h1 className="text-2xl font-bold">Blood Test History</h1>
-        <p className="text-sm text-muted-foreground mt-1">Track your biomarkers over time. Select two tests to compare.</p>
+    <div className="max-w-3xl mx-auto px-4 sm:px-6 py-6 sm:py-8 space-y-5">
+      {/* Page header */}
+      <div className="flex items-end justify-between gap-4 animate-fade-in">
+        <div>
+          <h1 className="text-2xl sm:text-3xl font-semibold tracking-tight">History</h1>
+          <p className="text-sm text-muted-foreground mt-1">Your longevity journey over time — tests, protocols, trends.</p>
+        </div>
       </div>
 
-      {tests.length === 0 ? (
-        <div className="text-center py-16 space-y-3">
-          <FileText className="w-12 h-12 text-muted mx-auto" />
-          <p className="text-muted-foreground">No blood tests uploaded yet.</p>
-          <a href="/onboarding" className="text-accent text-sm hover:underline">Upload your first panel</a>
+      {/* Empty state */}
+      {tests.length === 0 && protocols.length === 0 && (
+        <Section icon={FileText} title="Nothing tracked yet" subtitle="Complete onboarding to start building history">
+          <div className="text-center py-10 space-y-4">
+            <div className="w-16 h-16 rounded-2xl bg-surface-2 border border-card-border mx-auto flex items-center justify-center">
+              <Clock className="w-7 h-7 text-muted" />
+            </div>
+            <div>
+              <p className="text-sm font-medium">Your timeline starts with your first protocol</p>
+              <p className="text-xs text-muted-foreground mt-1.5 max-w-sm mx-auto leading-relaxed">
+                Once you complete onboarding, every regeneration + blood test lands here. You&apos;ll see trends the moment you have 2+ data points.
+              </p>
+            </div>
+            <a href="/onboarding" className="inline-block px-5 py-2.5 rounded-xl bg-accent text-black text-sm font-semibold hover:bg-accent-bright transition-colors">
+              Start onboarding
+            </a>
+          </div>
+        </Section>
+      )}
+
+      {/* Overview stats */}
+      {(tests.length > 0 || protocols.length > 0) && (
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-3 animate-fade-in-up">
+          <Stat
+            label="Tests"
+            value={tests.length}
+            trend={totalBiomarkers > 0 && <span className="text-muted-foreground">{totalBiomarkers} unique markers</span>}
+          />
+          <Stat
+            label="Protocols"
+            value={protocols.length}
+            tone={protocols.length > 0 ? 'accent' : 'default'}
+            trend={protocols.length > 0 && <span className="text-muted-foreground">{protocols[protocols.length - 1].generation_source || 'ai'}</span>}
+          />
+          <Stat
+            label="Days tracked"
+            value={daysTracked || '—'}
+            trend={daysTracked > 0 && <span className="text-muted-foreground">since first test</span>}
+          />
+          <Stat
+            label="Score Δ"
+            value={scoreDelta !== null ? `${scoreDelta > 0 ? '+' : ''}${scoreDelta}` : '—'}
+            tone={scoreDelta !== null ? (scoreDelta > 0 ? 'accent' : scoreDelta < 0 ? 'danger' : 'default') : 'default'}
+            trend={scoreDelta !== null && (
+              <span className="text-muted-foreground">{scoreDelta > 0 ? 'improving' : scoreDelta < 0 ? 'declining' : 'steady'}</span>
+            )}
+          />
         </div>
-      ) : (
-        <>
-          {/* Test list */}
-          <div className="space-y-2">
-            {tests.map(test => (
-              <button key={test.id} onClick={() => toggleSelect(test.id)}
-                className={clsx('w-full flex items-center gap-3 p-4 rounded-xl border transition-all text-left',
-                  selected.includes(test.id) ? 'bg-accent/5 border-accent/30' : 'bg-card border-card-border hover:border-card-border')}>
-                <Calendar className={clsx('w-5 h-5', selected.includes(test.id) ? 'text-accent' : 'text-muted')} />
-                <div className="flex-1">
-                  <p className="text-sm font-medium">{new Date(test.taken_at).toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' })}</p>
-                  <p className="text-[10px] text-muted">{test.biomarkers.length} biomarkers</p>
-                </div>
-                {selected.includes(test.id) && (
-                  <span className="text-[10px] px-2 py-0.5 rounded-full bg-accent/20 text-accent">
-                    {selected[0] === test.id ? 'Older' : 'Newer'}
-                  </span>
-                )}
-              </button>
-            ))}
+      )}
+
+      {/* Protocol timeline chart */}
+      {protocols.length >= 2 && (
+        <Section icon={Activity} title="Longevity score timeline" subtitle={`${protocols.length} protocol regenerations over ${Math.round((new Date(protocols[protocols.length - 1].created_at).getTime() - new Date(protocols[0].created_at).getTime()) / 864e5)} days`}>
+          <div className="rounded-xl bg-surface-2 border border-card-border p-4 -mx-1">
+            <ResponsiveContainer width="100%" height={220}>
+              <LineChart data={protocolChartData}>
+                <CartesianGrid strokeDasharray="3 3" stroke="#1d2128" vertical={false} />
+                <XAxis dataKey="date" tick={{ fontSize: 10, fill: '#9ca3af' }} axisLine={false} tickLine={false} />
+                <YAxis tick={{ fontSize: 10, fill: '#9ca3af' }} axisLine={false} tickLine={false} domain={[0, 100]} />
+                <Tooltip
+                  contentStyle={{
+                    background: '#13161c',
+                    border: '1px solid #1d2128',
+                    borderRadius: 12,
+                    fontSize: 12,
+                  }}
+                  labelStyle={{ color: '#ecedef', fontSize: 11 }}
+                  itemStyle={{ color: '#34d399' }}
+                />
+                <Line
+                  type="monotone"
+                  dataKey="score"
+                  stroke="#34d399"
+                  strokeWidth={2.5}
+                  dot={{ fill: '#34d399', r: 4 }}
+                  activeDot={{ r: 6 }}
+                />
+              </LineChart>
+            </ResponsiveContainer>
           </div>
 
-          {/* Comparison view */}
-          {test1 && test2 && (
-            <div className="rounded-2xl bg-card border border-card-border p-5 space-y-4">
-              <h2 className="text-sm font-semibold">Comparison</h2>
-              <div className="grid grid-cols-4 text-[10px] text-muted font-medium py-2 border-b border-card-border">
-                <span>Marker</span>
-                <span className="text-center">{new Date(test1.taken_at).toLocaleDateString('en-US', { month: 'short', year: '2-digit' })}</span>
-                <span className="text-center">{new Date(test2.taken_at).toLocaleDateString('en-US', { month: 'short', year: '2-digit' })}</span>
-                <span className="text-right">Change</span>
+          {/* Bio age timeline — compact */}
+          {protocolChartData.some(p => p.bioAge !== null) && (
+            <div className="rounded-xl bg-surface-2 border border-card-border p-4 -mx-1">
+              <p className="text-[10px] uppercase tracking-widest text-muted mb-2">Biological age</p>
+              <ResponsiveContainer width="100%" height={140}>
+                <LineChart data={protocolChartData}>
+                  <CartesianGrid strokeDasharray="3 3" stroke="#1d2128" vertical={false} />
+                  <XAxis dataKey="date" tick={{ fontSize: 10, fill: '#9ca3af' }} axisLine={false} tickLine={false} />
+                  <YAxis tick={{ fontSize: 10, fill: '#9ca3af' }} axisLine={false} tickLine={false} />
+                  <Tooltip
+                    contentStyle={{
+                      background: '#13161c',
+                      border: '1px solid #1d2128',
+                      borderRadius: 12,
+                      fontSize: 12,
+                    }}
+                    itemStyle={{ color: '#6ee7b7' }}
+                  />
+                  <Line type="monotone" dataKey="bioAge" stroke="#6ee7b7" strokeWidth={2} dot={{ fill: '#6ee7b7', r: 3 }} />
+                </LineChart>
+              </ResponsiveContainer>
+            </div>
+          )}
+        </Section>
+      )}
+
+      {/* Biggest biomarker movers */}
+      {biomarkerChanges.length > 0 && (
+        <Section icon={Sparkles} title="Biggest movers" subtitle={`How your top ${biomarkerChanges.length} biomarkers changed between first and latest test`}>
+          <div className="space-y-1.5">
+            {biomarkerChanges.map(c => (
+              <div key={c.code} className="flex items-center justify-between gap-3 p-3 rounded-xl bg-surface-2 border border-card-border hover:border-card-border-hover transition-colors">
+                <div className="flex items-center gap-3 min-w-0 flex-1">
+                  {c.improved
+                    ? <TrendingUp className="w-4 h-4 text-accent shrink-0" />
+                    : <TrendingDown className="w-4 h-4 text-danger shrink-0" />}
+                  <div className="min-w-0 flex-1">
+                    <p className="text-sm font-medium truncate">{c.name}</p>
+                    <p className="text-[10px] text-muted font-mono">
+                      {c.from.toFixed(1)} <span className="text-muted/60">→</span> {c.to.toFixed(1)} {c.unit}
+                    </p>
+                  </div>
+                </div>
+                <span className={clsx('text-xs font-mono font-semibold px-2.5 py-1 rounded-md shrink-0',
+                  c.improved ? 'pill-optimal' : 'pill-critical')}>
+                  {c.pctChange > 0 ? '+' : ''}{c.pctChange.toFixed(1)}%
+                </span>
               </div>
-              {compareMarkers().map(m => (
-                <div key={m.code} className="grid grid-cols-4 items-center py-1.5 text-xs border-b border-card-border last:border-0">
-                  <span className="font-medium">{m.name}</span>
-                  <span className="text-center font-mono text-muted">{m.v1 ?? '-'}</span>
-                  <span className="text-center font-mono">{m.v2 ?? '-'}</span>
-                  <div className="flex items-center justify-end gap-1">
-                    {m.delta !== null && (
+            ))}
+          </div>
+        </Section>
+      )}
+
+      {/* Blood test list */}
+      {tests.length > 0 && (
+        <Section
+          icon={FileText}
+          title="Blood tests"
+          subtitle={tests.length === 1 ? '1 test on file · upload another to compare' : `Select any two to compare (${tests.length} on file)`}
+        >
+          <div className="space-y-2">
+            {[...tests].reverse().map((test) => {
+              const isSelected = selected.includes(test.id);
+              const role = selected[0] === test.id ? 'older' : selected[1] === test.id ? 'newer' : null;
+              return (
+                <button
+                  key={test.id}
+                  onClick={() => toggleSelect(test.id)}
+                  className={clsx('w-full flex items-center gap-3 p-4 rounded-xl border transition-all text-left',
+                    isSelected
+                      ? 'bg-accent/8 border-accent/40'
+                      : 'bg-surface-2 border-card-border hover:border-card-border-hover')}
+                >
+                  <div className={clsx('w-10 h-10 rounded-lg flex items-center justify-center shrink-0 transition-colors',
+                    isSelected ? 'bg-accent/15' : 'bg-surface-3')}>
+                    <Calendar className={clsx('w-4 h-4', isSelected ? 'text-accent' : 'text-muted-foreground')} />
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm font-medium truncate">
+                      {new Date(test.taken_at).toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' })}
+                    </p>
+                    <p className="text-[11px] text-muted-foreground">{test.biomarkers.length} biomarkers</p>
+                  </div>
+                  {role && (
+                    <span className={clsx('text-[10px] font-semibold uppercase tracking-wider px-2.5 py-1 rounded-full shrink-0',
+                      role === 'older' ? 'pill-suboptimal' : 'pill-optimal')}>
+                      {role}
+                    </span>
+                  )}
+                </button>
+              );
+            })}
+          </div>
+          {tests.length === 1 && (
+            <div className="mt-2 p-3 rounded-xl bg-surface-2 border border-dashed border-card-border">
+              <p className="text-[11px] text-muted-foreground leading-relaxed">
+                Upload a second test (via onboarding regeneration) to unlock side-by-side comparison + % change trends.
+              </p>
+            </div>
+          )}
+        </Section>
+      )}
+
+      {/* Comparison view — only when 2 selected */}
+      {test1 && test2 && (() => {
+        const markers = compareMarkers();
+        const improvedCount = markers.filter(m => m.improved === true).length;
+        const declinedCount = markers.filter(m => m.improved === false).length;
+        return (
+          <Section
+            icon={GitCompareArrows}
+            title="Test comparison"
+            subtitle={`${new Date(test1.taken_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })} → ${new Date(test2.taken_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}`}
+          >
+            <div className="grid grid-cols-3 gap-2 mb-2">
+              <Stat label="Improved" value={improvedCount} tone="accent" />
+              <Stat label="Declined" value={declinedCount} tone={declinedCount > 0 ? 'danger' : 'default'} />
+              <Stat label="Tracked" value={markers.length} />
+            </div>
+
+            <div className="space-y-1 mt-3">
+              {/* Column headers */}
+              <div className="grid grid-cols-12 gap-3 px-3 pb-2 text-[10px] text-muted uppercase tracking-widest border-b border-card-border">
+                <span className="col-span-4">Marker</span>
+                <span className="col-span-3 text-right">Older</span>
+                <span className="col-span-3 text-right">Newer</span>
+                <span className="col-span-2 text-right">Change</span>
+              </div>
+              {markers.map(m => (
+                <div key={m.code} className="grid grid-cols-12 gap-3 px-3 py-2.5 items-center text-xs rounded-lg hover:bg-surface-2 transition-colors">
+                  <span className="col-span-4 font-medium truncate">{m.name}</span>
+                  <span className="col-span-3 text-right font-mono text-muted-foreground tabular-nums">{m.v1?.toFixed(1) ?? '—'}</span>
+                  <span className="col-span-3 text-right font-mono font-semibold tabular-nums">{m.v2?.toFixed(1) ?? '—'}</span>
+                  <div className="col-span-2 flex items-center justify-end gap-1">
+                    {m.delta !== null ? (
                       <>
                         {m.improved === true && <TrendingUp className="w-3 h-3 text-accent" />}
-                        {m.improved === false && <TrendingDown className="w-3 h-3 text-red-400" />}
-                        {m.delta === 0 && <Minus className="w-3 h-3 text-muted" />}
-                        <span className={clsx('font-mono', m.improved === true ? 'text-accent' : m.improved === false ? 'text-red-400' : 'text-muted')}>
-                          {m.delta > 0 ? '+' : ''}{m.delta.toFixed(1)}
+                        {m.improved === false && <TrendingDown className="w-3 h-3 text-danger" />}
+                        {m.improved === null && <Minus className="w-3 h-3 text-muted" />}
+                        <span className={clsx('font-mono font-semibold tabular-nums',
+                          m.improved === true ? 'text-accent' : m.improved === false ? 'text-danger' : 'text-muted')}>
+                          {m.pctChange !== null ? `${m.pctChange > 0 ? '+' : ''}${m.pctChange.toFixed(0)}%` : ''}
                         </span>
                       </>
-                    )}
+                    ) : <span className="text-muted">—</span>}
                   </div>
                 </div>
               ))}
             </div>
-          )}
-        </>
+          </Section>
+        );
+      })()}
+
+      {/* Protocol regeneration log */}
+      {protocols.length > 0 && (
+        <Section icon={Clock} title="Protocol regenerations" subtitle={`${protocols.length} generation${protocols.length === 1 ? '' : 's'} saved`}>
+          <div className="space-y-1.5">
+            {[...protocols].reverse().slice(0, 10).map((p, i, arr) => {
+              const prev = arr[i + 1];
+              const scoreDiff = prev && p.longevity_score !== null && prev.longevity_score !== null
+                ? p.longevity_score - prev.longevity_score
+                : null;
+              return (
+                <div key={p.id} className="flex items-center gap-3 p-3 rounded-xl bg-surface-2 border border-card-border">
+                  <div className="w-10 h-10 rounded-lg bg-surface-3 flex items-center justify-center shrink-0">
+                    <span className="text-[9px] font-mono uppercase tracking-wider text-muted-foreground">{p.generation_source?.slice(0, 4) || 'prot'}</span>
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm font-medium truncate">
+                      {new Date(p.created_at).toLocaleString('en-US', { month: 'short', day: 'numeric', year: 'numeric', hour: '2-digit', minute: '2-digit' })}
+                    </p>
+                    <div className="flex items-center gap-2 text-[11px] text-muted-foreground mt-0.5">
+                      {p.longevity_score !== null && <span>Score <span className="text-accent font-mono">{p.longevity_score}</span></span>}
+                      {p.biological_age_decimal !== null && <span>· Bio {p.biological_age_decimal.toFixed(1)}y</span>}
+                      {p.aging_pace !== null && <span>· Pace {p.aging_pace}×</span>}
+                    </div>
+                  </div>
+                  {scoreDiff !== null && scoreDiff !== 0 && (
+                    <span className={clsx('text-[11px] font-mono font-semibold px-2 py-0.5 rounded-md shrink-0',
+                      scoreDiff > 0 ? 'pill-optimal' : 'pill-critical')}>
+                      {scoreDiff > 0 ? '+' : ''}{scoreDiff}
+                    </span>
+                  )}
+                </div>
+              );
+            })}
+            {protocols.length > 10 && (
+              <p className="text-[11px] text-center text-muted pt-2">Showing latest 10 of {protocols.length}</p>
+            )}
+          </div>
+        </Section>
       )}
+
+      <p className="text-[11px] text-center text-muted pt-2">
+        New data logged daily via tracking. Protocol auto-regenerates every night at 3 AM Romania time.
+      </p>
     </div>
   );
 }
