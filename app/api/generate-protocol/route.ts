@@ -106,8 +106,8 @@ export async function POST(request: Request) {
 
     const generationTime = Date.now() - startTime;
 
-    // Save to database
-    await supabase.from('protocols').insert({
+    // Save to database (don't fail the request if DB save fails)
+    const { error: dbError } = await supabase.from('protocols').insert({
       user_id: user.id,
       protocol_json: protocolJson,
       classified_biomarkers: classified,
@@ -115,9 +115,11 @@ export async function POST(request: Request) {
       longevity_score: longevityScore,
       biological_age: biologicalAge,
       model_used: modelUsed,
-      prompt_hash: promptHash,
-      generation_time_ms: generationTime,
     });
+
+    if (dbError) {
+      console.error('DB save error (non-fatal):', dbError);
+    }
 
     return NextResponse.json({ protocol: protocolJson, longevityScore, biologicalAge, patterns, generationTime, modelUsed });
   } catch (err) {

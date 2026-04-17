@@ -152,7 +152,10 @@ export default function OnboardingPage() {
         await fetch('/api/save-bloodtest', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ biomarkers: biomarkerValues }) });
       }
       const genRes = await fetch('/api/generate-protocol', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ profile: profileData, biomarkers: biomarkerValues }) });
-      if (!genRes.ok) throw new Error('Protocol generation failed');
+      if (!genRes.ok) {
+        const errData = await genRes.json().catch(() => ({}));
+        throw new Error(errData.error || `Protocol generation failed (${genRes.status})`);
+      }
       window.location.href = '/dashboard';
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Error. Try again.');
