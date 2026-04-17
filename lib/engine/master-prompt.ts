@@ -307,6 +307,72 @@ export function buildMasterPromptV2(
     ? profile.currentSupplements.join(', ')
     : 'None reported';
 
+  // Rich onboarding context (if available)
+  const od = (profile as UserProfile & { onboardingData?: Record<string, unknown> }).onboardingData || {};
+  const chronotype = od.chronotype as string | undefined;
+  const bedtime = od.bedtime as string | undefined;
+  const wakeTime = od.wakeTime as string | undefined;
+  const sleepIssues = (od.sleepIssues as string[] | undefined) || [];
+  const workStart = od.workStart as string | undefined;
+  const workEnd = od.workEnd as string | undefined;
+  const workLocation = od.workLocation as string | undefined;
+  const sittingHours = od.sittingHours as number | undefined;
+  const exerciseWindow = od.exerciseWindow as string | undefined;
+  const screenTime = od.screenTime as number | undefined;
+  const stressLevel = od.stressLevel as number | undefined;
+  const meditationPractice = od.meditationPractice as string | undefined;
+  const familyHistory = (od.familyHistory as string[] | undefined) || [];
+  const foodAllergies = (od.foodAllergies as string[] | undefined) || [];
+  const painPoints = od.painPoints as string | undefined;
+  const nonNegotiables = od.nonNegotiables as string | undefined;
+  const primaryGoal = od.primaryGoal as string | undefined;
+  const specificTarget = od.specificTarget as string | undefined;
+  const timelineMonths = od.timelineMonths as number | undefined;
+  const ethnicity = od.ethnicity as string | undefined;
+  const restingHR = od.restingHR as number | undefined;
+
+  const personalContext = `
+═══ PATIENT'S DAILY CONTEXT ═══
+${workStart || workEnd ? `Work schedule: ${workStart || '?'} - ${workEnd || '?'}${workLocation ? ` (${workLocation})` : ''}` : ''}
+${sittingHours !== undefined ? `Sitting hours/day: ${sittingHours}` : ''}
+${screenTime !== undefined ? `Screen time/day: ${screenTime} hours` : ''}
+${exerciseWindow ? `Preferred exercise window: ${exerciseWindow}` : ''}
+${bedtime && wakeTime ? `Current sleep schedule: ${bedtime} → ${wakeTime}` : ''}
+${chronotype ? `Chronotype: ${chronotype} person` : ''}
+${sleepIssues.length > 0 ? `Sleep issues: ${sleepIssues.join(', ')}` : ''}
+${stressLevel !== undefined ? `Stress level: ${stressLevel}/10` : ''}
+${meditationPractice ? `Meditation practice: ${meditationPractice}` : ''}
+${familyHistory.length > 0 ? `Family history: ${familyHistory.join(', ')} — FACTOR THIS INTO RISK STRATIFICATION` : ''}
+${foodAllergies.length > 0 ? `Food allergies/intolerances: ${foodAllergies.join(', ')} — NEVER recommend these foods` : ''}
+${ethnicity ? `Ethnicity: ${ethnicity} — adjust biomarker ranges if relevant` : ''}
+${restingHR ? `Resting HR: ${restingHR} bpm` : ''}
+
+═══ DERIVE FROM CONTEXT ═══
+- Target bedtime = wake time - 8.5 hours (unless user states different preference)
+- Eating window = align with work schedule + sleep target (TRE 8-10h when possible)
+- Exercise timing = within preferred window ${exerciseWindow ? `(${exerciseWindow})` : ''}
+- ${familyHistory.includes('Diabetes') ? 'FAMILY HISTORY of diabetes: prioritize glucose/insulin interventions EVEN IF biomarkers are currently OK' : ''}
+- ${familyHistory.includes('Heart disease') ? 'FAMILY HISTORY of heart disease: prioritize CV risk reduction (ApoB, Lp(a), hsCRP)' : ''}
+- ${familyHistory.includes("Alzheimer's") ? "FAMILY HISTORY of Alzheimer's: prioritize brain health (omega-3, sleep, exercise, glucose control)" : ''}
+`;
+
+  const painPointsBlock = painPoints ? `
+═══ CURRENT PAIN POINTS (address directly in painPointSolutions) ═══
+${painPoints}
+` : '';
+
+  const nonNegotiablesBlock = nonNegotiables ? `
+═══ NON-NEGOTIABLES (build flex strategies, don't demand elimination) ═══
+${nonNegotiables}
+` : '';
+
+  const goalsBlock = primaryGoal || specificTarget || timelineMonths ? `
+═══ GOAL DETAILS ═══
+${primaryGoal ? `Primary goal: ${primaryGoal}` : ''}
+${specificTarget ? `Specific target: "${specificTarget}" — measure progress toward this directly` : ''}
+${timelineMonths ? `Timeline: ${timelineMonths} month${timelineMonths > 1 ? 's' : ''} commitment` : ''}
+` : '';
+
   return `IDENTITY:
 You are the world's foremost longevity physician, synthesizing the expertise of Peter Attia (metabolic health), Rhonda Patrick (nutrigenomics), Andrew Huberman (neuroscience/sleep), David Sinclair (aging biology), and Bryan Johnson's medical team (comprehensive optimization). You have access to the complete body of longevity literature through 2026.
 
@@ -370,6 +436,11 @@ ${biomarkerSummary}` : '═══ NO BIOMARKERS PROVIDED ═══\nGenerate a l
 
 ═══ DETECTED PATTERNS ═══
 ${patternSummary}
+
+${personalContext}
+${painPointsBlock}
+${nonNegotiablesBlock}
+${goalsBlock}
 
 ${hasCritical ? `\n🚨 CRITICAL VALUES DETECTED 🚨\n${criticalMarkers.map(b => {
   const ref = biomarkerRefs.find(r => r.code === b.code);
@@ -553,7 +624,33 @@ Return ONLY valid JSON matching this EXACT structure. No markdown, no backticks,
     "quarterlyTesting": <RON>,
     "totalMonthlyOngoing": <RON>,
     "currency": "RON"
-  }
+  },
+  ${painPoints ? `"painPointSolutions": [
+    {
+      "problem": "<verbatim from patient's pain points>",
+      "likelyCause": "<root cause analysis based on their biomarkers + lifestyle>",
+      "solution": "<specific, actionable intervention>",
+      "expectedTimeline": "<e.g. 'Improvements within 1 week, full resolution 3-4 weeks'>"
+    }
+  ],` : ''}
+  ${nonNegotiables ? `"flexRules": [
+    {
+      "scenario": "<verbatim non-negotiable from patient>",
+      "strategy": "<specific mitigation that keeps the habit but minimizes damage>"
+    }
+  ],` : ''}
+  "weekByWeekPlan": [
+    { "week": 1, "focus": "<theme>",
+      "mondayActions": ["<specific action>"],
+      "wednesdayActions": ["<specific action>"],
+      "fridayActions": ["<specific action>"],
+      "weekendActions": ["<specific action>"],
+      "endOfWeekCheck": ["<what to review>"]
+    }
+  ],
+  "doctorQuestions": [
+    "<specific question to ask their doctor at next appointment, ranked by priority>"
+  ]
 }
 
 FINAL REMINDERS:

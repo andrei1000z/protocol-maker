@@ -402,6 +402,75 @@ export default function DashboardPage() {
         </Section>
       )}
 
+      {/* Pain Point Solutions */}
+      {p.painPointSolutions && p.painPointSolutions.length > 0 && (
+        <Section title="Your Pain Points" icon="🎯">
+          <div className="space-y-3">
+            {p.painPointSolutions.map((pp, i) => (
+              <div key={i} className="p-4 rounded-xl bg-background border border-card-border space-y-2">
+                <p className="text-sm font-semibold text-accent">⚡ {pp.problem}</p>
+                <div className="space-y-1 text-xs">
+                  <p className="text-muted-foreground"><span className="text-amber-400 font-medium">Cause:</span> {pp.likelyCause}</p>
+                  <p className="text-muted-foreground"><span className="text-accent font-medium">Solution:</span> {pp.solution}</p>
+                  <p className="text-muted"><span className="text-muted-foreground font-medium">Timeline:</span> {pp.expectedTimeline}</p>
+                </div>
+              </div>
+            ))}
+          </div>
+        </Section>
+      )}
+
+      {/* Flex Rules */}
+      {p.flexRules && p.flexRules.length > 0 && (
+        <Section title="Flex Strategies" icon="🧘">
+          <p className="text-[10px] text-muted-foreground">Life strategies that keep your non-negotiables without derailing the protocol.</p>
+          <div className="space-y-2">
+            {p.flexRules.map((f, i) => (
+              <div key={i} className="p-3 rounded-xl bg-background border border-card-border">
+                <p className="text-sm font-medium text-accent mb-1">🎯 {f.scenario}</p>
+                <p className="text-xs text-muted-foreground">{f.strategy}</p>
+              </div>
+            ))}
+          </div>
+        </Section>
+      )}
+
+      {/* Week-by-Week Plan */}
+      {p.weekByWeekPlan && p.weekByWeekPlan.length > 0 && (
+        <Section title="Next 4 Weeks — Concrete" icon="📅">
+          <div className="space-y-3">
+            {p.weekByWeekPlan.slice(0, 4).map((w, i) => (
+              <div key={i} className="p-3 rounded-xl bg-background border border-card-border space-y-2">
+                <div className="flex items-center gap-2">
+                  <span className="text-xs font-mono text-accent font-bold">Week {w.week}</span>
+                  <span className="text-xs text-muted-foreground">{w.focus}</span>
+                </div>
+                {w.mondayActions && w.mondayActions.length > 0 && <div><p className="text-[10px] text-accent uppercase tracking-wider">Monday</p>{w.mondayActions.map((a, j) => <p key={j} className="text-xs text-muted-foreground">• {a}</p>)}</div>}
+                {w.wednesdayActions && w.wednesdayActions.length > 0 && <div><p className="text-[10px] text-accent uppercase tracking-wider">Wednesday</p>{w.wednesdayActions.map((a, j) => <p key={j} className="text-xs text-muted-foreground">• {a}</p>)}</div>}
+                {w.fridayActions && w.fridayActions.length > 0 && <div><p className="text-[10px] text-accent uppercase tracking-wider">Friday</p>{w.fridayActions.map((a, j) => <p key={j} className="text-xs text-muted-foreground">• {a}</p>)}</div>}
+                {w.weekendActions && w.weekendActions.length > 0 && <div><p className="text-[10px] text-accent uppercase tracking-wider">Weekend</p>{w.weekendActions.map((a, j) => <p key={j} className="text-xs text-muted-foreground">• {a}</p>)}</div>}
+                {w.endOfWeekCheck && w.endOfWeekCheck.length > 0 && <div><p className="text-[10px] text-amber-400 uppercase tracking-wider">End-of-week check</p>{w.endOfWeekCheck.map((a, j) => <p key={j} className="text-xs text-muted-foreground">• {a}</p>)}</div>}
+              </div>
+            ))}
+          </div>
+        </Section>
+      )}
+
+      {/* Doctor Questions */}
+      {p.doctorQuestions && p.doctorQuestions.length > 0 && (
+        <Section title="Questions for Your Doctor" icon="📋">
+          <p className="text-[10px] text-muted-foreground">Print this for your next appointment.</p>
+          <div className="space-y-2">
+            {p.doctorQuestions.map((q, i) => (
+              <div key={i} className="flex gap-3 p-3 rounded-xl bg-background border border-card-border">
+                <span className="text-xs font-mono text-accent shrink-0">{i + 1}.</span>
+                <p className="text-sm">{q}</p>
+              </div>
+            ))}
+          </div>
+        </Section>
+      )}
+
       {/* Doctor Discussion */}
       {p.doctorDiscussion && (p.doctorDiscussion.redFlags?.length > 0 || p.doctorDiscussion.rxSuggestions?.length > 0 || p.doctorDiscussion.specialistReferrals?.length > 0) && (
         <Section title="Doctor Discussion" icon="👨‍⚕️">

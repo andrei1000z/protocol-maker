@@ -199,4 +199,24 @@ export interface ProtocolOutput {
     totalMonthlyOngoing: number;
     currency: string;
   };
+  painPointSolutions?: {
+    problem: string;
+    likelyCause: string;
+    solution: string;
+    expectedTimeline: string;
+  }[];
+  flexRules?: {
+    scenario: string;
+    strategy: string;
+  }[];
+  weekByWeekPlan?: {
+    week: number;
+    focus: string;
+    mondayActions?: string[];
+    wednesdayActions?: string[];
+    fridayActions?: string[];
+    weekendActions?: string[];
+    endOfWeekCheck?: string[];
+  }[];
+  doctorQuestions?: string[];
 }
