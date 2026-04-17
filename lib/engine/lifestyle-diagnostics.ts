@@ -565,17 +565,24 @@ export interface BryanSummary {
   keyGaps: { marker: string; your: number | string; bryan: number | string }[];
 }
 
+// Bryan Johnson's published longevity benchmarks (April 2026 snapshot).
+// Kept here as constants so UI can show side-by-side comparisons without
+// hard-coding magic numbers in components.
+export const BRYAN = {
+  chronoAge: 48,      // born Aug 1977 → ~48.7y as of April 2026
+  bioAge: 42.0,       // epigenetic age from his published tests (Horvath DNAm)
+  longevityScore: 94, // our scoring → Bryan tier
+  agingPace: 0.64,    // DunedinPACE self-reported
+} as const;
+
 export function buildBryanSummary(
   longevityScore: number,
   agingPace: number,
   chronoAge: number,
   bioAgeDecimal: number
 ): BryanSummary {
-  const BRYAN_SCORE = 94;
-  const BRYAN_PACE = 0.64;
-
-  const longevityScoreGap = longevityScore - BRYAN_SCORE;
-  const agingPaceGap = +(BRYAN_PACE - agingPace).toFixed(2);  // if yours < Bryan's, you're ahead
+  const longevityScoreGap = longevityScore - BRYAN.longevityScore;
+  const agingPaceGap = +(BRYAN.agingPace - agingPace).toFixed(2);  // if yours < Bryan's, you're ahead
   const bioAgePctDifference = chronoAge > 0 ? +((chronoAge - bioAgeDecimal) / chronoAge * 100).toFixed(1) : 0;
 
   let verdict = '';

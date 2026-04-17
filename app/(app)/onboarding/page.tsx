@@ -650,7 +650,7 @@ export default function OnboardingPage() {
 
             <div>
               <label className="text-xs text-muted-foreground mb-2 block">Activity Level: <span className="text-accent font-medium">{activityLabels[activityLevel]}</span></label>
-              <input type="range" min={0} max={4} value={activityLevel} onChange={e => setActivityLevel(parseInt(e.target.value))} className="w-full h-2 bg-card-border rounded-lg appearance-none cursor-pointer accent-[#00ff88]" />
+              <input type="range" min={0} max={4} value={activityLevel} onChange={e => setActivityLevel(parseInt(e.target.value))} className="w-full h-2 bg-card-border rounded-lg appearance-none cursor-pointer accent-[#34d399]" />
               <div className="flex justify-between text-[9px] text-muted mt-1">{activityLabels.map(l => <span key={l}>{l}</span>)}</div>
             </div>
 
@@ -867,7 +867,7 @@ export default function OnboardingPage() {
               </div>
               <div>
                 <label className="text-xs text-muted-foreground mb-2 block">How disciplined do you consider yourself? <span className="text-accent">{discipline}/10</span></label>
-                <input type="range" min={1} max={10} value={discipline} onChange={e => setDiscipline(parseInt(e.target.value))} className="w-full h-2 bg-card-border rounded-lg appearance-none cursor-pointer accent-[#00ff88]" />
+                <input type="range" min={1} max={10} value={discipline} onChange={e => setDiscipline(parseInt(e.target.value))} className="w-full h-2 bg-card-border rounded-lg appearance-none cursor-pointer accent-[#34d399]" />
               </div>
               <div className="flex items-center gap-3">
                 <button onClick={() => setSupportSystem(!supportSystem)} className={clsx('w-6 h-6 rounded-lg border-2 flex items-center justify-center shrink-0', supportSystem ? 'bg-accent border-accent' : 'border-card-border')}>{supportSystem && <span className="text-black text-xs">✓</span>}</button>
@@ -1048,7 +1048,7 @@ export default function OnboardingPage() {
 
               <div>
                 <label className="text-xs text-muted-foreground mb-2 block">% of meals cooked at home: <span className="text-accent font-medium">{cooksAtHome}%</span></label>
-                <input type="range" min={0} max={100} step={5} value={cooksAtHome} onChange={e => setCooksAtHome(parseInt(e.target.value))} className="w-full h-2 bg-card-border rounded-lg appearance-none cursor-pointer accent-[#00ff88]" />
+                <input type="range" min={0} max={100} step={5} value={cooksAtHome} onChange={e => setCooksAtHome(parseInt(e.target.value))} className="w-full h-2 bg-card-border rounded-lg appearance-none cursor-pointer accent-[#34d399]" />
               </div>
 
               <p className="text-[10px] text-accent uppercase tracking-wider mt-2">Food frequencies</p>
@@ -1128,7 +1128,7 @@ export default function OnboardingPage() {
                 <div><label className="text-xs text-muted-foreground">Cardio (min/week)</label><input type="number" value={cardioMin} onChange={e => setCardioMin(parseInt(e.target.value) || 0)} min={0} max={1000} className="w-full mt-1 rounded-xl bg-card border border-card-border px-3 py-2.5 text-sm outline-none focus:border-accent font-mono" /></div>
                 <div><label className="text-xs text-muted-foreground">Strength sessions/week</label><input type="number" value={strengthSessions} onChange={e => setStrengthSessions(parseInt(e.target.value) || 0)} min={0} max={7} className="w-full mt-1 rounded-xl bg-card border border-card-border px-3 py-2.5 text-sm outline-none focus:border-accent font-mono" /></div>
                 <div><label className="text-xs text-muted-foreground">Daily steps (avg)</label><input type="number" value={stepsPerDay} onChange={e => setStepsPerDay(e.target.value)} placeholder="8000" className="w-full mt-1 rounded-xl bg-card border border-card-border px-3 py-2.5 text-sm outline-none focus:border-accent font-mono" /></div>
-                <div><label className="text-xs text-muted-foreground">Self-rated fitness (1-10): <span className="text-accent font-medium">{fitnessLevel}</span></label><input type="range" min={1} max={10} value={fitnessLevel} onChange={e => setFitnessLevel(parseInt(e.target.value))} className="w-full mt-2 h-2 bg-card-border rounded-lg appearance-none cursor-pointer accent-[#00ff88]" /></div>
+                <div><label className="text-xs text-muted-foreground">Self-rated fitness (1-10): <span className="text-accent font-medium">{fitnessLevel}</span></label><input type="range" min={1} max={10} value={fitnessLevel} onChange={e => setFitnessLevel(parseInt(e.target.value))} className="w-full mt-2 h-2 bg-card-border rounded-lg appearance-none cursor-pointer accent-[#34d399]" /></div>
               </div>
 
               <div>
@@ -1167,13 +1167,13 @@ export default function OnboardingPage() {
             {/* Mental/Stress */}
             <CollapseSection title="🧠 Mental Health & Stress" expanded={lifestyleExpanded.mental} onToggle={() => setLifestyleExpanded(p => ({ ...p, mental: !p.mental }))}>
               <div><label className="text-xs text-muted-foreground mb-2 block">Stress level (1-10): <span className="text-accent font-medium">{stressLevel}</span></label>
-                <input type="range" min={1} max={10} value={stressLevel} onChange={e => setStressLevel(parseInt(e.target.value))} className="w-full h-2 bg-card-border rounded-lg appearance-none cursor-pointer accent-[#00ff88]" />
+                <input type="range" min={1} max={10} value={stressLevel} onChange={e => setStressLevel(parseInt(e.target.value))} className="w-full h-2 bg-card-border rounded-lg appearance-none cursor-pointer accent-[#34d399]" />
               </div>
               <div><label className="text-xs text-muted-foreground mb-2 block">Happiness / life satisfaction (1-10): <span className="text-accent font-medium">{happinessScore}</span></label>
-                <input type="range" min={1} max={10} value={happinessScore} onChange={e => setHappinessScore(parseInt(e.target.value))} className="w-full h-2 bg-card-border rounded-lg appearance-none cursor-pointer accent-[#00ff88]" />
+                <input type="range" min={1} max={10} value={happinessScore} onChange={e => setHappinessScore(parseInt(e.target.value))} className="w-full h-2 bg-card-border rounded-lg appearance-none cursor-pointer accent-[#34d399]" />
               </div>
               <div><label className="text-xs text-muted-foreground mb-2 block">Sense of purpose / meaning (1-10): <span className="text-accent font-medium">{lifeSenseOfPurpose}</span></label>
-                <input type="range" min={1} max={10} value={lifeSenseOfPurpose} onChange={e => setLifeSenseOfPurpose(parseInt(e.target.value))} className="w-full h-2 bg-card-border rounded-lg appearance-none cursor-pointer accent-[#00ff88]" />
+                <input type="range" min={1} max={10} value={lifeSenseOfPurpose} onChange={e => setLifeSenseOfPurpose(parseInt(e.target.value))} className="w-full h-2 bg-card-border rounded-lg appearance-none cursor-pointer accent-[#34d399]" />
               </div>
               <div><label className="text-xs text-muted-foreground mb-2 block">Meditation / mindfulness</label>
                 <div className="flex gap-2">
@@ -1295,7 +1295,7 @@ export default function OnboardingPage() {
 
               <p className="text-[10px] text-accent uppercase tracking-wider mt-2">Sex & reproductive</p>
               <div><label className="text-xs text-muted-foreground mb-2 block">Libido (1-10): <span className="text-accent font-medium">{libidoScore}</span></label>
-                <input type="range" min={1} max={10} value={libidoScore} onChange={e => setLibidoScore(parseInt(e.target.value))} className="w-full h-2 bg-card-border rounded-lg appearance-none cursor-pointer accent-[#00ff88]" />
+                <input type="range" min={1} max={10} value={libidoScore} onChange={e => setLibidoScore(parseInt(e.target.value))} className="w-full h-2 bg-card-border rounded-lg appearance-none cursor-pointer accent-[#34d399]" />
               </div>
 
               {sex === 'male' && (
@@ -1323,7 +1323,7 @@ export default function OnboardingPage() {
                     </select>
                   </div>
                   <div><label className="text-xs text-muted-foreground mb-2 block">PMS severity (0-10): <span className="text-accent font-medium">{pmsSeverity}</span></label>
-                    <input type="range" min={0} max={10} value={pmsSeverity} onChange={e => setPmsSeverity(parseInt(e.target.value))} className="w-full h-2 bg-card-border rounded-lg appearance-none cursor-pointer accent-[#00ff88]" />
+                    <input type="range" min={0} max={10} value={pmsSeverity} onChange={e => setPmsSeverity(parseInt(e.target.value))} className="w-full h-2 bg-card-border rounded-lg appearance-none cursor-pointer accent-[#34d399]" />
                   </div>
                   <div><label className="text-xs text-muted-foreground">Menopause status</label>
                     <select value={menopauseStatus} onChange={e => setMenopauseStatus(e.target.value)} className="w-full mt-1 rounded-xl bg-card border border-card-border px-3 py-2.5 text-sm outline-none focus:border-accent">
@@ -1443,7 +1443,7 @@ export default function OnboardingPage() {
                 </select>
               </div>
               <div><label className="text-xs text-muted-foreground mb-2 block">Relationship satisfaction (1-10): <span className="text-accent font-medium">{relationshipSatisfaction}</span></label>
-                <input type="range" min={1} max={10} value={relationshipSatisfaction} onChange={e => setRelationshipSatisfaction(parseInt(e.target.value))} className="w-full h-2 bg-card-border rounded-lg appearance-none cursor-pointer accent-[#00ff88]" />
+                <input type="range" min={1} max={10} value={relationshipSatisfaction} onChange={e => setRelationshipSatisfaction(parseInt(e.target.value))} className="w-full h-2 bg-card-border rounded-lg appearance-none cursor-pointer accent-[#34d399]" />
               </div>
               <div className="grid grid-cols-2 gap-3">
                 <div>
@@ -1452,7 +1452,7 @@ export default function OnboardingPage() {
                 </div>
                 <div>
                   <label className="text-xs text-muted-foreground mb-2 block">Loneliness (1-10): <span className="text-accent font-medium">{lonelinessLevel}</span></label>
-                  <input type="range" min={1} max={10} value={lonelinessLevel} onChange={e => setLonelinessLevel(parseInt(e.target.value))} className="w-full mt-2 h-2 bg-card-border rounded-lg appearance-none cursor-pointer accent-[#00ff88]" />
+                  <input type="range" min={1} max={10} value={lonelinessLevel} onChange={e => setLonelinessLevel(parseInt(e.target.value))} className="w-full mt-2 h-2 bg-card-border rounded-lg appearance-none cursor-pointer accent-[#34d399]" />
                 </div>
               </div>
               <div className="grid grid-cols-2 gap-2">
@@ -1482,8 +1482,8 @@ export default function OnboardingPage() {
               </div>
             </div>
             <div className="grid grid-cols-2 gap-3">
-              <div><label className="text-xs text-muted-foreground">Sitting hours/day: <span className="text-accent">{sittingHours}</span></label><input type="range" min={0} max={16} value={sittingHours} onChange={e => setSittingHours(parseInt(e.target.value))} className="w-full mt-2 h-2 bg-card-border rounded-lg appearance-none cursor-pointer accent-[#00ff88]" /></div>
-              <div><label className="text-xs text-muted-foreground">Screen time/day: <span className="text-accent">{screenTime}h</span></label><input type="range" min={1} max={16} value={screenTime} onChange={e => setScreenTime(parseInt(e.target.value))} className="w-full mt-2 h-2 bg-card-border rounded-lg appearance-none cursor-pointer accent-[#00ff88]" /></div>
+              <div><label className="text-xs text-muted-foreground">Sitting hours/day: <span className="text-accent">{sittingHours}</span></label><input type="range" min={0} max={16} value={sittingHours} onChange={e => setSittingHours(parseInt(e.target.value))} className="w-full mt-2 h-2 bg-card-border rounded-lg appearance-none cursor-pointer accent-[#34d399]" /></div>
+              <div><label className="text-xs text-muted-foreground">Screen time/day: <span className="text-accent">{screenTime}h</span></label><input type="range" min={1} max={16} value={screenTime} onChange={e => setScreenTime(parseInt(e.target.value))} className="w-full mt-2 h-2 bg-card-border rounded-lg appearance-none cursor-pointer accent-[#34d399]" /></div>
             </div>
             <div><label className="text-xs text-muted-foreground mb-2 block">Best time for exercise</label>
               <div className="grid grid-cols-5 gap-2">

@@ -331,43 +331,118 @@ export default function DashboardPage() {
       </Section>
 
       {/* ═══════════════ YOU VS BRYAN ═══════════════ */}
-      <Section id="bryan" title="You vs Bryan Johnson" icon="🏆" subtitle="Bryan runs the most documented longevity protocol on earth. These numbers show how far you are from his benchmarks — and what % younger (or older) you're aging biologically.">
-        {/* Hero comparison */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
-          <div className="metric-tile">
-            <p className="text-[10px] uppercase tracking-widest text-muted">Bio Age vs Chrono</p>
-            {bryanSummary ? (
-              <>
-                <div className={clsx('text-3xl font-bold font-mono mt-2 tracking-tight', bryanSummary.bioAgePctDifference > 0 ? 'text-accent' : bryanSummary.bioAgePctDifference < 0 ? 'text-danger' : 'text-foreground')}>
-                  {bryanSummary.bioAgePctDifference > 0 ? '−' : bryanSummary.bioAgePctDifference < 0 ? '+' : ''}{Math.abs(bryanSummary.bioAgePctDifference)}%
+      <Section id="bryan" title="You vs Bryan Johnson" icon="🏆" subtitle="Bryan runs the most documented longevity protocol on earth. Side-by-side numbers: what % younger each of you is vs chronological, plus score and aging speed.">
+        {/* Side-by-side comparison card */}
+        {(() => {
+          const BRYAN_CHRONO = 48;
+          const BRYAN_BIO = 42.0;
+          const BRYAN_SCORE = 94;
+          const BRYAN_PACE = 0.64;
+          const bryanBioDeltaPct = +((BRYAN_CHRONO - BRYAN_BIO) / BRYAN_CHRONO * 100).toFixed(1);
+          const bryanBioYears = Math.floor(BRYAN_BIO);
+          const bryanBioMonths = Math.round((BRYAN_BIO - bryanBioYears) * 12);
+          const bryanBioLabel = `${bryanBioYears}y ${bryanBioMonths}m`;
+
+          const yourBioDeltaPct = bryanSummary?.bioAgePctDifference ?? 0;
+
+          // Row renders one comparable metric with YOU + BRYAN side by side
+          function CompareRow({ label, you, bryan, highlight }: {
+            label: string;
+            you: { value: React.ReactNode; tone?: 'accent' | 'danger' | 'foreground' | 'muted'; caption?: string };
+            bryan: { value: React.ReactNode; caption?: string };
+            highlight?: boolean;
+          }) {
+            const youColor = you.tone === 'accent' ? 'text-accent' : you.tone === 'danger' ? 'text-danger' : you.tone === 'muted' ? 'text-muted' : 'text-foreground';
+            return (
+              <div className={clsx('grid grid-cols-[1fr_auto_1fr] items-center gap-3 sm:gap-4 py-3 px-2 sm:px-4 rounded-xl transition-colors',
+                highlight ? 'bg-accent/[0.04] border border-accent/15' : 'bg-surface-2 border border-card-border')}>
+                <div className="text-right">
+                  <p className={clsx('text-xl sm:text-2xl font-bold font-mono tabular-nums tracking-tight', youColor)}>{you.value}</p>
+                  {you.caption && <p className="text-[10px] text-muted-foreground mt-0.5">{you.caption}</p>}
                 </div>
-                <p className="text-[11px] text-muted-foreground mt-2">
-                  {bryanSummary.bioAgePctDifference > 0 ? 'Biologically younger' : bryanSummary.bioAgePctDifference < 0 ? 'Biologically older' : 'Exactly on pace'}
-                </p>
-              </>
-            ) : <div className="text-3xl font-mono text-muted mt-2">—</div>}
-          </div>
-          <div className="metric-tile">
-            <p className="text-[10px] uppercase tracking-widest text-muted">Longevity Score</p>
-            <div className="flex items-baseline gap-2 mt-2">
-              <span className="text-3xl font-bold font-mono tracking-tight">{longevityScore}</span>
-              <span className="text-sm text-muted">/ 94</span>
+                <div className="flex flex-col items-center">
+                  <div className="w-px h-4 bg-card-border" />
+                  <p className="text-[9px] text-muted uppercase tracking-widest py-1 shrink-0">{label}</p>
+                  <div className="w-px h-4 bg-card-border" />
+                </div>
+                <div className="text-left">
+                  <p className="text-xl sm:text-2xl font-bold font-mono tabular-nums tracking-tight text-amber-400">{bryan.value}</p>
+                  {bryan.caption && <p className="text-[10px] text-muted-foreground mt-0.5">{bryan.caption}</p>}
+                </div>
+              </div>
+            );
+          }
+
+          return (
+            <div className="space-y-3">
+              {/* Column headers */}
+              <div className="grid grid-cols-[1fr_auto_1fr] items-center gap-3 sm:gap-4 px-2 sm:px-4">
+                <div className="text-right">
+                  <div className="inline-flex items-center gap-2">
+                    <span className="w-2 h-2 rounded-full bg-accent" />
+                    <p className="text-xs font-semibold text-accent uppercase tracking-wider">YOU</p>
+                  </div>
+                  <p className="text-[10px] text-muted-foreground mt-0.5">Chronological: {chronoAge ?? '—'}y</p>
+                </div>
+                <div />
+                <div className="text-left">
+                  <div className="inline-flex items-center gap-2">
+                    <span className="w-2 h-2 rounded-full bg-amber-400" />
+                    <p className="text-xs font-semibold text-amber-400 uppercase tracking-wider">BRYAN</p>
+                  </div>
+                  <p className="text-[10px] text-muted-foreground mt-0.5">Chronological: {BRYAN_CHRONO}y</p>
+                </div>
+              </div>
+
+              {/* Bio age row — the key comparison the user asked about */}
+              <CompareRow
+                label="Bio age"
+                highlight
+                you={{
+                  value: bioAgeLabel,
+                  tone: ageDelta !== null && ageDelta < -0.5 ? 'accent' : ageDelta !== null && ageDelta > 0.5 ? 'danger' : 'foreground',
+                  caption: yourBioDeltaPct > 0
+                    ? `${yourBioDeltaPct}% younger than chrono`
+                    : yourBioDeltaPct < 0
+                      ? `${Math.abs(yourBioDeltaPct)}% older than chrono`
+                      : 'on pace with chrono',
+                }}
+                bryan={{
+                  value: bryanBioLabel,
+                  caption: `${bryanBioDeltaPct}% younger than chrono`,
+                }}
+              />
+
+              {/* Longevity score row */}
+              <CompareRow
+                label="Score"
+                you={{
+                  value: longevityScore,
+                  tone: longevityScore >= BRYAN_SCORE ? 'accent' : 'foreground',
+                  caption: longevityScore >= BRYAN_SCORE ? 'at/above Bryan tier' : `${BRYAN_SCORE - longevityScore} pts to Bryan`,
+                }}
+                bryan={{
+                  value: BRYAN_SCORE,
+                  caption: '/ 100',
+                }}
+              />
+
+              {/* Aging pace row */}
+              <CompareRow
+                label="Aging pace"
+                you={{
+                  value: `${velocity.toFixed(2)}×`,
+                  tone: velocity <= BRYAN_PACE + 0.05 ? 'accent' : velocity <= 0.95 ? 'foreground' : 'danger',
+                  caption: velocity <= BRYAN_PACE + 0.05 ? 'matching Bryan' : velocity <= 0.95 ? 'slower than clock' : 'faster than clock',
+                }}
+                bryan={{
+                  value: `${BRYAN_PACE.toFixed(2)}×`,
+                  caption: 'DunedinPACE',
+                }}
+              />
             </div>
-            <p className="text-[11px] text-muted-foreground mt-2">
-              {longevityScore >= 94 ? 'At/above Bryan tier' : `${94 - longevityScore} points to close the gap`}
-            </p>
-          </div>
-          <div className="metric-tile">
-            <p className="text-[10px] uppercase tracking-widest text-muted">Aging Speed</p>
-            <div className="flex items-baseline gap-2 mt-2">
-              <span className={clsx('text-3xl font-bold font-mono tracking-tight', velocity <= 0.7 ? 'text-accent' : velocity <= 0.95 ? 'text-foreground' : 'text-danger')}>{velocity.toFixed(2)}×</span>
-              <span className="text-xs text-muted">vs 0.64×</span>
-            </div>
-            <p className="text-[11px] text-muted-foreground mt-2">
-              {velocity <= 0.7 ? 'Matching Bryan\'s pace' : velocity <= 0.95 ? 'Slower than clock' : 'Faster than clock'}
-            </p>
-          </div>
-        </div>
+          );
+        })()}
 
         {bryanSummary?.verdict && (
           <div className="p-4 rounded-xl bg-gradient-to-r from-amber-500/[0.05] to-transparent border border-amber-500/15">
