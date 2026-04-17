@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
 import Groq from 'groq-sdk';
+import { getChatRateLimit, checkRateLimit } from '@/lib/rate-limit';
 
 export const maxDuration = 30;
 
@@ -11,6 +12,13 @@ export async function POST(request: Request) {
     const supabase = await createClient();
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) return NextResponse.json({ error: 'Not authenticated' }, { status: 401 });
+
+    // Rate limit: 30 messages per hour
+    const { allowed, reset } = await checkRateLimit(getChatRateLimit(), user.id);
+    if (!allowed) {
+      const resetIn = reset ? Math.ceil((reset - Date.now()) / 60000) : 60;
+      return NextResponse.json({ error: `Too many messages. Try again in ${resetIn}m.`, rateLimited: true }, { status: 429 });
+    }
 
     const { messages } = await request.json() as { messages: ChatMessage[] };
     if (!messages || !Array.isArray(messages)) return NextResponse.json({ error: 'messages required' }, { status: 400 });

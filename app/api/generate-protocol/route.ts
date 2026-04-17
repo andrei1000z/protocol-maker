@@ -1,12 +1,14 @@
 import { NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
 import Groq from 'groq-sdk';
+import Anthropic from '@anthropic-ai/sdk';
 import { z } from 'zod';
 import { classifyAll, calculateLongevityScore, estimateBiologicalAge } from '@/lib/engine/classifier';
 import { detectPatterns } from '@/lib/engine/patterns';
 import { BIOMARKER_DB } from '@/lib/engine/biomarkers';
 import { buildMasterPromptV2 } from '@/lib/engine/master-prompt';
 import { BiomarkerValue, UserProfile } from '@/lib/types';
+import { getProtocolRateLimit, checkRateLimit } from '@/lib/rate-limit';
 
 export const maxDuration = 60;
 
@@ -37,6 +39,17 @@ export async function POST(request: Request) {
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) return NextResponse.json({ error: 'Not authenticated' }, { status: 401 });
 
+    // Rate limiting: 3 protocol generations per day per user (no-op if Upstash not configured)
+    const limiter = getProtocolRateLimit();
+    const { allowed, remaining, reset } = await checkRateLimit(limiter, user.id);
+    if (!allowed) {
+      const resetIn = reset ? Math.ceil((reset - Date.now()) / 3600000) : 24;
+      return NextResponse.json({
+        error: `Rate limit: 3 protocols per day. Try again in ${resetIn}h.`,
+        rateLimited: true,
+      }, { status: 429 });
+    }
+
     const { profile: rawProfile, biomarkers } = await request.json();
     const biomarkerValues: BiomarkerValue[] = biomarkers || [];
 
@@ -56,20 +69,33 @@ export async function POST(request: Request) {
     let modelUsed = 'llama-3.3-70b-versatile';
     let aiError: string | null = null;
 
-    try {
-      const prompt = buildMasterPromptV2(profile, classified, patterns, BIOMARKER_DB, longevityScore, biologicalAge);
-      const rawJson = await generateWithGroq(prompt);
+    const prompt = buildMasterPromptV2(profile, classified, patterns, BIOMARKER_DB, longevityScore, biologicalAge);
 
-      // Zod validation — loose passthrough, just confirm shape is sane
-      const validated = ProtocolShape.safeParse(rawJson);
+    // Try Claude Opus first (best medical reasoning), fallback to Groq, then deterministic
+    try {
+      if (process.env.ANTHROPIC_API_KEY) {
+        try {
+          protocolJson = await generateWithClaude(prompt);
+          modelUsed = 'claude-sonnet-4-5';
+        } catch (claudeErr) {
+          console.warn('Claude failed, trying Groq:', claudeErr);
+          protocolJson = await generateWithGroq(prompt);
+          modelUsed = 'llama-3.3-70b-versatile';
+        }
+      } else {
+        protocolJson = await generateWithGroq(prompt);
+        modelUsed = 'llama-3.3-70b-versatile';
+      }
+
+      // Zod validation on final output
+      const validated = ProtocolShape.safeParse(protocolJson);
       if (!validated.success) {
         console.error('AI output failed Zod validation:', validated.error.flatten());
         throw new Error('AI returned malformed JSON structure');
       }
-      protocolJson = rawJson;
     } catch (err) {
       aiError = err instanceof Error ? err.message : String(err);
-      console.error('AI generation failed, using fallback:', aiError);
+      console.error('All AI providers failed, using deterministic fallback:', aiError);
       protocolJson = buildFallbackProtocol(profile, biologicalAge, longevityScore, classified, patterns);
       modelUsed = 'fallback';
     }
@@ -111,6 +137,35 @@ export async function POST(request: Request) {
   } catch (err) {
     console.error('Protocol generation error:', err);
     return NextResponse.json({ error: err instanceof Error ? err.message : String(err) }, { status: 500 });
+  }
+}
+
+async function generateWithClaude(prompt: string): Promise<Record<string, unknown>> {
+  const apiKey = process.env.ANTHROPIC_API_KEY;
+  if (!apiKey) throw new Error('ANTHROPIC_API_KEY missing');
+
+  const anthropic = new Anthropic({ apiKey });
+
+  const response = await anthropic.messages.create({
+    model: 'claude-sonnet-4-5',
+    max_tokens: 16000,
+    messages: [
+      { role: 'user', content: prompt + '\n\nRespond with ONLY the JSON object. No markdown, no backticks, no explanation. Start your response with { and end with }.' },
+    ],
+  });
+
+  const text = response.content[0]?.type === 'text' ? response.content[0].text : '';
+  if (!text) throw new Error('Empty response from Claude');
+
+  // Claude sometimes wraps in markdown despite instructions
+  const cleaned = text.replace(/^```(?:json)?\s*/i, '').replace(/\s*```$/i, '').trim();
+  try {
+    return JSON.parse(cleaned);
+  } catch {
+    // Try to extract JSON object if prefixed with explanation
+    const match = cleaned.match(/\{[\s\S]*\}/);
+    if (match) return JSON.parse(match[0]);
+    throw new Error('Claude returned non-JSON response');
   }
 }
 
