@@ -1,23 +1,25 @@
 import Link from 'next/link';
 import { BIOMARKER_DB } from '@/lib/engine/biomarkers';
+import { ArrowRight, Sparkles, Activity, Target, FileText, Zap, Brain, Heart, Shield } from 'lucide-react';
 
 function BiomarkerDemo() {
   const demoMarkers = BIOMARKER_DB.filter(b => b.bryanJohnsonValue !== undefined).slice(0, 8);
   return (
-    <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-      {demoMarkers.map((b) => {
+    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+      {demoMarkers.map((b, i) => {
         const val = b.bryanJohnsonValue!;
         const isOptimal = val >= b.longevityOptimalLow && val <= b.longevityOptimalHigh;
         return (
-          <div key={b.code} className="flex items-center justify-between p-3 rounded-xl bg-card border border-card-border hover:border-accent/30 transition-colors group">
+          <div key={b.code}
+            className={`flex items-center justify-between p-4 rounded-xl bg-card border border-card-border hover:border-accent/30 transition-all group animate-fade-in-up stagger-${(i % 5) + 1}`}>
             <div>
               <p className="text-sm font-medium group-hover:text-accent transition-colors">{b.shortName}</p>
-              <p className="text-[10px] text-muted">Optimal: {b.longevityOptimalLow}-{b.longevityOptimalHigh} {b.unit}</p>
+              <p className="text-[10px] text-muted mt-0.5">Optimal: {b.longevityOptimalLow}-{b.longevityOptimalHigh} {b.unit}</p>
             </div>
             <div className="flex items-center gap-2">
-              <span className="text-lg font-bold font-mono text-accent">{val}</span>
+              <span className="text-xl font-bold font-mono text-accent">{val}</span>
               <span className="text-[10px] text-muted">{b.unit}</span>
-              <span className={`text-[9px] font-mono px-1.5 py-0.5 rounded-full ${isOptimal ? 'bg-accent/20 text-accent' : 'bg-amber-500/20 text-amber-400'}`}>
+              <span className={`text-[9px] font-mono px-2 py-0.5 rounded-full ${isOptimal ? 'bg-accent/20 text-accent' : 'bg-amber-500/20 text-amber-400'}`}>
                 {isOptimal ? 'OPTIMAL' : 'SUBOPTIMAL'}
               </span>
             </div>
@@ -30,129 +32,245 @@ function BiomarkerDemo() {
 
 export default function LandingPage() {
   return (
-    <div className="min-h-dvh bg-background">
+    <div className="min-h-dvh bg-background noise">
+      {/* Nav */}
+      <nav className="sticky top-0 z-50 border-b border-card-border bg-black/60 backdrop-blur-xl">
+        <div className="max-w-6xl mx-auto px-6 h-14 flex items-center justify-between">
+          <span className="text-xl font-bold">
+            <span className="text-accent">Protocol</span>
+          </span>
+          <div className="flex items-center gap-5 text-sm">
+            <a href="#how" className="text-muted-foreground hover:text-foreground hidden sm:block">How it works</a>
+            <a href="#demo" className="text-muted-foreground hover:text-foreground hidden sm:block">Demo</a>
+            <Link href="/login" className="px-4 py-1.5 rounded-lg bg-accent text-black font-semibold hover:bg-accent-dim transition-colors">
+              Sign in
+            </Link>
+          </div>
+        </div>
+      </nav>
+
       {/* Hero */}
-      <section className="max-w-4xl mx-auto px-6 pt-20 pb-16 text-center">
-        <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-accent/10 border border-accent/20 text-accent text-xs font-medium mb-6">
-          <span className="w-1.5 h-1.5 rounded-full bg-accent animate-pulse" />
-          Beta — Free during launch
-        </div>
-        <h1 className="text-4xl sm:text-6xl font-bold leading-tight tracking-tight">
-          Bryan Johnson spends<br />
-          <span className="text-accent">$2M/year</span> on longevity.<br />
-          <span className="text-muted-foreground">You have your blood panel and AI.</span>
-        </h1>
-        <p className="text-lg text-muted-foreground mt-6 max-w-2xl mx-auto">
-          Get a protocol calibrated to <strong className="text-foreground">YOUR</strong> biomarkers — not his.
-          Personalized nutrition, supplements, exercise, and sleep.
-          Generated in 60 seconds.
-        </p>
-        <div className="flex items-center justify-center gap-4 mt-8">
-          <Link href="/login" className="px-8 py-3.5 bg-accent text-black rounded-xl font-semibold text-sm hover:bg-accent-dim transition-colors active:scale-[0.98]">
-            Get Your Protocol — Free
-          </Link>
-          <a href="#how-it-works" className="px-6 py-3.5 rounded-xl border border-card-border text-sm text-muted-foreground hover:text-foreground hover:border-foreground/20 transition-colors">
-            How it works
-          </a>
+      <section className="relative grid-bg">
+        <div className="max-w-5xl mx-auto px-6 pt-20 sm:pt-28 pb-20 text-center relative">
+          <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-accent/10 border border-accent/20 text-accent text-xs font-medium mb-8 animate-fade-in">
+            <span className="w-1.5 h-1.5 rounded-full bg-accent animate-pulse" />
+            Free during beta — powered by AI
+          </div>
+
+          <h1 className="text-5xl sm:text-7xl font-bold leading-[1.05] tracking-tight animate-fade-in-up stagger-1">
+            Your blood work.<br />
+            <span className="gradient-text">AI longevity coach.</span><br />
+            <span className="text-muted-foreground">Your protocol.</span>
+          </h1>
+
+          <p className="text-lg sm:text-xl text-muted-foreground mt-8 max-w-2xl mx-auto leading-relaxed animate-fade-in-up stagger-2">
+            Bryan Johnson spends <strong className="text-foreground">$2M/year</strong> on longevity.
+            You have your blood panel and AI. Get a protocol calibrated to <strong className="text-foreground">YOUR</strong> biomarkers —
+            not his. Personalized nutrition, supplements, exercise, sleep. Generated in 60 seconds.
+          </p>
+
+          <div className="flex flex-col sm:flex-row items-center justify-center gap-3 mt-10 animate-fade-in-up stagger-3">
+            <Link href="/login"
+              className="inline-flex items-center gap-2 px-8 py-4 bg-accent text-black rounded-xl font-bold text-sm hover:bg-accent-dim transition-all active:scale-[0.98] glow-cta">
+              Get your protocol — free
+              <ArrowRight className="w-4 h-4" />
+            </Link>
+            <a href="#demo" className="px-6 py-4 rounded-xl border border-card-border text-sm text-muted-foreground hover:text-foreground hover:border-card-border-hover transition-colors">
+              See Bryan&apos;s numbers
+            </a>
+          </div>
+
+          <p className="text-xs text-muted mt-6 animate-fade-in-up stagger-4">
+            Takes 3 minutes · No credit card · 37 biomarkers · 12 patterns analyzed
+          </p>
         </div>
       </section>
 
-      {/* Social proof bar */}
-      <section className="border-y border-card-border py-4">
-        <div className="max-w-4xl mx-auto px-6 flex flex-wrap items-center justify-center gap-6 text-xs text-muted-foreground">
-          <span>🔬 37 biomarkers analyzed</span>
-          <span className="w-1 h-1 rounded-full bg-card-border" />
-          <span>⚡ 5 health patterns detected</span>
-          <span className="w-1 h-1 rounded-full bg-card-border" />
-          <span>🧬 Protocol in &lt;60 seconds</span>
-          <span className="w-1 h-1 rounded-full bg-card-border" />
-          <span>💊 Bryan Johnson comparison</span>
-        </div>
-      </section>
-
-      {/* How it works */}
-      <section id="how-it-works" className="max-w-4xl mx-auto px-6 py-20">
-        <h2 className="text-2xl font-bold text-center mb-12">How it works</h2>
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-6">
+      {/* Stats bar */}
+      <section className="border-y border-card-border bg-card/30">
+        <div className="max-w-6xl mx-auto px-6 py-8 grid grid-cols-2 sm:grid-cols-4 gap-6 text-center">
           {[
-            { step: '01', title: 'Enter your blood work', desc: 'Upload a PDF from any lab or enter values manually. We support Synevo, Regina Maria, MedLife, LabCorp, Quest, and more.', icon: '🩸' },
-            { step: '02', title: 'AI analyzes your data', desc: 'Your biomarkers are classified against longevity-optimal ranges (not just lab ranges). Patterns detected. Biological age estimated.', icon: '🤖' },
-            { step: '03', title: 'Get your protocol', desc: 'Personalized nutrition, supplements, exercise, sleep — all justified by YOUR specific biomarker values and budget.', icon: '📋' },
-          ].map((item) => (
-            <div key={item.step} className="rounded-2xl bg-card border border-card-border p-6 space-y-3">
-              <div className="flex items-center gap-3">
-                <span className="text-2xl">{item.icon}</span>
-                <span className="text-xs font-mono text-accent">{item.step}</span>
-              </div>
-              <h3 className="text-base font-semibold">{item.title}</h3>
-              <p className="text-sm text-muted-foreground">{item.desc}</p>
+            { num: '37', label: 'Biomarkers analyzed' },
+            { num: '12', label: 'Health patterns detected' },
+            { num: '<60s', label: 'Protocol generation' },
+            { num: '14', label: 'Daily habits tracked' },
+          ].map((s, i) => (
+            <div key={i} className={`animate-fade-in-up stagger-${i + 1}`}>
+              <p className="text-3xl sm:text-4xl font-bold font-mono text-accent">{s.num}</p>
+              <p className="text-xs text-muted-foreground mt-1">{s.label}</p>
             </div>
           ))}
         </div>
       </section>
 
-      {/* Biomarker Demo */}
-      <section className="max-w-4xl mx-auto px-6 py-16">
-        <div className="rounded-2xl bg-card border border-card-border p-6 sm:p-8">
-          <div className="text-center mb-8">
-            <h2 className="text-2xl font-bold">Bryan Johnson&apos;s actual biomarkers</h2>
-            <p className="text-sm text-muted-foreground mt-2">This is what $2M/year of optimization looks like. How do yours compare?</p>
+      {/* How it works */}
+      <section id="how" className="max-w-5xl mx-auto px-6 py-24">
+        <div className="text-center mb-16">
+          <p className="text-xs uppercase tracking-wider text-accent mb-3">How it works</p>
+          <h2 className="text-3xl sm:text-4xl font-bold">From blood panel to protocol<br /> in three steps.</h2>
+        </div>
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          {[
+            {
+              step: '01', icon: FileText,
+              title: 'Enter your blood work',
+              desc: 'Upload a PDF or type values manually. We support Synevo, Regina Maria, MedLife, LabCorp, Quest, and most lab formats.',
+            },
+            {
+              step: '02', icon: Activity,
+              title: 'AI analyzes your data',
+              desc: 'Your 37 biomarkers are classified against longevity-optimal ranges. 12 health patterns scanned. Biological age estimated via PhenoAge algorithm.',
+            },
+            {
+              step: '03', icon: Target,
+              title: 'Get your protocol',
+              desc: 'Personalized supplement stack with dosing, nutrition plan with macros, exercise split, sleep protocol, 12-week roadmap — all justified by YOUR specific biomarker values.',
+            },
+          ].map((item, i) => (
+            <div key={item.step}
+              className={`rounded-2xl bg-card border border-card-border p-6 space-y-4 hover:border-accent/30 transition-colors animate-fade-in-up stagger-${i + 1}`}>
+              <div className="flex items-center justify-between">
+                <item.icon className="w-6 h-6 text-accent" />
+                <span className="text-xs font-mono text-muted">{item.step}</span>
+              </div>
+              <h3 className="text-lg font-semibold">{item.title}</h3>
+              <p className="text-sm text-muted-foreground leading-relaxed">{item.desc}</p>
+            </div>
+          ))}
+        </div>
+      </section>
+
+      {/* Biomarker demo */}
+      <section id="demo" className="max-w-5xl mx-auto px-6 py-24">
+        <div className="rounded-3xl bg-card border border-card-border p-6 sm:p-10">
+          <div className="text-center mb-10">
+            <p className="text-xs uppercase tracking-wider text-accent mb-3">Interactive demo</p>
+            <h2 className="text-3xl sm:text-4xl font-bold mb-3">Bryan Johnson&apos;s actual biomarkers</h2>
+            <p className="text-sm text-muted-foreground max-w-xl mx-auto">
+              This is what $2M/year of optimization looks like. Our engine will compare your values against his — and generate YOUR personalized protocol.
+            </p>
           </div>
           <BiomarkerDemo />
-          <div className="text-center mt-6">
-            <Link href="/login" className="inline-block px-6 py-3 bg-accent text-black rounded-xl font-semibold text-sm hover:bg-accent-dim transition-colors">
-              Compare Your Biomarkers
+          <div className="text-center mt-10">
+            <Link href="/login"
+              className="inline-flex items-center gap-2 px-7 py-3.5 bg-accent text-black rounded-xl font-bold text-sm hover:bg-accent-dim transition-all">
+              Compare your biomarkers <ArrowRight className="w-4 h-4" />
             </Link>
           </div>
         </div>
       </section>
 
-      {/* Comparison */}
-      <section className="max-w-4xl mx-auto px-6 py-16">
-        <h2 className="text-2xl font-bold text-center mb-8">Your Protocol vs Bryan&apos;s Blueprint</h2>
-        <div className="rounded-2xl bg-card border border-card-border overflow-hidden">
-          <div className="grid grid-cols-3 text-center text-xs font-medium py-3 border-b border-card-border">
-            <span className="text-muted-foreground">Category</span>
-            <span className="text-muted-foreground">Bryan Johnson</span>
-            <span className="text-accent">Your Protocol</span>
-          </div>
+      {/* Features grid */}
+      <section className="max-w-6xl mx-auto px-6 py-24">
+        <div className="text-center mb-16">
+          <p className="text-xs uppercase tracking-wider text-accent mb-3">Complete stack</p>
+          <h2 className="text-3xl sm:text-4xl font-bold">Everything you need to<br /> optimize your biology.</h2>
+        </div>
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
           {[
-            { cat: 'Diet', bryan: 'Vegan, 1977 kcal', yours: 'Adapted to YOUR diet & goals' },
-            { cat: 'Supplements', bryan: '100+ pills daily', yours: '8-15 based on YOUR gaps' },
-            { cat: 'Cost', bryan: '$2M/year', yours: 'Fits YOUR budget (RON)' },
-            { cat: 'Exercise', bryan: '6 hrs/week rigid', yours: 'Fits YOUR schedule' },
-            { cat: 'Sleep', bryan: '8:30 PM bedtime', yours: 'Optimized to YOUR rhythm' },
-            { cat: 'Tracking', bryan: 'Full-time team', yours: 'Daily checklist in-app' },
-          ].map((row) => (
-            <div key={row.cat} className="grid grid-cols-3 text-center text-sm py-3 border-b border-card-border last:border-0">
-              <span className="font-medium">{row.cat}</span>
-              <span className="text-muted-foreground">{row.bryan}</span>
-              <span className="text-accent">{row.yours}</span>
+            { icon: Zap, title: 'Groq + Claude AI', desc: 'Fast PDF parsing with Groq, deep protocol synthesis. 16K token outputs.' },
+            { icon: Brain, title: 'PhenoAge algorithm', desc: 'Biological age estimated with 9-marker clinical algorithm from Levine 2018.' },
+            { icon: Heart, title: 'Bryan comparison', desc: 'Every biomarker shows your value vs Bryan Johnson\'s actual lab results.' },
+            { icon: Activity, title: 'Daily tracking', desc: '14 universal habits + supplement compliance + metrics logging. Streaks, heatmap, achievements.' },
+            { icon: Shield, title: 'Drug interaction DB', desc: '25+ drug-supplement interactions checked against your current medications.' },
+            { icon: Sparkles, title: 'AI chat coach', desc: 'Ask anything. The assistant knows your full profile, protocol, and biomarkers.' },
+          ].map((item, i) => (
+            <div key={item.title}
+              className={`rounded-2xl bg-card border border-card-border p-5 hover:border-accent/30 transition-colors animate-fade-in-up stagger-${(i % 5) + 1}`}>
+              <item.icon className="w-5 h-5 text-accent mb-3" />
+              <h3 className="text-sm font-semibold mb-1">{item.title}</h3>
+              <p className="text-xs text-muted-foreground leading-relaxed">{item.desc}</p>
             </div>
           ))}
         </div>
       </section>
 
-      {/* CTA */}
-      <section className="max-w-4xl mx-auto px-6 py-20 text-center">
-        <h2 className="text-3xl font-bold">Ready to optimize?</h2>
-        <p className="text-muted-foreground mt-3 max-w-lg mx-auto">Enter your biomarkers, get a protocol engineered for YOUR biology. Not Bryan&apos;s. Not generic. Yours.</p>
-        <Link href="/login" className="inline-block mt-8 px-10 py-4 bg-accent text-black rounded-xl font-bold text-base hover:bg-accent-dim transition-colors active:scale-[0.98]">
-          Get Started — It&apos;s Free
-        </Link>
+      {/* Comparison */}
+      <section className="max-w-5xl mx-auto px-6 py-24">
+        <div className="text-center mb-12">
+          <p className="text-xs uppercase tracking-wider text-accent mb-3">Comparison</p>
+          <h2 className="text-3xl sm:text-4xl font-bold">Your protocol vs Bryan&apos;s Blueprint</h2>
+        </div>
+        <div className="rounded-2xl bg-card border border-card-border overflow-hidden">
+          <div className="grid grid-cols-3 text-center text-xs font-semibold py-4 border-b border-card-border bg-black/20">
+            <span className="text-muted-foreground">Category</span>
+            <span className="text-muted-foreground">Bryan Johnson</span>
+            <span className="text-accent">Your Protocol</span>
+          </div>
+          {[
+            { cat: 'Diet', bryan: 'Vegan · 2,250 kcal · strict', yours: 'Adapted to YOUR diet + goals' },
+            { cat: 'Supplements', bryan: '100+ pills daily', yours: '8-15 based on YOUR biomarker gaps' },
+            { cat: 'Cost', bryan: '$2M / year', yours: 'Fits YOUR budget (RON)' },
+            { cat: 'Exercise', bryan: '6 hrs/week rigid', yours: 'Fits YOUR schedule' },
+            { cat: 'Sleep', bryan: '8:30 PM sharp every night', yours: 'Optimized to YOUR chronotype' },
+            { cat: 'Tracking', bryan: '30-person medical team', yours: 'AI coach in your pocket' },
+            { cat: 'Bio age', bryan: '-5.1 years (age 47)', yours: 'Calculated from YOUR bloodwork' },
+          ].map((row) => (
+            <div key={row.cat} className="grid grid-cols-3 text-center text-sm py-4 border-b border-card-border last:border-0 hover:bg-card-hover transition-colors">
+              <span className="font-medium">{row.cat}</span>
+              <span className="text-muted-foreground">{row.bryan}</span>
+              <span className="text-accent font-medium">{row.yours}</span>
+            </div>
+          ))}
+        </div>
+      </section>
+
+      {/* Final CTA */}
+      <section className="max-w-4xl mx-auto px-6 py-24 text-center">
+        <div className="rounded-3xl bg-gradient-to-br from-accent/10 via-card to-card border border-accent/20 p-10 sm:p-16 relative overflow-hidden">
+          <div className="relative z-10">
+            <h2 className="text-3xl sm:text-5xl font-bold leading-tight">
+              Stop guessing.<br />
+              <span className="gradient-text">Start measuring.</span>
+            </h2>
+            <p className="text-muted-foreground mt-6 max-w-xl mx-auto text-base">
+              Enter your biomarkers. Get a protocol engineered for YOUR biology.
+              Not Bryan&apos;s. Not generic. Yours.
+            </p>
+            <Link href="/login"
+              className="inline-flex items-center gap-2 mt-10 px-10 py-4 bg-accent text-black rounded-xl font-bold text-base hover:bg-accent-dim transition-all active:scale-[0.98] glow-cta">
+              Get started — it&apos;s free
+              <ArrowRight className="w-5 h-5" />
+            </Link>
+            <p className="text-xs text-muted mt-5">Takes 3 minutes · No credit card required</p>
+          </div>
+        </div>
       </section>
 
       {/* Footer */}
-      <footer className="border-t border-card-border py-8 text-center space-y-3">
-        <div className="flex items-center justify-center gap-4 text-xs text-muted-foreground">
-          <Link href="/privacy" className="hover:text-accent">Privacy</Link>
-          <span>•</span>
-          <Link href="/terms" className="hover:text-accent">Terms</Link>
-          <span>•</span>
-          <a href="https://github.com/andrei1000z/protocol-maker" className="hover:text-accent">GitHub</a>
+      <footer className="border-t border-card-border">
+        <div className="max-w-6xl mx-auto px-6 py-12 grid grid-cols-2 sm:grid-cols-4 gap-8 text-sm">
+          <div>
+            <p className="font-bold text-accent mb-2">Protocol</p>
+            <p className="text-xs text-muted-foreground">AI-powered longevity protocols calibrated to your biomarkers.</p>
+          </div>
+          <div>
+            <p className="font-semibold text-xs text-muted uppercase tracking-wider mb-3">Product</p>
+            <div className="space-y-2 text-xs">
+              <Link href="/login" className="block text-muted-foreground hover:text-accent">Get started</Link>
+              <a href="#how" className="block text-muted-foreground hover:text-accent">How it works</a>
+              <a href="#demo" className="block text-muted-foreground hover:text-accent">Demo</a>
+            </div>
+          </div>
+          <div>
+            <p className="font-semibold text-xs text-muted uppercase tracking-wider mb-3">Legal</p>
+            <div className="space-y-2 text-xs">
+              <Link href="/privacy" className="block text-muted-foreground hover:text-accent">Privacy</Link>
+              <Link href="/terms" className="block text-muted-foreground hover:text-accent">Terms</Link>
+            </div>
+          </div>
+          <div>
+            <p className="font-semibold text-xs text-muted uppercase tracking-wider mb-3">Resources</p>
+            <div className="space-y-2 text-xs">
+              <a href="https://github.com/andrei1000z/protocol-maker" className="block text-muted-foreground hover:text-accent">GitHub</a>
+              <a href="https://www.blueprint.bryanjohnson.com" target="_blank" rel="noopener noreferrer" className="block text-muted-foreground hover:text-accent">Bryan&apos;s Blueprint</a>
+            </div>
+          </div>
         </div>
-        <p className="text-xs text-muted">Protocol AI Engine • Not medical advice • Consult your doctor before making changes</p>
-        <p className="text-[10px] text-muted">Built with Groq AI + Next.js + Supabase</p>
+        <div className="border-t border-card-border py-6 text-center space-y-1">
+          <p className="text-xs text-muted">Not medical advice. Consult your doctor before making changes.</p>
+          <p className="text-[10px] text-muted">Built with Groq AI · Next.js · Supabase · © {new Date().getFullYear()}</p>
+        </div>
       </footer>
     </div>
   );

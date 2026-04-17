@@ -3,14 +3,36 @@
 import { useEffect, useState } from 'react';
 import { ProtocolOutput, Classification } from '@/lib/types';
 import { getClassificationColor, getClassificationBg } from '@/lib/engine/classifier';
+import { AnimatedNumber } from '@/components/ui/AnimatedNumber';
+import { DashboardTOC } from '@/components/layout/DashboardTOC';
 import clsx from 'clsx';
 import {
   Radar, RadarChart, PolarGrid, PolarAngleAxis, ResponsiveContainer,
 } from 'recharts';
 
-function Section({ title, icon, children, className }: { title: string; icon: string; children: React.ReactNode; className?: string }) {
+const TOC_ITEMS = [
+  { id: 'diagnostic', label: 'Diagnostic', icon: '🎯' },
+  { id: 'organs', label: 'Organ Systems', icon: '🫀' },
+  { id: 'bryan', label: 'vs Bryan', icon: '🏆' },
+  { id: 'biomarkers', label: 'Biomarkers', icon: '🔬' },
+  { id: 'nutrition', label: 'Nutrition', icon: '🥗' },
+  { id: 'supplements', label: 'Supplements', icon: '💊' },
+  { id: 'schedule', label: 'Daily Schedule', icon: '⏰' },
+  { id: 'exercise', label: 'Exercise', icon: '🏋️' },
+  { id: 'sleep', label: 'Sleep', icon: '🌙' },
+  { id: 'tips', label: 'Universal Tips', icon: '💡' },
+  { id: 'tracking', label: 'What to Track', icon: '📊' },
+  { id: 'painpoints', label: 'Pain Points', icon: '🎯' },
+  { id: 'flex', label: 'Flex Rules', icon: '🧘' },
+  { id: 'weekplan', label: 'Next 4 Weeks', icon: '📅' },
+  { id: 'doctor', label: 'Doctor', icon: '👨‍⚕️' },
+  { id: 'roadmap', label: '12-Week Roadmap', icon: '🗺️' },
+  { id: 'shopping', label: 'Shopping List', icon: '🛒' },
+];
+
+function Section({ id, title, icon, children, className }: { id?: string; title: string; icon: string; children: React.ReactNode; className?: string }) {
   return (
-    <div className={clsx('rounded-2xl bg-card border border-card-border p-5 space-y-4', className)}>
+    <div id={id} className={clsx('rounded-2xl bg-card border border-card-border p-5 space-y-4 scroll-mt-20 animate-fade-in-up', className)}>
       <h2 className="text-lg font-semibold flex items-center gap-2">
         <span>{icon}</span> {title}
       </h2>
@@ -104,33 +126,36 @@ export default function DashboardPage() {
   const totalSupCost = p.supplements?.reduce((s, sup) => s + (sup.monthlyCostRon || 0), 0) || 0;
 
   return (
-    <div className="max-w-3xl mx-auto px-4 py-6 space-y-5">
+    <div className="max-w-[1200px] mx-auto px-4 py-6 flex gap-6">
+      <DashboardTOC items={TOC_ITEMS} />
+
+      <div className="flex-1 min-w-0 space-y-5 max-w-3xl">
       {/* Hero diagnostic */}
-      <div className="rounded-2xl bg-card border border-card-border p-6">
-        <div className="text-center mb-6">
+      <div id="diagnostic" className="rounded-2xl bg-card border border-card-border p-6 scroll-mt-20 animate-fade-in-up">
+        <div className="mb-6">
           <div className="flex items-center justify-between">
             <h1 className="text-sm font-medium text-muted-foreground">Your Longevity Protocol</h1>
             <button onClick={() => window.print()} className="no-print text-xs px-3 py-1.5 rounded-lg bg-card border border-card-border hover:border-accent/30 text-muted-foreground hover:text-accent transition-colors">
               📄 Print / PDF
             </button>
           </div>
-          {diag?.summary && <p className="text-xs text-muted-foreground mt-2 max-w-md mx-auto">{diag.summary}</p>}
+          {diag?.summary && <p className="text-xs text-muted-foreground mt-2 max-w-md">{diag.summary}</p>}
         </div>
         <div className="grid grid-cols-3 gap-3">
           <div className="text-center p-4 rounded-xl bg-background border border-card-border">
-            <p className="text-4xl font-bold font-mono text-accent">{longevityScore}</p>
+            <AnimatedNumber value={longevityScore} duration={1500} className="text-4xl font-bold font-mono text-accent inline-block" />
             <p className="text-[10px] text-muted mt-1">LONGEVITY SCORE</p>
           </div>
           <div className="text-center p-4 rounded-xl bg-background border border-card-border">
-            <p className="text-4xl font-bold font-mono">{biologicalAge}</p>
+            <AnimatedNumber value={biologicalAge} duration={1500} className="text-4xl font-bold font-mono inline-block" />
             <p className="text-[10px] text-muted mt-1">BIO AGE</p>
           </div>
           <div className="text-center p-4 rounded-xl bg-background border border-card-border">
-            <p className={clsx('text-4xl font-bold font-mono', velocity < 0.9 ? 'text-accent' : velocity > 1.1 ? 'text-danger' : 'text-foreground')}>{velocity.toFixed(2)}</p>
+            <AnimatedNumber value={velocity} duration={1500} decimals={2} className={clsx('text-4xl font-bold font-mono inline-block', velocity < 0.9 ? 'text-accent' : velocity > 1.1 ? 'text-danger' : 'text-foreground')} />
             <p className="text-[10px] text-muted mt-1">AGING SPEED</p>
           </div>
         </div>
-        <div className="grid grid-cols-2 gap-4 mt-5">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mt-5">
           {diag?.topWins && (
             <div>
               <p className="text-xs text-accent font-medium mb-2">✅ Top Wins</p>
@@ -148,7 +173,7 @@ export default function DashboardPage() {
 
       {/* Organ system radar */}
       {radarData.length > 0 && (
-        <Section title="Organ Systems" icon="🫀">
+        <Section id="organs" title="Organ Systems" icon="🫀">
           <ResponsiveContainer width="100%" height={280}>
             <RadarChart data={radarData}>
               <PolarGrid stroke="#1a1a1a" />
@@ -161,7 +186,7 @@ export default function DashboardPage() {
 
       {/* Bryan comparison */}
       {p.bryanComparison && p.bryanComparison.length > 0 && (
-        <Section title="You vs Bryan Johnson" icon="🏆">
+        <Section id="bryan" title="You vs Bryan Johnson" icon="🏆">
           <div className="space-y-2">
             {p.bryanComparison.map((c, i) => (
               <div key={i} className="flex items-center justify-between p-3 rounded-xl bg-background border border-card-border">
@@ -185,7 +210,7 @@ export default function DashboardPage() {
 
       {/* Biomarkers with visual bars */}
       {p.biomarkerReadout && p.biomarkerReadout.length > 0 && (
-        <Section title="Biomarkers" icon="🔬">
+        <Section id="biomarkers" title="Biomarkers" icon="🔬">
           <div className="space-y-1">
             {p.biomarkerReadout.map((b) => (
               <button key={b.code} onClick={() => setExpandedBiomarker(expandedBiomarker === b.code ? null : b.code)} className="w-full text-left">
@@ -217,7 +242,7 @@ export default function DashboardPage() {
 
       {/* Nutrition */}
       {p.nutrition && (
-        <Section title="Nutrition" icon="🥗">
+        <Section id="nutrition" title="Nutrition" icon="🥗">
           <div className="grid grid-cols-4 gap-2 text-center">
             <div className="p-3 rounded-xl bg-background border border-card-border">
               <p className="text-xl font-bold font-mono">{p.nutrition.dailyCalories}</p>
@@ -258,7 +283,7 @@ export default function DashboardPage() {
 
       {/* Supplements timeline */}
       {p.supplements && p.supplements.length > 0 && (
-        <Section title="Supplements" icon="💊">
+        <Section id="supplements" title="Supplements" icon="💊">
           <div className="flex items-center justify-between text-xs text-muted-foreground mb-2">
             <span>{p.supplements.length} supplements</span>
             <span className="text-accent font-mono font-bold">{totalSupCost} RON/mo</span>
@@ -307,7 +332,7 @@ export default function DashboardPage() {
 
       {/* Daily Schedule */}
       {p.dailySchedule && p.dailySchedule.length > 0 && (
-        <Section title="Daily Schedule" icon="⏰">
+        <Section id="schedule" title="Daily Schedule" icon="⏰">
           <div className="space-y-1">
             {p.dailySchedule.map((item, i) => (
               <div key={i} className="flex items-start gap-3 py-2">
@@ -325,7 +350,7 @@ export default function DashboardPage() {
 
       {/* Exercise */}
       {p.exercise && (
-        <Section title="Exercise" icon="🏋️">
+        <Section id="exercise" title="Exercise" icon="🏋️">
           <div className="flex gap-4 text-xs text-muted-foreground mb-3">
             <span>Zone 2: <span className="text-accent font-mono">{p.exercise.zone2Target} min/wk</span></span>
             <span>Strength: <span className="text-accent font-mono">{p.exercise.strengthSessions}x/wk</span></span>
@@ -345,7 +370,7 @@ export default function DashboardPage() {
 
       {/* Sleep */}
       {p.sleep && (
-        <Section title="Sleep" icon="🌙">
+        <Section id="sleep" title="Sleep" icon="🌙">
           <div className="grid grid-cols-3 gap-2 text-center">
             <div className="p-3 rounded-xl bg-background border border-card-border">
               <p className="text-lg font-bold font-mono">{p.sleep.targetBedtime}</p>
@@ -370,7 +395,7 @@ export default function DashboardPage() {
 
       {/* Universal Tips */}
       {p.universalTips && p.universalTips.length > 0 && (
-        <Section title="Universal Longevity Tips" icon="💡">
+        <Section id="tips" title="Universal Longevity Tips" icon="💡">
           {p.universalTips.map((cat, i) => (
             <div key={i}>
               <p className="text-xs text-accent font-medium mb-1">{cat.category}</p>
@@ -392,7 +417,7 @@ export default function DashboardPage() {
 
       {/* Tracking */}
       {p.tracking && (
-        <Section title="What to Track" icon="📊">
+        <Section id="tracking" title="What to Track" icon="📊">
           {p.tracking.daily && <div><p className="text-xs text-accent font-medium mb-1">Daily</p>{p.tracking.daily.map((d, i) => <p key={i} className="text-xs text-muted-foreground">• {d}</p>)}</div>}
           {p.tracking.retestSchedule && p.tracking.retestSchedule.length > 0 && (
             <div><p className="text-xs text-accent font-medium mb-1">Retest Schedule</p>
@@ -404,7 +429,7 @@ export default function DashboardPage() {
 
       {/* Pain Point Solutions */}
       {p.painPointSolutions && p.painPointSolutions.length > 0 && (
-        <Section title="Your Pain Points" icon="🎯">
+        <Section id="painpoints" title="Your Pain Points" icon="🎯">
           <div className="space-y-3">
             {p.painPointSolutions.map((pp, i) => (
               <div key={i} className="p-4 rounded-xl bg-background border border-card-border space-y-2">
@@ -422,7 +447,7 @@ export default function DashboardPage() {
 
       {/* Flex Rules */}
       {p.flexRules && p.flexRules.length > 0 && (
-        <Section title="Flex Strategies" icon="🧘">
+        <Section id="flex" title="Flex Strategies" icon="🧘">
           <p className="text-[10px] text-muted-foreground">Life strategies that keep your non-negotiables without derailing the protocol.</p>
           <div className="space-y-2">
             {p.flexRules.map((f, i) => (
@@ -437,7 +462,7 @@ export default function DashboardPage() {
 
       {/* Week-by-Week Plan */}
       {p.weekByWeekPlan && p.weekByWeekPlan.length > 0 && (
-        <Section title="Next 4 Weeks — Concrete" icon="📅">
+        <Section id="weekplan" title="Next 4 Weeks — Concrete" icon="📅">
           <div className="space-y-3">
             {p.weekByWeekPlan.slice(0, 4).map((w, i) => (
               <div key={i} className="p-3 rounded-xl bg-background border border-card-border space-y-2">
@@ -458,7 +483,7 @@ export default function DashboardPage() {
 
       {/* Doctor Questions */}
       {p.doctorQuestions && p.doctorQuestions.length > 0 && (
-        <Section title="Questions for Your Doctor" icon="📋">
+        <Section id="doctor-questions" title="Questions for Your Doctor" icon="📋">
           <p className="text-[10px] text-muted-foreground">Print this for your next appointment.</p>
           <div className="space-y-2">
             {p.doctorQuestions.map((q, i) => (
@@ -473,7 +498,7 @@ export default function DashboardPage() {
 
       {/* Doctor Discussion */}
       {p.doctorDiscussion && (p.doctorDiscussion.redFlags?.length > 0 || p.doctorDiscussion.rxSuggestions?.length > 0 || p.doctorDiscussion.specialistReferrals?.length > 0) && (
-        <Section title="Doctor Discussion" icon="👨‍⚕️">
+        <Section id="doctor" title="Doctor Discussion" icon="👨‍⚕️">
           <div className="rounded-xl bg-warning/5 border border-warning/20 p-3">
             <p className="text-[10px] text-warning font-medium mb-2">⚠️ These recommendations do NOT replace medical consultation.</p>
             {p.doctorDiscussion.redFlags?.map((f, i) => <p key={i} className="text-xs text-danger mb-1">🚩 {f}</p>)}
@@ -486,7 +511,7 @@ export default function DashboardPage() {
 
       {/* Roadmap */}
       {p.roadmap && p.roadmap.length > 0 && (
-        <Section title="12-Week Roadmap" icon="🗺️">
+        <Section id="roadmap" title="12-Week Roadmap" icon="🗺️">
           {p.roadmap.map((r, i) => (
             <div key={i} className="flex gap-3">
               <div className="flex flex-col items-center">
@@ -504,7 +529,7 @@ export default function DashboardPage() {
 
       {/* Shopping List */}
       {p.shoppingList && p.shoppingList.length > 0 && (
-        <Section title="Shopping List" icon="🛒">
+        <Section id="shopping" title="Shopping List" icon="🛒">
           {p.costBreakdown && (
             <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 text-center mb-3">
               <div className="p-2 rounded-xl bg-background border border-card-border">
@@ -547,6 +572,7 @@ export default function DashboardPage() {
         <p className="text-xs text-muted">Generated by <span className="text-accent">Protocol AI Engine</span></p>
         <p className="text-[10px] text-muted">This is not medical advice. Consult a doctor before making changes.</p>
         <button onClick={async () => { await fetch('/api/reset-onboarding', { method: 'POST' }); window.location.href = '/onboarding'; }} className="text-xs text-accent hover:underline">Regenerate protocol</button>
+      </div>
       </div>
     </div>
   );
