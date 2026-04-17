@@ -131,7 +131,17 @@ export default function DashboardPage() {
     ? Object.entries(diag.organSystemScores).map(([key, val]) => ({ name: key.charAt(0).toUpperCase() + key.slice(1), score: val as number }))
     : [];
 
-  const velocity = diag?.agingVelocityNumber || (diag?.agingVelocity === 'decelerated' ? 0.8 : diag?.agingVelocity === 'accelerated' ? 1.2 : 1.0);
+  // Prefer decimal value from diagnostic block; fall back to integer column
+  const bioAgeDecimal = typeof diag?.biologicalAge === 'number' ? diag.biologicalAge : biologicalAge;
+  const bioYears = Math.floor(bioAgeDecimal);
+  const bioMonths = Math.round((bioAgeDecimal - bioYears) * 12);
+  const bioAgeLabel = bioMonths === 12 ? `${bioYears + 1}y 0m` : `${bioYears}y ${bioMonths}m`;
+  const chronoAge = typeof diag?.chronologicalAge === 'number' ? diag.chronologicalAge : null;
+  const ageDelta = chronoAge ? bioAgeDecimal - chronoAge : null;
+
+  const velocity = typeof diag?.agingVelocityNumber === 'number'
+    ? diag.agingVelocityNumber
+    : (diag?.agingVelocity === 'decelerated' ? 0.85 : diag?.agingVelocity === 'accelerated' ? 1.18 : 1.0);
   const totalSupCost = p.supplements?.reduce((s, sup) => s + (sup.monthlyCostRon || 0), 0) || 0;
 
   return (
@@ -156,8 +166,17 @@ export default function DashboardPage() {
             <p className="text-[10px] text-muted mt-1">LONGEVITY SCORE</p>
           </div>
           <div className="text-center p-4 rounded-xl bg-background border border-card-border">
-            <AnimatedNumber value={biologicalAge} duration={1500} className="text-4xl font-bold font-mono inline-block" />
-            <p className="text-[10px] text-muted mt-1">BIO AGE</p>
+            <div className={clsx('text-4xl font-bold font-mono', ageDelta !== null ? (ageDelta < -0.5 ? 'text-accent' : ageDelta > 0.5 ? 'text-danger' : 'text-foreground') : 'text-foreground')}>
+              {bioAgeLabel}
+            </div>
+            <p className="text-[10px] text-muted mt-1">
+              BIO AGE
+              {ageDelta !== null && Math.abs(ageDelta) >= 0.1 && (
+                <span className={clsx('ml-1', ageDelta < 0 ? 'text-accent' : 'text-danger')}>
+                  ({ageDelta < 0 ? '' : '+'}{ageDelta.toFixed(1)}y vs chrono)
+                </span>
+              )}
+            </p>
           </div>
           <div className="text-center p-4 rounded-xl bg-background border border-card-border">
             <AnimatedNumber value={velocity} duration={1500} decimals={2} className={clsx('text-4xl font-bold font-mono inline-block', velocity < 0.9 ? 'text-accent' : velocity > 1.1 ? 'text-danger' : 'text-foreground')} />

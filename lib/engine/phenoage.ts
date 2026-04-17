@@ -60,7 +60,7 @@ export function calculatePhenoAge(inputs: PhenoAgeInputs, chronologicalAge: numb
   // Convert to PhenoAge
   const phenoAge = 141.50225 + Math.log(-0.00553 * Math.log(1 - mortalityScore)) / 0.09165;
 
-  return Math.round(phenoAge);
+  return Math.round(phenoAge * 10) / 10;
 }
 
 export function extractPhenoAgeInputs(biomarkers: BiomarkerValue[]): PhenoAgeInputs {

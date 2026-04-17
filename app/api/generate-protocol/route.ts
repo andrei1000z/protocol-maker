@@ -3,7 +3,7 @@ import { createClient } from '@/lib/supabase/server';
 import Groq from 'groq-sdk';
 import Anthropic from '@anthropic-ai/sdk';
 import { z } from 'zod';
-import { classifyAll, calculateLongevityScore, estimateBiologicalAge } from '@/lib/engine/classifier';
+import { classifyAll, calculateLongevityScore, estimateBiologicalAge, estimateAgingPace } from '@/lib/engine/classifier';
 import { detectPatterns } from '@/lib/engine/patterns';
 import { BIOMARKER_DB } from '@/lib/engine/biomarkers';
 import { buildMasterPromptV2 } from '@/lib/engine/master-prompt';
@@ -62,7 +62,8 @@ export async function POST(request: Request) {
     const classified = classifyAll(biomarkerValues);
     const patterns = detectPatterns(classified);
     const longevityScore = calculateLongevityScore(classified);
-    const biologicalAge = estimateBiologicalAge(profile.age, classified);
+    const biologicalAge = estimateBiologicalAge(profile, classified);
+    const agingPace = estimateAgingPace(profile, classified);
 
     // Try AI generation, fallback to deterministic protocol if fails
     let protocolJson: Record<string, unknown>;
@@ -100,6 +101,18 @@ export async function POST(request: Request) {
       modelUsed = 'fallback';
     }
 
+    // Inject our authoritative numeric biological age + aging pace into the AI output's diagnostic block.
+    // AI may hallucinate these; our lifestyle-aware calculation is the source of truth.
+    const existingDiag = (protocolJson.diagnostic as Record<string, unknown> | undefined) || {};
+    protocolJson.diagnostic = {
+      ...existingDiag,
+      biologicalAge,
+      agingVelocityNumber: agingPace,
+      agingVelocity: agingPace < 0.95 ? 'decelerated' : agingPace > 1.05 ? 'accelerated' : 'steady',
+      chronologicalAge: Number(profile.age) || existingDiag.chronologicalAge,
+      longevityScore,
+    };
+
     // Always add biomarker readout from our classifier
     protocolJson.biomarkerReadout = classified.map((b) => {
       const ref = BIOMARKER_DB.find((r) => r.code === b.code);
@@ -124,7 +137,7 @@ export async function POST(request: Request) {
       classified_biomarkers: classified,
       detected_patterns: patterns,
       longevity_score: longevityScore,
-      biological_age: biologicalAge,
+      biological_age: Math.round(biologicalAge),
       model_used: modelUsed,
     });
 
@@ -133,7 +146,7 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: `Database error: ${dbError.message}` }, { status: 500 });
     }
 
-    return NextResponse.json({ protocol: protocolJson, longevityScore, biologicalAge, patterns, modelUsed, aiError });
+    return NextResponse.json({ protocol: protocolJson, longevityScore, biologicalAge, agingPace, patterns, modelUsed, aiError });
   } catch (err) {
     console.error('Protocol generation error:', err);
     return NextResponse.json({ error: err instanceof Error ? err.message : String(err) }, { status: 500 });
