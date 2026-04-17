@@ -54,7 +54,13 @@ export async function checkRateLimit(
   identifier: string,
   email?: string | null
 ): Promise<{ allowed: boolean; limit?: number; remaining?: number; reset?: number; bypassed?: boolean }> {
-  if (!limiter) return { allowed: true }; // No rate limiting configured → allow all
+  // GLOBAL KILL SWITCH: set RATE_LIMIT_DISABLED=true to disable all rate limiting.
+  // Also disabled by default (unset env var is treated as "disabled" during dev/founder mode).
+  // Flip to 'false' explicitly to re-enable the 3/day + 30/hour limits.
+  if (process.env.RATE_LIMIT_DISABLED !== 'false') {
+    return { allowed: true, bypassed: true };
+  }
+  if (!limiter) return { allowed: true };
   if (isBypassed(identifier, email)) return { allowed: true, bypassed: true };
   const result = await limiter.limit(identifier);
   return {
