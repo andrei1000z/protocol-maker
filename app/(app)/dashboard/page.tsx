@@ -41,6 +41,15 @@ function Section({ id, title, icon, children, className }: { id?: string; title:
   );
 }
 
+function EmptyState({ message }: { message: string }) {
+  return (
+    <div className="p-6 rounded-xl bg-background border border-dashed border-card-border text-center">
+      <p className="text-xs text-muted-foreground">{message}</p>
+      <p className="text-[10px] text-muted mt-1">Will be populated next time the AI has more data to work with.</p>
+    </div>
+  );
+}
+
 function Badge({ classification }: { classification: Classification }) {
   return (
     <span className={clsx('text-[9px] font-mono px-2 py-0.5 rounded-full border', getClassificationBg(classification), getClassificationColor(classification))}>
@@ -172,8 +181,9 @@ export default function DashboardPage() {
       </div>
 
       {/* Organ system radar */}
-      {radarData.length > 0 && (
-        <Section id="organs" title="Organ Systems" icon="🫀">
+      <Section id="organs" title="Organ Systems" icon="🫀">
+        {radarData.length === 0 ? <EmptyState message="No organ system scores yet." /> : null}
+        {radarData.length > 0 && (
           <ResponsiveContainer width="100%" height={280}>
             <RadarChart data={radarData}>
               <PolarGrid stroke="#1a1a1a" />
@@ -181,12 +191,12 @@ export default function DashboardPage() {
               <Radar dataKey="score" stroke="#00ff88" fill="#00ff88" fillOpacity={0.15} strokeWidth={2} />
             </RadarChart>
           </ResponsiveContainer>
-        </Section>
-      )}
+        )}
+      </Section>
 
       {/* Bryan comparison */}
-      {p.bryanComparison && p.bryanComparison.length > 0 && (
-        <Section id="bryan" title="You vs Bryan Johnson" icon="🏆">
+      <Section id="bryan" title="You vs Bryan Johnson" icon="🏆">
+        {(!p.bryanComparison || p.bryanComparison.length === 0) ? <EmptyState message="Upload blood work to see how your biomarkers compare to Bryan's." /> : (
           <div className="space-y-2">
             {p.bryanComparison.map((c, i) => (
               <div key={i} className="flex items-center justify-between p-3 rounded-xl bg-background border border-card-border">
@@ -205,12 +215,12 @@ export default function DashboardPage() {
               </div>
             ))}
           </div>
-        </Section>
-      )}
+        )}
+      </Section>
 
       {/* Biomarkers with visual bars */}
-      {p.biomarkerReadout && p.biomarkerReadout.length > 0 && (
-        <Section id="biomarkers" title="Biomarkers" icon="🔬">
+      <Section id="biomarkers" title="Biomarkers" icon="🔬">
+        {(!p.biomarkerReadout || p.biomarkerReadout.length === 0) ? <EmptyState message="No biomarkers entered. Upload blood work to see your values against longevity ranges." /> : (
           <div className="space-y-1">
             {p.biomarkerReadout.map((b) => (
               <button key={b.code} onClick={() => setExpandedBiomarker(expandedBiomarker === b.code ? null : b.code)} className="w-full text-left">
@@ -237,12 +247,12 @@ export default function DashboardPage() {
               </button>
             ))}
           </div>
-        </Section>
-      )}
+        )}
+      </Section>
 
       {/* Nutrition */}
-      {p.nutrition && (
-        <Section id="nutrition" title="Nutrition" icon="🥗">
+      <Section id="nutrition" title="Nutrition" icon="🥗">
+        {!p.nutrition ? <EmptyState message="Nutrition plan will generate after onboarding." /> : (<>
           <div className="grid grid-cols-4 gap-2 text-center">
             <div className="p-3 rounded-xl bg-background border border-card-border">
               <p className="text-xl font-bold font-mono">{p.nutrition.dailyCalories}</p>
@@ -278,12 +288,12 @@ export default function DashboardPage() {
               {p.nutrition.foodsToAdd.map((f, i) => <p key={i} className="text-xs text-muted-foreground">• <span className="text-foreground">{f.food}</span> — {f.why}</p>)}
             </div>
           )}
-        </Section>
-      )}
+        </>)}
+      </Section>
 
       {/* Supplements timeline */}
-      {p.supplements && p.supplements.length > 0 && (
-        <Section id="supplements" title="Supplements" icon="💊">
+      <Section id="supplements" title="Supplements" icon="💊">
+        {(!p.supplements || p.supplements.length === 0) ? <EmptyState message="Supplement stack will be generated based on your biomarkers." /> : (<>
           <div className="flex items-center justify-between text-xs text-muted-foreground mb-2">
             <span>{p.supplements.length} supplements</span>
             <span className="text-accent font-mono font-bold">{totalSupCost} RON/mo</span>
@@ -327,12 +337,12 @@ export default function DashboardPage() {
               ))}
             </div>
           )}
-        </Section>
-      )}
+        </>)}
+      </Section>
 
       {/* Daily Schedule */}
-      {p.dailySchedule && p.dailySchedule.length > 0 && (
-        <Section id="schedule" title="Daily Schedule" icon="⏰">
+      <Section id="schedule" title="Daily Schedule" icon="⏰">
+        {(!p.dailySchedule || p.dailySchedule.length === 0) ? <EmptyState message="Daily timeline will appear once your protocol generates." /> : (
           <div className="space-y-1">
             {p.dailySchedule.map((item, i) => (
               <div key={i} className="flex items-start gap-3 py-2">
@@ -345,12 +355,12 @@ export default function DashboardPage() {
               </div>
             ))}
           </div>
-        </Section>
-      )}
+        )}
+      </Section>
 
       {/* Exercise */}
-      {p.exercise && (
-        <Section id="exercise" title="Exercise" icon="🏋️">
+      <Section id="exercise" title="Exercise" icon="🏋️">
+        {!p.exercise ? <EmptyState message="Exercise plan will generate based on your activity level and goals." /> : (<>
           <div className="flex gap-4 text-xs text-muted-foreground mb-3">
             <span>Zone 2: <span className="text-accent font-mono">{p.exercise.zone2Target} min/wk</span></span>
             <span>Strength: <span className="text-accent font-mono">{p.exercise.strengthSessions}x/wk</span></span>
@@ -365,12 +375,12 @@ export default function DashboardPage() {
               </div>
             ))}
           </div>
-        </Section>
-      )}
+        </>)}
+      </Section>
 
       {/* Sleep */}
-      {p.sleep && (
-        <Section id="sleep" title="Sleep" icon="🌙">
+      <Section id="sleep" title="Sleep" icon="🌙">
+        {!p.sleep ? <EmptyState message="Sleep protocol will be calibrated to your chronotype and schedule." /> : (<>
           <div className="grid grid-cols-3 gap-2 text-center">
             <div className="p-3 rounded-xl bg-background border border-card-border">
               <p className="text-lg font-bold font-mono">{p.sleep.targetBedtime}</p>
@@ -390,12 +400,12 @@ export default function DashboardPage() {
               {p.sleep.windDownRoutine.map((s, i) => <p key={i} className="text-xs text-muted-foreground">• {typeof s === 'string' ? s : `${s.time}: ${s.action}`}</p>)}
             </div>
           )}
-        </Section>
-      )}
+        </>)}
+      </Section>
 
       {/* Universal Tips */}
-      {p.universalTips && p.universalTips.length > 0 && (
-        <Section id="tips" title="Universal Longevity Tips" icon="💡">
+      <Section id="tips" title="Universal Longevity Tips" icon="💡">
+        {(!p.universalTips || p.universalTips.length === 0) ? <EmptyState message="Universal longevity tips are available after protocol generation." /> : (<>
           {p.universalTips.map((cat, i) => (
             <div key={i}>
               <p className="text-xs text-accent font-medium mb-1">{cat.category}</p>
@@ -412,24 +422,24 @@ export default function DashboardPage() {
               ))}
             </div>
           ))}
-        </Section>
-      )}
+        </>)}
+      </Section>
 
       {/* Tracking */}
-      {p.tracking && (
-        <Section id="tracking" title="What to Track" icon="📊">
+      <Section id="tracking" title="What to Track" icon="📊">
+        {!p.tracking ? <EmptyState message="Tracking metrics will appear after protocol generation." /> : (<>
           {p.tracking.daily && <div><p className="text-xs text-accent font-medium mb-1">Daily</p>{p.tracking.daily.map((d, i) => <p key={i} className="text-xs text-muted-foreground">• {d}</p>)}</div>}
           {p.tracking.retestSchedule && p.tracking.retestSchedule.length > 0 && (
             <div><p className="text-xs text-accent font-medium mb-1">Retest Schedule</p>
               {p.tracking.retestSchedule.map((r, i) => <p key={i} className="text-xs text-muted-foreground">• <span className="text-foreground">{r.marker}</span> in {r.weeks} weeks — {r.why}</p>)}
             </div>
           )}
-        </Section>
-      )}
+        </>)}
+      </Section>
 
       {/* Pain Point Solutions */}
-      {p.painPointSolutions && p.painPointSolutions.length > 0 && (
-        <Section id="painpoints" title="Your Pain Points" icon="🎯">
+      <Section id="painpoints" title="Your Pain Points" icon="🎯">
+        {(!p.painPointSolutions || p.painPointSolutions.length === 0) ? <EmptyState message="Describe your pain points in onboarding to get personalized solutions." /> : (
           <div className="space-y-3">
             {p.painPointSolutions.map((pp, i) => (
               <div key={i} className="p-4 rounded-xl bg-background border border-card-border space-y-2">
@@ -442,12 +452,12 @@ export default function DashboardPage() {
               </div>
             ))}
           </div>
-        </Section>
-      )}
+        )}
+      </Section>
 
       {/* Flex Rules */}
-      {p.flexRules && p.flexRules.length > 0 && (
-        <Section id="flex" title="Flex Strategies" icon="🧘">
+      <Section id="flex" title="Flex Strategies" icon="🧘">
+        {(!p.flexRules || p.flexRules.length === 0) ? <EmptyState message="Describe your non-negotiables (pizza nights, morning coffee) in onboarding to get flex strategies." /> : (<>
           <p className="text-[10px] text-muted-foreground">Life strategies that keep your non-negotiables without derailing the protocol.</p>
           <div className="space-y-2">
             {p.flexRules.map((f, i) => (
@@ -457,12 +467,12 @@ export default function DashboardPage() {
               </div>
             ))}
           </div>
-        </Section>
-      )}
+        </>)}
+      </Section>
 
       {/* Week-by-Week Plan */}
-      {p.weekByWeekPlan && p.weekByWeekPlan.length > 0 && (
-        <Section id="weekplan" title="Next 4 Weeks — Concrete" icon="📅">
+      <Section id="weekplan" title="Next 4 Weeks — Concrete" icon="📅">
+        {(!p.weekByWeekPlan || p.weekByWeekPlan.length === 0) ? <EmptyState message="4-week actionable plan will be generated with your protocol." /> : (
           <div className="space-y-3">
             {p.weekByWeekPlan.slice(0, 4).map((w, i) => (
               <div key={i} className="p-3 rounded-xl bg-background border border-card-border space-y-2">
@@ -478,12 +488,12 @@ export default function DashboardPage() {
               </div>
             ))}
           </div>
-        </Section>
-      )}
+        )}
+      </Section>
 
       {/* Doctor Questions */}
-      {p.doctorQuestions && p.doctorQuestions.length > 0 && (
-        <Section id="doctor-questions" title="Questions for Your Doctor" icon="📋">
+      <Section id="doctor-questions" title="Questions for Your Doctor" icon="📋">
+        {(!p.doctorQuestions || p.doctorQuestions.length === 0) ? <EmptyState message="Printable questions for your next doctor visit will appear here." /> : (<>
           <p className="text-[10px] text-muted-foreground">Print this for your next appointment.</p>
           <div className="space-y-2">
             {p.doctorQuestions.map((q, i) => (
@@ -493,12 +503,12 @@ export default function DashboardPage() {
               </div>
             ))}
           </div>
-        </Section>
-      )}
+        </>)}
+      </Section>
 
       {/* Doctor Discussion */}
-      {p.doctorDiscussion && (p.doctorDiscussion.redFlags?.length > 0 || p.doctorDiscussion.rxSuggestions?.length > 0 || p.doctorDiscussion.specialistReferrals?.length > 0) && (
-        <Section id="doctor" title="Doctor Discussion" icon="👨‍⚕️">
+      <Section id="doctor" title="Doctor Discussion" icon="👨‍⚕️">
+        {!p.doctorDiscussion || (!p.doctorDiscussion.redFlags?.length && !p.doctorDiscussion.rxSuggestions?.length && !p.doctorDiscussion.specialistReferrals?.length) ? <EmptyState message="No red flags or referrals detected from your data. Good news!" /> : (
           <div className="rounded-xl bg-warning/5 border border-warning/20 p-3">
             <p className="text-[10px] text-warning font-medium mb-2">⚠️ These recommendations do NOT replace medical consultation.</p>
             {p.doctorDiscussion.redFlags?.map((f, i) => <p key={i} className="text-xs text-danger mb-1">🚩 {f}</p>)}
@@ -506,13 +516,13 @@ export default function DashboardPage() {
             {p.doctorDiscussion.specialistReferrals?.map((s, i) => <p key={i} className="text-xs text-muted-foreground mb-1">🏥 {s}</p>)}
             {p.doctorDiscussion.testsToOrder?.map((t, i) => <p key={i} className="text-xs text-muted-foreground mb-1">🧪 {t}</p>)}
           </div>
-        </Section>
-      )}
+        )}
+      </Section>
 
       {/* Roadmap */}
-      {p.roadmap && p.roadmap.length > 0 && (
-        <Section id="roadmap" title="12-Week Roadmap" icon="🗺️">
-          {p.roadmap.map((r, i) => (
+      <Section id="roadmap" title="12-Week Roadmap" icon="🗺️">
+        {(!p.roadmap || p.roadmap.length === 0) ? <EmptyState message="12-week roadmap will appear after protocol generation." /> : (
+          <>{p.roadmap.map((r, i) => (
             <div key={i} className="flex gap-3">
               <div className="flex flex-col items-center">
                 <div className={clsx('w-3 h-3 rounded-full shrink-0', i === 0 ? 'bg-accent' : 'bg-card-border')} />
@@ -523,13 +533,13 @@ export default function DashboardPage() {
                 {r.actions.map((a, j) => <p key={j} className="text-xs text-muted-foreground mt-0.5">• {a}</p>)}
               </div>
             </div>
-          ))}
-        </Section>
-      )}
+          ))}</>
+        )}
+      </Section>
 
       {/* Shopping List */}
-      {p.shoppingList && p.shoppingList.length > 0 && (
-        <Section id="shopping" title="Shopping List" icon="🛒">
+      <Section id="shopping" title="Shopping List" icon="🛒">
+        {(!p.shoppingList || p.shoppingList.length === 0) ? <EmptyState message="Shopping list with eMAG links will generate with your protocol." /> : (<>
           {p.costBreakdown && (
             <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 text-center mb-3">
               <div className="p-2 rounded-xl bg-background border border-card-border">
@@ -564,8 +574,8 @@ export default function DashboardPage() {
               ))}
             </div>
           ))}
-        </Section>
-      )}
+        </>)}
+      </Section>
 
       {/* Footer */}
       <div className="text-center py-6 space-y-2">
