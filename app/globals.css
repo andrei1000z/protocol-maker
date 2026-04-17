@@ -1,4 +1,5 @@
 @import "tailwindcss";
+@plugin "@tailwindcss/typography";
 
 /* ============================================================================
    PROTOCOL MAKER — Modern minimalist dark theme
