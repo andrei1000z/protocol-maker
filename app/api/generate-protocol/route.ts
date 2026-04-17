@@ -173,8 +173,10 @@ export async function POST(request: Request) {
       detected_patterns: patterns,
       longevity_score: finalScore,
       biological_age: Math.round(finalBioAge),
+      biological_age_decimal: finalBioAge,
       aging_pace: finalPace,
       model_used: modelUsed,
+      generation_source: modelUsed === 'claude-sonnet-4-5' ? 'claude' : modelUsed === 'fallback' ? 'fallback' : 'groq',
     });
 
     if (dbError) {

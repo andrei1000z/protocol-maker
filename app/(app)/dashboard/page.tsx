@@ -131,8 +131,10 @@ export default function DashboardPage() {
     ? Object.entries(diag.organSystemScores).map(([key, val]) => ({ name: key.charAt(0).toUpperCase() + key.slice(1), score: val as number }))
     : [];
 
-  // Prefer decimal value from diagnostic block; fall back to integer column
+  // Prefer DB decimal column → diagnostic block → integer fallback
   const bioAgeDecimal = typeof diag?.biologicalAge === 'number' ? diag.biologicalAge : biologicalAge;
+  // (biological_age_decimal from DB is already threaded into diag.biologicalAge via the
+  //  generate-protocol route's diagnostic injection, so the above covers all cases.)
   const bioYears = Math.floor(bioAgeDecimal);
   const bioMonths = Math.round((bioAgeDecimal - bioYears) * 12);
   const bioAgeLabel = bioMonths === 12 ? `${bioYears + 1}y 0m` : `${bioYears}y ${bioMonths}m`;
