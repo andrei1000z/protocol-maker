@@ -514,8 +514,34 @@ CONSTRAINTS:
 - Monthly budget: ${profile.monthlyBudgetRon} RON/month
 - Experimental openness: ${profile.experimentalOpenness === 'otc_only' ? 'OTC supplements only' : profile.experimentalOpenness === 'open_rx' ? 'Open to discussing Rx with doctor' : 'Open to experimental interventions'}
 
-═══ ESTIMATED BIOLOGICAL AGE ═══
-Chronological: ${profile.age} | Estimated Biological: ${biologicalAge} | Longevity Score: ${longevityScore}/100
+═══ BASELINE DETERMINISTIC ESTIMATES (use as sanity check, refine with your reasoning) ═══
+Chronological age: ${profile.age}
+Our baseline biological age: ${biologicalAge.toFixed(1)} years (decimal = use 1 decimal place in output)
+Our baseline longevity score: ${longevityScore}/100
+
+You are expected to produce your OWN best estimate based on ALL available data.
+Stay within ±3 years of our baseline UNLESS you have specific biomarkers or conditions that justify larger adjustment. Explain your reasoning implicitly in topWins/topRisks.
+
+BIOLOGICAL AGE GUIDELINES (decimal precision, e.g. 34.7 = 34y 8m):
+- Consider: biomarker values (strongest signal), BMI, BP, HRV, VO2 Max, body fat
+- Adjust for: smoking (+3-8y), poor sleep (+1-3y), sedentary (+2y), chronic stress (+1-2y)
+- Subtract for: elite fitness (-2-3y), Mediterranean diet (-1y), strong social connections (-0.5y)
+- For users under 18: offsets should be ≤ ±4 years (not enough time for full impact)
+- For users 18-25: ≤ ±8 years. Over 25: up to ±15 years for severe cases.
+
+LONGEVITY SCORE GUIDELINES (0-100):
+- 90+ = Bryan Johnson tier (peak biomarkers, habits, 0 deficiencies)
+- 75-89 = Well above average (most biomarkers optimal, good habits)
+- 60-74 = Average healthy adult
+- 40-59 = Multiple risk factors, intervention needed
+- < 40 = Serious concerns, urgent lifestyle + medical action
+
+AGING VELOCITY (DunedinPACE analog, 0.6-1.5):
+- 0.65-0.85 = aging slower than clock (elite health)
+- 0.85-1.05 = steady (normal)
+- 1.05-1.25 = accelerated (smoking, metabolic issues, poor sleep)
+- 1.25-1.5 = rapidly accelerated (multiple conditions, very poor habits)
+Represents how many years of biological aging per calendar year RIGHT NOW.
 
 ${hasBiomarkers ? `═══ CLASSIFIED BIOMARKERS ═══
 ${biomarkerSummary}` : '═══ NO BIOMARKERS PROVIDED ═══\nGenerate a lifestyle-only protocol. Strongly recommend getting blood work done. Suggest specific panels to order.'}
@@ -541,11 +567,11 @@ Return ONLY valid JSON matching this EXACT structure. No markdown, no backticks,
 
 {
   "diagnostic": {
-    "biologicalAge": <number — use ${biologicalAge}>,
+    "biologicalAge": <number with 1 decimal place, e.g. 34.7 — YOUR best estimate using all context>,
     "chronologicalAge": ${profile.age},
-    "agingVelocity": "<'accelerated' | 'normal' | 'decelerated'> — based on biomarker quality",
-    "agingVelocityNumber": <number 0.5-1.5 — estimated years aged per calendar year>,
-    "longevityScore": ${longevityScore},
+    "agingVelocity": "<'accelerated' | 'decelerated' | 'steady'>",
+    "agingVelocityNumber": <number 0.60-1.55 with 2 decimals — DunedinPACE analog>,
+    "longevityScore": <integer 0-100 — YOUR best estimate, not just the baseline>,
     "summary": "<2-3 sentence executive summary of this patient's longevity status>",
     "topWins": ["<3 specific things already optimal, referencing biomarker values>"],
     "topRisks": ["<3 specific risks needing attention, referencing biomarker values>"],

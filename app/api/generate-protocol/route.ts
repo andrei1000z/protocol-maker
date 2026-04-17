@@ -61,9 +61,10 @@ export async function POST(request: Request) {
     // Local classification (instant, never fails)
     const classified = classifyAll(biomarkerValues);
     const patterns = detectPatterns(classified);
-    const longevityScore = calculateLongevityScore(classified);
+    const longevityScore = calculateLongevityScore(classified, profile);
     const biologicalAge = estimateBiologicalAge(profile, classified);
     const agingPace = estimateAgingPace(profile, classified);
+    const chronoAge = Number(profile.age) || 35;
 
     // Try AI generation, fallback to deterministic protocol if fails
     let protocolJson: Record<string, unknown>;
@@ -101,16 +102,50 @@ export async function POST(request: Request) {
       modelUsed = 'fallback';
     }
 
-    // Inject our authoritative numeric biological age + aging pace into the AI output's diagnostic block.
-    // AI may hallucinate these; our lifestyle-aware calculation is the source of truth.
+    // Blend AI output with our deterministic baseline. AI gets trust within sanity bounds;
+    // outliers get clamped toward baseline. Provides best-of-both: lifestyle-aware reasoning
+    // plus guardrails against AI hallucination.
     const existingDiag = (protocolJson.diagnostic as Record<string, unknown> | undefined) || {};
+    const aiBioAge = Number(existingDiag.biologicalAge);
+    const aiPace = Number(existingDiag.agingVelocityNumber);
+    const aiScore = Number(existingDiag.longevityScore);
+
+    // Bio age: accept AI if within reasonable bounds of chrono age (age-scaled). Else blend 50/50.
+    const maxDriftUp = chronoAge < 18 ? 5 : chronoAge < 25 ? 10 : 18;
+    const maxDriftDown = chronoAge < 18 ? 3 : chronoAge < 25 ? 6 : 14;
+    const bioMin = Math.max(5, chronoAge - maxDriftDown);
+    const bioMax = chronoAge + maxDriftUp;
+    let finalBioAge: number;
+    if (Number.isFinite(aiBioAge) && aiBioAge >= bioMin && aiBioAge <= bioMax) {
+      // Blend AI (60%) + deterministic (40%) for precision
+      finalBioAge = Math.round((aiBioAge * 0.6 + biologicalAge * 0.4) * 10) / 10;
+    } else {
+      finalBioAge = biologicalAge;
+    }
+
+    // Pace: accept AI if in plausible range, else use deterministic
+    let finalPace: number;
+    if (Number.isFinite(aiPace) && aiPace >= 0.55 && aiPace <= 1.6) {
+      finalPace = Math.round((aiPace * 0.6 + agingPace * 0.4) * 100) / 100;
+    } else {
+      finalPace = agingPace;
+    }
+
+    // Longevity score: AI may be more/less optimistic — blend 50/50 if reasonable
+    let finalScore: number;
+    if (Number.isFinite(aiScore) && aiScore >= 0 && aiScore <= 100) {
+      finalScore = Math.round(aiScore * 0.5 + longevityScore * 0.5);
+    } else {
+      finalScore = longevityScore;
+    }
+
     protocolJson.diagnostic = {
       ...existingDiag,
-      biologicalAge,
-      agingVelocityNumber: agingPace,
-      agingVelocity: agingPace < 0.95 ? 'decelerated' : agingPace > 1.05 ? 'accelerated' : 'steady',
-      chronologicalAge: Number(profile.age) || existingDiag.chronologicalAge,
-      longevityScore,
+      biologicalAge: finalBioAge,
+      agingVelocityNumber: finalPace,
+      agingVelocity: finalPace < 0.95 ? 'decelerated' : finalPace > 1.05 ? 'accelerated' : 'steady',
+      chronologicalAge: chronoAge,
+      longevityScore: finalScore,
     };
 
     // Always add biomarker readout from our classifier
@@ -136,8 +171,8 @@ export async function POST(request: Request) {
       protocol_json: protocolJson,
       classified_biomarkers: classified,
       detected_patterns: patterns,
-      longevity_score: longevityScore,
-      biological_age: Math.round(biologicalAge),
+      longevity_score: finalScore,
+      biological_age: Math.round(finalBioAge),
       model_used: modelUsed,
     });
 
@@ -146,7 +181,7 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: `Database error: ${dbError.message}` }, { status: 500 });
     }
 
-    return NextResponse.json({ protocol: protocolJson, longevityScore, biologicalAge, agingPace, patterns, modelUsed, aiError });
+    return NextResponse.json({ protocol: protocolJson, longevityScore: finalScore, biologicalAge: finalBioAge, agingPace: finalPace, patterns, modelUsed, aiError });
   } catch (err) {
     console.error('Protocol generation error:', err);
     return NextResponse.json({ error: err instanceof Error ? err.message : String(err) }, { status: 500 });

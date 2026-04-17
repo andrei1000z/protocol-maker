@@ -53,39 +53,177 @@ export function classifyAll(biomarkers: BiomarkerValue[]): BiomarkerValue[] {
   return biomarkers.map(classifyBiomarker);
 }
 
-export function calculateLongevityScore(classified: BiomarkerValue[]): number {
-  if (classified.length === 0) return 50;
+// Lifestyle-only score component (0-100). Combines with biomarker score when both available.
+function lifestyleScore(profile: Record<string, unknown>): number {
+  const od = (profile.onboardingData || {}) as Record<string, unknown>;
+  const pick = <T>(key: string, fallback: T): T => {
+    const v = profile[key] ?? od[key];
+    return (v === undefined || v === null || v === '') ? fallback : (v as T);
+  };
+  const num = (v: unknown) => { const n = Number(v); return Number.isFinite(n) ? n : NaN; };
 
+  let score = 75; // baseline — average healthy person
+
+  // Sleep (up to ±12)
+  const sleep = num(pick('sleepHoursAvg', pick('sleepHours', 7)));
+  if (sleep >= 7 && sleep <= 9) score += 4;
+  else if (sleep < 5) score -= 12;
+  else if (sleep < 6) score -= 7;
+  else if (sleep < 7) score -= 3;
+  else if (sleep > 10) score -= 4;
+  const sq = num(pick('sleepQuality', 7));
+  if (sq >= 8) score += 3;
+  else if (sq <= 4) score -= 6;
+
+  // Exercise (up to ±14)
+  const cardio = num(pick('cardioMinutesPerWeek', pick('cardioMin', 90)));
+  const strength = num(pick('strengthSessionsPerWeek', pick('strengthSessions', 2)));
+  if (cardio >= 300 && strength >= 3) score += 10;
+  else if (cardio >= 150 && strength >= 2) score += 6;
+  else if (cardio >= 75) score += 2;
+  else if (cardio < 30 && strength < 1) score -= 14;
+  else if (cardio < 75) score -= 5;
+  const steps = num(pick('stepsPerDay', 0));
+  if (steps >= 10000) score += 3;
+  else if (steps > 0 && steps < 3000) score -= 4;
+
+  // BMI (up to ±12)
+  const h = num(pick('heightCm', 0)) / 100;
+  const w = num(pick('weightKg', 0));
+  if (h > 0 && w > 0) {
+    const bmi = w / (h * h);
+    if (bmi >= 35) score -= 15;
+    else if (bmi >= 30) score -= 9;
+    else if (bmi >= 27) score -= 4;
+    else if (bmi < 18.5) score -= 5;
+    else if (bmi >= 20 && bmi < 25) score += 3;
+  }
+
+  // Smoking / alcohol (up to ±20)
+  if (pick('smoker', false)) {
+    const cigs = num(pick('cigarettesPerDay', 0));
+    if (cigs >= 20) score -= 25;
+    else if (cigs >= 10) score -= 18;
+    else if (cigs > 0) score -= 12;
+    else score -= 8;
+  }
+  const alc = num(pick('alcoholPerWeek', 0));
+  if (alc >= 21) score -= 10;
+  else if (alc >= 14) score -= 6;
+  else if (alc >= 7) score -= 2;
+  else if (alc === 0) score += 1;
+
+  // Stress / mental (up to ±10)
+  const stress = num(pick('stressLevel', 5));
+  if (stress >= 9) score -= 8;
+  else if (stress >= 7) score -= 4;
+  else if (stress <= 3) score += 2;
+  if (pick('depressionSymptoms', false) && !pick('therapyNow', false)) score -= 5;
+  if (pick('anxietySymptoms', false) && !pick('therapyNow', false)) score -= 3;
+  const purpose = num(pick('lifeSenseOfPurpose', 7));
+  if (purpose >= 8) score += 2;
+  else if (purpose <= 3) score -= 3;
+
+  // Social (up to ±8)
+  const lonely = num(pick('lonelinessLevel', 3));
+  if (lonely >= 8) score -= 7;
+  else if (lonely >= 6) score -= 3;
+  const friends = num(pick('closeFriendsCount', -1));
+  if (friends === 0) score -= 3;
+  else if (friends >= 3) score += 1;
+
+  // Diet quality (up to ±10)
+  const dietType = String(pick('dietType', 'omnivore'));
+  if (dietType === 'mediterranean') score += 3;
+  const ultra = num(pick('ultraProcessedPerWeek', 0));
+  if (ultra >= 20) score -= 7;
+  else if (ultra >= 10) score -= 3;
+  const fastFood = num(pick('fastFoodPerWeek', 0));
+  if (fastFood >= 5) score -= 4;
+  const veg = num(pick('veggiesPerDay', 0));
+  if (veg >= 5) score += 3;
+  else if (veg >= 3) score += 1;
+
+  // Longevity habits (up to ±6)
+  if (pick('sauna', false)) score += 2;
+  if (String(pick('meditationPractice', '')) === 'daily') score += 2;
+  if (pick('flossDaily', false)) score += 1;
+  if (pick('spfDaily', false)) score += 1;
+
+  // Conditions (up to -20)
+  const conditions = (pick('conditions', []) as string[]) || [];
+  conditions.forEach(c => {
+    if (/diabetes/i.test(c)) score -= 8;
+    else if (/hypertension|cardio/i.test(c)) score -= 6;
+    else if (/autoimmune|thyroid/i.test(c)) score -= 3;
+    else score -= 2;
+  });
+
+  // Fitness signals
+  const vo2 = num(pick('vo2Max', 0));
+  const age = num(pick('age', 35));
+  if (vo2 > 0) {
+    const expected = Math.max(25, 55 - (age - 20) * 0.35);
+    const diff = vo2 - expected;
+    score += Math.max(-8, Math.min(8, diff * 0.4));
+  }
+  const rhr = num(pick('restingHR', 0));
+  if (rhr > 0) {
+    if (rhr <= 55) score += 2;
+    else if (rhr >= 80) score -= 4;
+  }
+  const sys = num(pick('bloodPressureSys', 0));
+  const dia = num(pick('bloodPressureDia', 0));
+  if (sys >= 160 || dia >= 100) score -= 10;
+  else if (sys >= 140 || dia >= 90) score -= 6;
+  else if (sys >= 130 || dia >= 85) score -= 2;
+
+  return score;
+}
+
+export function calculateLongevityScore(classified: BiomarkerValue[], profile?: Record<string, unknown>): number {
   const weights: Record<string, number> = {
     HSCRP: 3, HBA1C: 3, INSULIN: 2.5, GLUC: 2, LDL: 2, HDL: 2, TRIG: 2,
     VITD: 2, OMEGA3: 2.5, HOMOCYS: 2, APOB: 2.5, TSH: 1.5,
     FERRITIN: 1.5, B12: 1.5, TESTO: 1.5, ALT: 1, CREAT: 1.5,
   };
 
-  let totalWeight = 0;
-  let weightedScore = 0;
-
-  for (const b of classified) {
-    const w = weights[b.code] || 1;
-    totalWeight += w;
-
-    switch (b.classification) {
-      case 'OPTIMAL': weightedScore += w * 100; break;
-      case 'SUBOPTIMAL_LOW':
-      case 'SUBOPTIMAL_HIGH': weightedScore += w * 65; break;
-      case 'DEFICIENT':
-      case 'EXCESS': weightedScore += w * 35; break;
-      case 'CRITICAL': weightedScore += w * 10; break;
+  let bmScore: number | null = null;
+  if (classified.length > 0) {
+    let totalWeight = 0;
+    let weightedScore = 0;
+    for (const b of classified) {
+      const w = weights[b.code] || 1;
+      totalWeight += w;
+      switch (b.classification) {
+        case 'OPTIMAL': weightedScore += w * 100; break;
+        case 'SUBOPTIMAL_LOW':
+        case 'SUBOPTIMAL_HIGH': weightedScore += w * 65; break;
+        case 'DEFICIENT':
+        case 'EXCESS': weightedScore += w * 35; break;
+        case 'CRITICAL': weightedScore += w * 10; break;
+      }
     }
+    bmScore = totalWeight > 0 ? weightedScore / totalWeight : 50;
+    const dataBonusFactor = Math.min(1, classified.length / 15);
+    bmScore *= (0.85 + 0.15 * dataBonusFactor);
   }
 
-  const rawScore = totalWeight > 0 ? weightedScore / totalWeight : 50;
+  const lsScore = profile ? lifestyleScore(profile) : null;
 
-  // Bonus for having more markers tested (more data = more confidence)
-  const dataBonusFactor = Math.min(1, classified.length / 15);
-  const adjustedScore = rawScore * (0.85 + 0.15 * dataBonusFactor);
+  let final: number;
+  if (bmScore !== null && lsScore !== null) {
+    const bmWeight = Math.min(0.75, 0.3 + (classified.length / 15) * 0.45);
+    final = bmScore * bmWeight + lsScore * (1 - bmWeight);
+  } else if (bmScore !== null) {
+    final = bmScore;
+  } else if (lsScore !== null) {
+    final = lsScore;
+  } else {
+    final = 50;
+  }
 
-  return Math.max(0, Math.min(100, Math.round(adjustedScore)));
+  return Math.max(0, Math.min(100, Math.round(final)));
 }
 
 // Lifestyle-based modifiers applied on top of chronological age.
@@ -290,8 +428,12 @@ function lifestyleAgeOffset(profile: Record<string, unknown>): number {
   // COVID
   if (pick('longCovid', false)) offset += 1.2;
 
-  // Clamp extreme values
-  return Math.max(-12, Math.min(18, offset));
+  // Age-calibrated clamp: teens haven't had time to accumulate full impact.
+  // Also prevents a 14yo with bad habits from showing as age 32.
+  const chronoAge = Number(profile.age) || 35;
+  const maxOffsetUp = chronoAge < 18 ? 4 : chronoAge < 25 ? 10 : chronoAge < 40 ? 14 : 18;
+  const maxOffsetDown = chronoAge < 18 ? 2 : chronoAge < 25 ? 5 : chronoAge < 40 ? 8 : 12;
+  return Math.max(-maxOffsetDown, Math.min(maxOffsetUp, offset));
 }
 
 export function estimateBiologicalAge(profile: Record<string, unknown> | number, classified: BiomarkerValue[]): number {
