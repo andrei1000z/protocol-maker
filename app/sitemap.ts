@@ -1,11 +1,13 @@
 import { MetadataRoute } from 'next';
 
+const BASE = 'https://protocol-tawny.vercel.app';
+
 export default function sitemap(): MetadataRoute.Sitemap {
-  const base = 'https://protocol-tawny.vercel.app';
+  const now = new Date();
   return [
-    { url: base, lastModified: new Date(), changeFrequency: 'weekly', priority: 1 },
-    { url: `${base}/login`, lastModified: new Date(), changeFrequency: 'monthly', priority: 0.8 },
-    { url: `${base}/privacy`, lastModified: new Date(), changeFrequency: 'monthly', priority: 0.3 },
-    { url: `${base}/terms`, lastModified: new Date(), changeFrequency: 'monthly', priority: 0.3 },
+    { url: BASE,                 lastModified: now, changeFrequency: 'weekly',  priority: 1.0 },
+    { url: `${BASE}/login`,      lastModified: now, changeFrequency: 'monthly', priority: 0.8 },
+    { url: `${BASE}/privacy`,    lastModified: now, changeFrequency: 'yearly',  priority: 0.3 },
+    { url: `${BASE}/terms`,      lastModified: now, changeFrequency: 'yearly',  priority: 0.3 },
   ];
 }
