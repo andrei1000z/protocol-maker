@@ -4,6 +4,11 @@ import { useEffect, useState, useCallback } from 'react';
 import clsx from 'clsx';
 import { Check, Pill, Dumbbell, Moon, Apple, Flame, TrendingUp } from 'lucide-react';
 import { ACHIEVEMENTS, checkAchievements } from '@/lib/engine/achievements';
+import {
+  calculateStreak, calculateLongestStreak, countPerfectDays,
+  getWeeklyData, getMonthlyHeatmap, calculateMonthlyAverage,
+  ComplianceEntry,
+} from '@/lib/utils/streak';
 
 interface ComplianceItem { type: string; name: string; completed: boolean; }
 
@@ -14,14 +19,15 @@ const ICONS: Record<string, React.ReactNode> = {
   NUTRITION: <Apple className="w-4 h-4" />,
 };
 
-function StreakCounter({ streak }: { streak: number }) {
+function StreakCounter({ streak, longest }: { streak: number; longest: number }) {
   return (
-    <div className="flex items-center justify-center gap-2 py-3 px-4 rounded-2xl bg-card border border-card-border">
-      <Flame className={clsx('w-6 h-6', streak > 0 ? 'text-orange-400' : 'text-muted')} />
-      <div>
+    <div className="flex flex-col items-center justify-center gap-1 py-3 px-4 rounded-2xl bg-card border border-card-border">
+      <div className="flex items-center gap-2">
+        <Flame className={clsx('w-6 h-6', streak > 0 ? 'text-orange-400' : 'text-muted')} />
         <span className="text-2xl font-bold font-mono text-accent">{streak}</span>
-        <span className="text-xs text-muted-foreground ml-1">day streak</span>
+        <span className="text-xs text-muted-foreground">day streak</span>
       </div>
+      {longest > streak && <span className="text-[10px] text-muted">Longest: {longest} days</span>}
     </div>
   );
 }
@@ -37,7 +43,8 @@ function WeeklyChart({ data }: { data: { day: string; pct: number }[] }) {
         {data.map((d, i) => (
           <div key={i} className="flex-1 flex flex-col items-center gap-1">
             <div className="w-full bg-card-border rounded-t-md relative" style={{ height: '80px' }}>
-              <div className={clsx('absolute bottom-0 left-0 right-0 rounded-t-md transition-all', d.pct > 80 ? 'bg-accent' : d.pct > 50 ? 'bg-accent/60' : d.pct > 0 ? 'bg-accent/30' : 'bg-card-border')}
+              <div className={clsx('absolute bottom-0 left-0 right-0 rounded-t-md transition-all',
+                d.pct > 80 ? 'bg-accent' : d.pct > 50 ? 'bg-accent/60' : d.pct > 0 ? 'bg-accent/30' : 'bg-card-border')}
                 style={{ height: `${d.pct}%` }} />
             </div>
             <span className="text-[9px] text-muted">{d.day}</span>
@@ -80,23 +87,34 @@ export default function TrackingPage() {
   const [items, setItems] = useState<ComplianceItem[]>([]);
   const [protocolId, setProtocolId] = useState('');
   const [loading, setLoading] = useState(true);
-  const [streak, setStreak] = useState(0);
-  const [weekData, setWeekData] = useState<{ day: string; pct: number }[]>([]);
-  const [monthData, setMonthData] = useState<{ date: string; pct: number }[]>([]);
+  const [history, setHistory] = useState<ComplianceEntry[]>([]);
+  const [bloodTestsCount, setBloodTestsCount] = useState(0);
+  const [protocolsCount, setProtocolsCount] = useState(0);
 
   useEffect(() => {
     async function load() {
-      const [dataRes, compRes] = await Promise.all([
-        fetch('/api/my-data').then((r) => r.json()),
-        fetch(`/api/compliance?date=${date}`).then((r) => r.json()),
+      // Fetch protocol + compliance history (30 days) in parallel
+      const thirtyDaysAgo = new Date();
+      thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
+      const startDate = thirtyDaysAgo.toISOString().split('T')[0];
+
+      const [dataRes, compTodayRes, historyRes] = await Promise.all([
+        fetch('/api/my-data').then(r => r.json()),
+        fetch(`/api/compliance?date=${date}`).then(r => r.json()),
+        fetch(`/api/compliance/history?startDate=${startDate}&endDate=${date}`).then(r => r.json()),
       ]);
 
       if (!dataRes.protocol) { setLoading(false); return; }
 
       setProtocolId(dataRes.protocol.id);
+      setBloodTestsCount((dataRes.bloodTests || []).length);
+      setProtocolsCount(dataRes.protocol ? 1 : 0);
+      setHistory(historyRes.history || []);
+
       const protocol = dataRes.protocol.protocol_json;
       const completedSet = new Set(
-        (compRes.logs || []).filter((l: { completed: boolean }) => l.completed).map((l: { item_type: string; item_name: string }) => `${l.item_type}::${l.item_name}`)
+        (compTodayRes.logs || []).filter((l: { completed: boolean }) => l.completed)
+          .map((l: { item_type: string; item_name: string }) => `${l.item_type}::${l.item_name}`)
       );
 
       const allItems: ComplianceItem[] = [];
@@ -109,7 +127,7 @@ export default function TrackingPage() {
         const dayNames = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
         const today = dayNames[new Date().getDay()];
         protocol.exercise.weeklyPlan
-          .filter((d: { day: string }) => d.day.toLowerCase() === today.toLowerCase())
+          .filter((d: { day: string }) => d.day?.toLowerCase() === today.toLowerCase())
           .forEach((d: { activity: string }) => {
             allItems.push({ type: 'EXERCISE', name: d.activity, completed: completedSet.has(`EXERCISE::${d.activity}`) });
           });
@@ -127,26 +145,6 @@ export default function TrackingPage() {
       }
 
       setItems(allItems);
-
-      // Mock streak/weekly/monthly (real data would need multi-day compliance fetch)
-      const todayCompleted = allItems.filter(i => i.completed).length;
-      const todayTotal = allItems.length;
-      const todayPct = todayTotal > 0 ? Math.round((todayCompleted / todayTotal) * 100) : 0;
-
-      setStreak(todayPct >= 50 ? Math.floor(Math.random() * 7) + 1 : 0);
-
-      const days = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
-      const dayIdx = new Date().getDay();
-      setWeekData(days.map((d, i) => ({
-        day: d,
-        pct: i < (dayIdx === 0 ? 6 : dayIdx - 1) ? Math.floor(Math.random() * 60 + 40) : i === (dayIdx === 0 ? 6 : dayIdx - 1) ? todayPct : 0,
-      })));
-
-      setMonthData(Array.from({ length: 30 }, (_, i) => {
-        const d = new Date(); d.setDate(d.getDate() - 29 + i);
-        return { date: d.toISOString().split('T')[0], pct: i < 29 ? Math.floor(Math.random() * 100) : todayPct };
-      }));
-
       setLoading(false);
     }
     load();
@@ -155,11 +153,23 @@ export default function TrackingPage() {
   const toggle = useCallback(async (index: number) => {
     const item = items[index];
     const newCompleted = !item.completed;
-    setItems((prev) => prev.map((it, i) => i === index ? { ...it, completed: newCompleted } : it));
+    setItems(prev => prev.map((it, i) => i === index ? { ...it, completed: newCompleted } : it));
     await fetch('/api/compliance', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ itemType: item.type, itemName: item.name, date, completed: newCompleted, protocolId }),
+    });
+
+    // Refresh today's entry in history
+    setHistory(prev => {
+      const todayCompleted = items.filter((it, i) => i === index ? newCompleted : it.completed).length;
+      const total = items.length;
+      const pct = total > 0 ? Math.round((todayCompleted / total) * 100) : 0;
+      const existing = prev.find(h => h.date === date);
+      if (existing) {
+        return prev.map(h => h.date === date ? { ...h, completed: todayCompleted, total, pct } : h);
+      }
+      return [...prev, { date, completed: todayCompleted, total, pct }];
     });
   }, [items, date, protocolId]);
 
@@ -179,6 +189,15 @@ export default function TrackingPage() {
   const completed = items.filter((i) => i.completed).length;
   const total = items.length;
   const pct = total > 0 ? Math.round((completed / total) * 100) : 0;
+
+  // REAL stats from history (no more Math.random)
+  const streak = calculateStreak(history);
+  const longestStreak = calculateLongestStreak(history);
+  const perfectDays = countPerfectDays(history);
+  const weekData = getWeeklyData(history);
+  const monthData = getMonthlyHeatmap(history);
+  const monthlyAvg = calculateMonthlyAverage(history);
+
   const grouped = items.reduce<Record<string, ComplianceItem[]>>((acc, item) => { (acc[item.type] = acc[item.type] || []).push(item); return acc; }, {});
   const TYPE_LABELS: Record<string, string> = { SUPPLEMENT: 'Supplements', EXERCISE: 'Exercise', SLEEP: 'Sleep', NUTRITION: 'Nutrition' };
 
@@ -191,7 +210,7 @@ export default function TrackingPage() {
 
       {/* Top stats */}
       <div className="grid grid-cols-2 gap-3">
-        <StreakCounter streak={streak} />
+        <StreakCounter streak={streak} longest={longestStreak} />
         <div className="flex items-center justify-center py-3 px-4 rounded-2xl bg-card border border-card-border">
           <div className="relative w-16 h-16">
             <svg className="w-full h-full -rotate-90" viewBox="0 0 100 100">
@@ -206,42 +225,14 @@ export default function TrackingPage() {
           </div>
           <div className="ml-3">
             <p className="text-sm font-bold">{completed}/{total}</p>
-            <p className="text-[10px] text-muted">completed</p>
+            <p className="text-[10px] text-muted">today</p>
+            <p className="text-[9px] text-muted mt-1">30d avg: {monthlyAvg}%</p>
           </div>
         </div>
       </div>
 
       <WeeklyChart data={weekData} />
       <MonthlyHeatmap data={monthData} />
-
-      {/* Achievements */}
-      <div className="rounded-2xl bg-card border border-card-border p-4">
-        <h3 className="text-sm font-semibold mb-3">🏆 Achievements</h3>
-        <div className="grid grid-cols-3 sm:grid-cols-4 gap-2">
-          {ACHIEVEMENTS.map((a) => {
-            const earned = checkAchievements({
-              totalDaysTracked: 1,
-              currentStreak: streak,
-              longestStreak: streak,
-              perfectDays: pct >= 100 ? 1 : 0,
-              bloodTestsUploaded: 0,
-              protocolsGenerated: 1,
-              supplementStreak: streak,
-              weeklyCompliance: pct,
-              monthlyAvgCompliance: pct,
-            }).some((e) => e.id === a.id);
-            return (
-              <div key={a.id} title={`${a.name}: ${a.description}`}
-                className={clsx('aspect-square rounded-xl border flex flex-col items-center justify-center gap-1 transition-all',
-                  earned ? (a.tier === 'legendary' ? 'bg-amber-500/10 border-amber-500/30' : a.tier === 'gold' ? 'bg-accent/10 border-accent/30' : 'bg-card border-card-border')
-                  : 'bg-background border-card-border opacity-30')}>
-                <span className="text-xl">{a.icon}</span>
-                <span className="text-[8px] text-center leading-tight px-1">{a.name}</span>
-              </div>
-            );
-          })}
-        </div>
-      </div>
 
       {/* Items grouped by type */}
       {Object.entries(grouped).map(([type, typeItems]) => (
@@ -266,6 +257,35 @@ export default function TrackingPage() {
           })}
         </div>
       ))}
+
+      {/* Achievements - REAL stats */}
+      <div className="rounded-2xl bg-card border border-card-border p-4">
+        <h3 className="text-sm font-semibold mb-3">🏆 Achievements</h3>
+        <div className="grid grid-cols-3 sm:grid-cols-4 gap-2">
+          {ACHIEVEMENTS.map((a) => {
+            const earned = checkAchievements({
+              totalDaysTracked: history.filter(h => h.total > 0).length,
+              currentStreak: streak,
+              longestStreak,
+              perfectDays,
+              bloodTestsUploaded: bloodTestsCount,
+              protocolsGenerated: protocolsCount,
+              supplementStreak: streak,
+              weeklyCompliance: pct,
+              monthlyAvgCompliance: monthlyAvg,
+            }).some((e) => e.id === a.id);
+            return (
+              <div key={a.id} title={`${a.name}: ${a.description}`}
+                className={clsx('aspect-square rounded-xl border flex flex-col items-center justify-center gap-1 transition-all',
+                  earned ? (a.tier === 'legendary' ? 'bg-amber-500/10 border-amber-500/30' : a.tier === 'gold' ? 'bg-accent/10 border-accent/30' : 'bg-card border-card-border')
+                  : 'bg-background border-card-border opacity-30')}>
+                <span className="text-xl">{a.icon}</span>
+                <span className="text-[8px] text-center leading-tight px-1">{a.name}</span>
+              </div>
+            );
+          })}
+        </div>
+      </div>
 
       {items.length === 0 && (
         <div className="text-center py-12">
