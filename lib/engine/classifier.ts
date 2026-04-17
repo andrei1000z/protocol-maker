@@ -307,7 +307,7 @@ export function estimateBiologicalAge(profile: Record<string, unknown> | number,
     if (phenoAge !== null && phenoAge > 0 && phenoAge < 120) {
       // Even with PhenoAge, apply a small lifestyle nudge (20% weight)
       const lifestyleOff = lifestyleAgeOffset(profileObj);
-      return Math.max(18, Math.round((phenoAge + lifestyleOff * 0.2) * 10) / 10);
+      return Math.max(5, Math.round((phenoAge + lifestyleOff * 0.2) * 10) / 10);
     }
   }
 
@@ -323,7 +323,7 @@ export function estimateBiologicalAge(profile: Record<string, unknown> | number,
   // Add lifestyle offset (primary driver when no biomarkers)
   bioAge += lifestyleAgeOffset(profileObj);
 
-  return Math.max(18, Math.round(bioAge * 10) / 10);
+  return Math.max(5, Math.round(bioAge * 10) / 10);
 }
 
 // DunedinPACE-style aging velocity. 1.00 = normal rate. < 1 = slower aging. > 1 = faster.
