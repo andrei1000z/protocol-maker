@@ -39,9 +39,10 @@ export async function POST(request: Request) {
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) return NextResponse.json({ error: 'Not authenticated' }, { status: 401 });
 
-    // Rate limiting: 3 protocol generations per day per user (no-op if Upstash not configured)
+    // Rate limiting: 3 protocol generations per day per user (no-op if Upstash not configured).
+    // Bypassed for founders/admins in RATE_LIMIT_BYPASS_USER_IDS / _EMAILS env vars.
     const limiter = getProtocolRateLimit();
-    const { allowed, remaining, reset } = await checkRateLimit(limiter, user.id);
+    const { allowed, remaining, reset } = await checkRateLimit(limiter, user.id, user.email);
     if (!allowed) {
       const resetIn = reset ? Math.ceil((reset - Date.now()) / 3600000) : 24;
       return NextResponse.json({

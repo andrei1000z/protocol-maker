@@ -13,8 +13,8 @@ export async function POST(request: Request) {
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) return NextResponse.json({ error: 'Not authenticated' }, { status: 401 });
 
-    // Rate limit: 30 messages per hour
-    const { allowed, reset } = await checkRateLimit(getChatRateLimit(), user.id);
+    // Rate limit: 30 messages per hour (bypassed for founders/admins via env)
+    const { allowed, reset } = await checkRateLimit(getChatRateLimit(), user.id, user.email);
     if (!allowed) {
       const resetIn = reset ? Math.ceil((reset - Date.now()) / 60000) : 60;
       return NextResponse.json({ error: `Too many messages. Try again in ${resetIn}m.`, rateLimited: true }, { status: 429 });

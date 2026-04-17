@@ -36,11 +36,26 @@ export function getChatRateLimit(): Ratelimit | null {
   return chatRatelimit;
 }
 
+// Bypass allowlist — founders / admins get unlimited generations.
+// Configure via env: RATE_LIMIT_BYPASS_USER_IDS and/or RATE_LIMIT_BYPASS_EMAILS
+// (comma-separated). Matches are case-insensitive for emails.
+function isBypassed(userId: string, email?: string | null): boolean {
+  const idList = (process.env.RATE_LIMIT_BYPASS_USER_IDS || '').split(',').map(s => s.trim()).filter(Boolean);
+  if (idList.includes(userId)) return true;
+  if (email) {
+    const emailList = (process.env.RATE_LIMIT_BYPASS_EMAILS || '').split(',').map(s => s.trim().toLowerCase()).filter(Boolean);
+    if (emailList.includes(email.toLowerCase())) return true;
+  }
+  return false;
+}
+
 export async function checkRateLimit(
   limiter: Ratelimit | null,
-  identifier: string
-): Promise<{ allowed: boolean; limit?: number; remaining?: number; reset?: number }> {
+  identifier: string,
+  email?: string | null
+): Promise<{ allowed: boolean; limit?: number; remaining?: number; reset?: number; bypassed?: boolean }> {
   if (!limiter) return { allowed: true }; // No rate limiting configured → allow all
+  if (isBypassed(identifier, email)) return { allowed: true, bypassed: true };
   const result = await limiter.limit(identifier);
   return {
     allowed: result.success,
