@@ -173,6 +173,7 @@ export async function POST(request: Request) {
       detected_patterns: patterns,
       longevity_score: finalScore,
       biological_age: Math.round(finalBioAge),
+      aging_pace: finalPace,
       model_used: modelUsed,
     });
 
