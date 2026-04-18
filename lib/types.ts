@@ -100,6 +100,21 @@ export interface DetectedPattern {
   recommendations: string[];
 }
 
+export interface MealOption {
+  name: string;
+  description: string;
+  calories: number;
+  protein_g: number;
+  carbs_g: number;
+  fat_g: number;
+  fiber_g?: number;
+  sugar_g?: number;
+  sodium_mg?: number;
+  prepMinutes?: number;
+  ingredients?: string[];
+  whyForYou?: string;  // 1-line reason this matches their preferences/biomarkers
+}
+
 export interface ProtocolOutput {
   diagnostic: {
     biologicalAge: number;
@@ -167,6 +182,23 @@ export interface ProtocolOutput {
     foodsToReduce: { food: string; why: string }[];
     hydrationLiters?: number;
     groceryListWeekly?: string[];
+    // 3 personalized options per meal type — picked to match user's diet, allergies, goals
+    mealOptions?: {
+      breakfast: MealOption[];
+      lunch: MealOption[];
+      dinner: MealOption[];
+      snacks: MealOption[];
+    };
+    // Daily MAXIMUM intake limits (sugar, sodium, etc.) — what NOT to exceed
+    dailyMaximums?: {
+      sugar_g: number;       // total added sugar
+      sodium_mg: number;     // total sodium
+      saturatedFat_g: number;
+      fiber_g_min?: number;  // not a max — recommended MIN
+      water_ml_min?: number;
+    };
+    // 6-10 specific eating recommendations
+    generalRecommendations?: string[];
   };
   supplements: {
     name: string;
@@ -174,6 +206,8 @@ export interface ProtocolOutput {
     timing: string;
     form: string;
     withFood?: boolean;
+    howToTake?: string;     // e.g. "with 250ml water + a fatty meal"
+    alreadyTaking?: boolean; // true if from user's current_supplements (we keep it)
     justification: string;
     interactions: string[];
     warnings?: string;
@@ -182,6 +216,7 @@ export interface ProtocolOutput {
     priority: 'MUST' | 'STRONG' | 'OPTIONAL' | 'AVOID';
     startWeek?: number;
   }[];
+  supplementsHowTo?: string[];  // top-level: 6-10 general rules ("water 250ml minimum", "fat-soluble with fat", etc.)
   exercise: {
     weeklyPlan: { day: string; activity: string; exercises?: string[]; duration: string; intensity: string; notes?: string }[];
     zone2Target: number;
@@ -192,28 +227,35 @@ export interface ProtocolOutput {
     cooldownRoutine?: string[];
     progressionNotes?: string;
     notes?: string[];
+    generalRecommendations?: string[];  // 6-10 universal exercise tips
+    gymAccess?: 'gym' | 'home' | 'none' | null;  // pulled from onboarding
   };
   sleep: {
     targetBedtime: string;
     targetWakeTime?: string;
     targetDuration?: string;
+    idealBedtime?: string;        // user-stated ideal from onboarding
+    idealWakeTime?: string;
     windDownRoutine: (string | { time: string; action: string })[];
     environment: (string | { item: string; why: string; emagQuery?: string })[];
+    bedroomChecklist?: { item: string; why: string }[];   // blackout, 19-20°C, no phone, no sound, etc.
     supplementsForSleep: string[];
     morningLightMinutes: number;
     morningRoutine?: string[];
     caffeineLimit?: string;
+    generalRecommendations?: string[];   // sleep hygiene tips
   };
   universalTips?: {
     category: string;
     tips: { tip: string; why: string; difficulty: 'easy' | 'medium' | 'hard' }[];
   }[];
   dailySchedule?: {
-    time: string;
+    time: string;        // start time, e.g. "07:00" or "08:00 - 14:00" for blocks
     activity: string;
-    category: string;
+    category: string;    // sleep | wake | work | school | meal | exercise | supplements | mindset | nutrition | tracking | wind-down
     duration: string;
     notes: string;
+    isBlock?: boolean;   // true for work/school spans (renders as a wide bar instead of single time)
   }[];
   tracking: {
     daily: string[];

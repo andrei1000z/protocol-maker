@@ -601,69 +601,103 @@ Return ONLY valid JSON matching this EXACT structure. No markdown, no backticks,
     "proteinPerKg": <g/kg target>,
     "eatingWindow": "<recommended window, e.g. '10:00 AM - 6:00 PM (8 hours)'",
     "meals": [
-      {
-        "name": "<meal name>",
-        "time": "<suggested time>",
-        "calories": <approximate>,
-        "description": "<what to eat, adapted to their diet type: ${profile.dietType}>",
-        "recipe": "<brief recipe or ingredient list with grams>",
-        "keyNutrients": "<what this meal targets>"
-      }
+      { "name": "<meal name>", "time": "<suggested time>", "calories": <num>, "description": "<what to eat, adapted to ${profile.dietType}>", "recipe": "<brief>", "keyNutrients": "<targets>" }
     ],
-    "foodsToAdd": [{"food": "", "why": "<MUST reference a specific biomarker or goal>", "frequency": ""}],
-    "foodsToReduce": [{"food": "", "why": "<MUST reference a specific biomarker or goal>"}],
+    "mealOptions": {
+      "breakfast": [
+        { "name": "<option 1 name>", "description": "<1-line description>", "calories": <num>, "protein_g": <num>, "carbs_g": <num>, "fat_g": <num>, "fiber_g": <num>, "sugar_g": <num>, "sodium_mg": <num>, "prepMinutes": <num>, "ingredients": ["<grams>"], "whyForYou": "<1-line: why this matches their preferences/diet/biomarkers>" },
+        { "name": "<option 2>", "description": "", "calories": <num>, "protein_g": <num>, "carbs_g": <num>, "fat_g": <num>, "fiber_g": <num>, "sugar_g": <num>, "sodium_mg": <num>, "prepMinutes": <num>, "ingredients": [], "whyForYou": "" },
+        { "name": "<option 3>", "description": "", "calories": <num>, "protein_g": <num>, "carbs_g": <num>, "fat_g": <num>, "fiber_g": <num>, "sugar_g": <num>, "sodium_mg": <num>, "prepMinutes": <num>, "ingredients": [], "whyForYou": "" }
+      ],
+      "lunch":  [<3 options, same shape>],
+      "dinner": [<3 options, same shape>],
+      "snacks": [<3 options, smaller calories 100-250 each>]
+    },
+    "dailyMaximums": {
+      "sugar_g": <MAX added sugar per day — typical 25g for adults, less if metabolic issues>,
+      "sodium_mg": <MAX sodium per day — 2300 default, 1500 if BP elevated>,
+      "saturatedFat_g": <MAX — typically 20g>,
+      "fiber_g_min": <recommended MIN, typically 25-35g>,
+      "water_ml_min": <MIN water, typically 2000-3000ml>
+    },
+    "generalRecommendations": [
+      "<8-10 specific actionable rules: e.g. 'eat protein first at every meal', 'hydrate 500ml on waking', 'no liquid calories', 'aim 30g protein per meal', etc. Personalized to their goals/conditions.>"
+    ],
+    "foodsToAdd": [{"food": "", "why": "<MUST reference biomarker or goal>", "frequency": ""}],
+    "foodsToReduce": [{"food": "", "why": "<MUST reference biomarker or goal>"}],
     "hydrationLiters": <daily target>,
-    "groceryListWeekly": ["<specific items available at Romanian supermarkets: Kaufland, Lidl, Mega Image, Carrefour>"]
+    "groceryListWeekly": ["<specific items at Romanian supermarkets>"]
   },
   "supplements": [
     {
       "name": "<exact supplement name>",
       "dose": "<exact dose with unit>",
-      "timing": "<when to take: morning/with food/evening/bedtime>",
+      "timing": "<exact: 'Morning, 7-8 AM' or 'With dinner' or 'Bedtime, 10 PM' — be SPECIFIC>",
       "form": "<best form: glycinate/citrate/methylated/ubiquinol/etc>",
       "withFood": <boolean>,
-      "justification": "<MANDATORY: 'Your [biomarker] is [value] [unit], which is [classification] (optimal: [range]). [Supplement] at [dose] targets this by [mechanism]. Expected improvement: [what to expect]. Bryan Johnson takes [his dose] for the same reason.'>",
-      "interactions": ["<any interactions with their medications or other supplements>"],
-      "warnings": "<any warnings specific to their conditions>",
+      "howToTake": "<EXACT instructions: 'Swallow with 250ml water + a fatty meal (10g+ fat for absorption)' OR 'Empty stomach with cold water, wait 30 min before food' OR 'Sublingual under tongue 60 sec then swallow' — pick what's optimal for THIS supplement>",
+      "alreadyTaking": <boolean — true if this is in user's current_supplements list, meaning we keep it>,
+      "justification": "<MANDATORY: 'Your [biomarker/lifestyle] is [value], which is [issue]. [Supplement] at [dose] targets this by [mechanism]. Expected: [what to feel/see]. Bryan takes [his dose].'>",
+      "interactions": ["<real interactions with their meds or other stack items>"],
+      "warnings": "<warnings specific to their conditions>",
       "monthlyCostRon": <estimated cost in RON>,
       "emagSearchQuery": "<exact search query for eMAG.ro>",
       "priority": "<'MUST' | 'STRONG' | 'OPTIONAL'>",
-      "startWeek": <1-12 — which week to introduce this>
+      "startWeek": <1-12 — when to introduce>
     }
+  ],
+  "supplementsHowTo": [
+    "<6-10 universal supplement-taking rules. Examples: 'Always swallow with 200ml+ water — never juice or coffee (tannins block absorption)'. 'Fat-soluble vitamins (D, K2, A, E) need 10g+ fat in same meal'. 'Magnesium glycinate at night — magnesium oxide is mostly wasted'. 'Iron and calcium block each other — separate by 2 hours'. 'Coffee blocks iron + zinc absorption — wait 1h either side'. Personalize to their actual stack.>"
   ],
   "exercise": {
     "weeklyPlan": [
-      {
-        "day": "Monday",
-        "activity": "<specific workout, not vague>",
-        "exercises": ["<exercise 1: sets x reps>", "<exercise 2>"],
-        "duration": "<minutes>",
-        "intensity": "<Zone 2 / Moderate / HIIT / Recovery>",
-        "notes": "<specific tips>"
-      }
+      { "day": "Monday",    "activity": "<specific workout>", "exercises": ["<sets x reps>"], "duration": "<min>", "intensity": "<Zone 2/Moderate/HIIT/Recovery>", "notes": "<tips>" },
+      { "day": "Tuesday",   "activity": "", "exercises": [], "duration": "", "intensity": "", "notes": "" },
+      { "day": "Wednesday", "activity": "", "exercises": [], "duration": "", "intensity": "", "notes": "" },
+      { "day": "Thursday",  "activity": "", "exercises": [], "duration": "", "intensity": "", "notes": "" },
+      { "day": "Friday",    "activity": "", "exercises": [], "duration": "", "intensity": "", "notes": "" },
+      { "day": "Saturday",  "activity": "", "exercises": [], "duration": "", "intensity": "", "notes": "" },
+      { "day": "Sunday",    "activity": "", "exercises": [], "duration": "", "intensity": "", "notes": "" }
     ],
     "zone2Target": <minutes per week>,
     "strengthSessions": <number per week>,
     "hiitSessions": <number per week>,
     "dailyStepsTarget": <number>,
-    "warmupRoutine": ["<specific stretches/mobility>"],
-    "cooldownRoutine": ["<specific stretches>"],
-    "progressionNotes": "<how to progress over 12 weeks>"
+    "warmupRoutine": ["<specific 5-min mobility/dynamic stretches>"],
+    "cooldownRoutine": ["<specific 5-min static stretches>"],
+    "progressionNotes": "<how to progress over 12 weeks>",
+    "gymAccess": "<'gym' if they say they go to a gym, 'home' if home/calisthenics, 'none' if minimal — derive from their exercisesDone array and onboarding context>",
+    "generalRecommendations": [
+      "<8-10 specific exercise rules: e.g. 'Warm up 5 min before lifting — never cold sets', 'Progressive overload: add 2.5kg or 1 rep weekly', 'Zone 2 = nasal-breathing pace, not gasping', 'Strength before cardio if same day', 'Sleep 8h on training days', 'Rest 48h between same muscle group', 'Track lifts in a notebook/app — what gets measured improves'>"
+    ]
   },
   "sleep": {
-    "targetBedtime": "<HH:MM — calculated from their schedule>",
-    "targetWakeTime": "<HH:MM>",
-    "targetDuration": "<hours>",
+    "targetBedtime": "<HH:MM — use user's stated idealBedtime if provided, else derive from chronotype>",
+    "targetWakeTime": "<HH:MM — use user's stated idealWakeTime if provided>",
+    "targetDuration": "<hours, e.g. '8h 0m'>",
+    "idealBedtime": "<echo back what the user said in onboarding (idealBedtime field)>",
+    "idealWakeTime": "<echo back idealWakeTime>",
     "windDownRoutine": [
       {"time": "<relative to bedtime, e.g. '-90 min'>", "action": "<specific action>"}
     ],
     "environment": [
       {"item": "<what to set up>", "why": "<brief reason>", "emagQuery": "<search query if product needed>"}
     ],
+    "bedroomChecklist": [
+      { "item": "Blackout curtains / sleep mask", "why": "Even small light suppresses melatonin and shortens deep sleep" },
+      { "item": "Room temperature 18-20°C (64-68°F)", "why": "Cool room helps core body temp drop — required to fall + stay asleep" },
+      { "item": "No phone in bedroom (or airplane mode + face-down)", "why": "Removes 3 AM scroll temptation and EMF/notification disruption" },
+      { "item": "White noise / earplugs if street noise", "why": "Random sounds cause micro-arousals you don't remember" },
+      { "item": "Mattress + pillow that fit your sleep posture", "why": "Pain wakes you in REM cycles" },
+      { "item": "<add more specific to their reported issues, e.g. mouth tape if snoring>", "why": "" }
+    ],
     "supplementsForSleep": ["<ONLY if sleep quality is poor, with justification>"],
     "morningLightMinutes": <minutes>,
     "morningRoutine": ["<first 30 min after waking>"],
-    "caffeineLimit": "<recommendation based on their current intake>"
+    "caffeineLimit": "<recommendation based on their current intake>",
+    "generalRecommendations": [
+      "<8-10 sleep hygiene rules. Examples: 'Same bedtime/wake within 30 min including weekends — circadian rhythm hates random'. 'No screens 90 min before bed — blue light blocks melatonin by 50%'. 'No food 3h before bed — digestion fragments sleep'. 'No alcohol 4h before bed — collapses deep sleep by 40%'. 'Caffeine cut-off ~10 hours before bed (half-life ~5-6h)'. 'Get 10-30 min direct sunlight within 1h of waking — anchors circadian'. 'Hot shower 90min before bed — body cools after, signals sleep'. 'Bedroom for sleep + sex only — not work, not Netflix'.>"
+    ]
   },
   "universalTips": [
     {
@@ -674,12 +708,19 @@ Return ONLY valid JSON matching this EXACT structure. No markdown, no backticks,
     }
   ],
   "dailySchedule": [
+    "// IMPORTANT: build the schedule from idealWakeTime → idealBedtime (if provided in onboarding).",
+    "// If user has work/school hours (workStart, workEnd), include them as ONE block entry like:",
+    "//   { time: '08:00 - 14:00', activity: 'School', category: 'school', duration: '6h', notes: '', isBlock: true }",
+    "// Or 'Work' if their occupation isn't student. Use 'work' / 'school' category. Sort all entries chronologically.",
+    "// Include: wake time, morning sunlight, breakfast, supplements (split AM/midday/evening/bedtime), work/school block,",
+    "// lunch, exercise window, dinner, wind-down start, bedtime. Each at its specific time. Be GRANULAR.",
     {
-      "time": "05:30",
-      "activity": "<what to do>",
-      "category": "<sleep | supplements | exercise | nutrition | mindset | tracking>",
+      "time": "<HH:MM or 'HH:MM - HH:MM' for blocks>",
+      "activity": "<what to do — for blocks like work, write 'Work' or 'School'>",
+      "category": "<wake | sleep | supplements | exercise | nutrition | meal | work | school | mindset | tracking | wind-down>",
       "duration": "<how long>",
-      "notes": "<any details>"
+      "notes": "<any details>",
+      "isBlock": <true for work/school spans, false otherwise>
     }
   ],
   "tracking": {
