@@ -225,11 +225,15 @@ export default function OnboardingPage() {
   const [hasCommunity, setHasCommunity] = useState(false);
 
   // Step 4 — Day-to-Day
+  const [scheduleType, setScheduleType] = useState<'school' | 'work' | 'both' | 'freelance' | 'none'>('work');
   const [workStart, setWorkStart] = useState('09:00');
   const [workEnd, setWorkEnd] = useState('18:00');
   const [workLocation, setWorkLocation] = useState<'home' | 'office' | 'hybrid'>('hybrid');
+  const [activeDays, setActiveDays] = useState<string[]>(['Mon', 'Tue', 'Wed', 'Thu', 'Fri']);
   const [sittingHours, setSittingHours] = useState(6);
   const [exerciseWindow, setExerciseWindow] = useState<'morning' | 'lunch' | 'evening' | 'weekends' | 'inconsistent'>('evening');
+  const [gymAccess, setGymAccess] = useState<'full_gym' | 'home_gym' | 'minimal' | 'none'>('full_gym');
+  const [gymEquipment, setGymEquipment] = useState<string[]>([]);
   const [screenTime, setScreenTime] = useState(6);
   const [painPoints, setPainPoints] = useState('');
   const [nonNegotiables, setNonNegotiables] = useState('');
@@ -392,8 +396,12 @@ export default function OnboardingPage() {
         setBool(od.pet, setPet); setBool(od.hasCommunity, setHasCommunity);
 
         // Work / day-to-day
+        if (od.scheduleType) setScheduleType(od.scheduleType);
         setStr(od.workStart, setWorkStart); setStr(od.workEnd, setWorkEnd);
         if (od.workLocation) setWorkLocation(od.workLocation);
+        if (Array.isArray(od.activeDays)) setActiveDays(od.activeDays);
+        if (od.gymAccess) setGymAccess(od.gymAccess);
+        if (Array.isArray(od.gymEquipment)) setGymEquipment(od.gymEquipment);
         if (typeof od.sittingHours === 'number') setSittingHours(od.sittingHours);
         if (od.exerciseWindow) setExerciseWindow(od.exerciseWindow);
         if (typeof od.screenTime === 'number') setScreenTime(od.screenTime);
@@ -508,7 +516,8 @@ export default function OnboardingPage() {
     // Social
     relationshipStatus, relationshipSatisfaction, closeFriendsCount, lonelinessLevel, pet, hasCommunity,
     // Work / Day-to-day
-    workStart, workEnd, workLocation, sittingHours, exerciseWindow, screenTime,
+    scheduleType, workStart, workEnd, workLocation, activeDays, gymAccess, gymEquipment,
+    sittingHours, exerciseWindow, screenTime,
     painPoints, nonNegotiables,
     // Goals
     primaryGoal, secondaryGoals, specificTarget, timelineMonths,
@@ -1470,17 +1479,106 @@ export default function OnboardingPage() {
               <h1 className="text-2xl font-bold">Your Day-to-Day</h1>
               <p className="text-muted-foreground text-sm mt-1">Helps us build a protocol that fits your actual life.</p>
             </div>
-            <div className="grid grid-cols-2 gap-3">
-              <div><label className="text-xs text-muted-foreground">Work starts</label><input type="time" value={workStart} onChange={e => setWorkStart(e.target.value)} className="w-full mt-1 rounded-xl bg-card border border-card-border px-3 py-2.5 text-sm outline-none focus:border-accent font-mono" /></div>
-              <div><label className="text-xs text-muted-foreground">Work ends</label><input type="time" value={workEnd} onChange={e => setWorkEnd(e.target.value)} className="w-full mt-1 rounded-xl bg-card border border-card-border px-3 py-2.5 text-sm outline-none focus:border-accent font-mono" /></div>
-            </div>
-            <div><label className="text-xs text-muted-foreground mb-2 block">Work location</label>
-              <div className="flex gap-2">
-                {(['home', 'office', 'hybrid'] as const).map(v => (
-                  <button key={v} onClick={() => setWorkLocation(v)} className={clsx('flex-1 py-2 rounded-xl text-xs font-medium capitalize transition-all', workLocation === v ? 'bg-accent text-black' : 'bg-card border border-card-border text-muted-foreground')}>{v}</button>
+
+            {/* School / work / both / freelance / none */}
+            <div>
+              <label className="text-xs text-muted-foreground mb-2 block">What does your weekday look like?</label>
+              <div className="grid grid-cols-5 gap-2">
+                {([
+                  { v: 'school',    l: '🎓 School' },
+                  { v: 'work',      l: '💼 Work' },
+                  { v: 'both',      l: 'Both' },
+                  { v: 'freelance', l: 'Freelance' },
+                  { v: 'none',      l: 'None' },
+                ] as const).map(({ v, l }) => (
+                  <button key={v} onClick={() => setScheduleType(v)} className={clsx('py-2 rounded-xl text-[11px] font-medium transition-all',
+                    scheduleType === v ? 'bg-accent text-black' : 'bg-card border border-card-border text-muted-foreground')}>{l}</button>
                 ))}
               </div>
             </div>
+
+            {/* Hours + days */}
+            {scheduleType !== 'none' && (
+              <>
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <label className="text-xs text-muted-foreground">{scheduleType === 'school' ? 'School' : 'Work'} starts</label>
+                    <input type="time" value={workStart} onChange={e => setWorkStart(e.target.value)} className="w-full mt-1 rounded-xl bg-card border border-card-border px-3 py-2.5 text-sm outline-none focus:border-accent font-mono" />
+                  </div>
+                  <div>
+                    <label className="text-xs text-muted-foreground">{scheduleType === 'school' ? 'School' : 'Work'} ends</label>
+                    <input type="time" value={workEnd} onChange={e => setWorkEnd(e.target.value)} className="w-full mt-1 rounded-xl bg-card border border-card-border px-3 py-2.5 text-sm outline-none focus:border-accent font-mono" />
+                  </div>
+                </div>
+
+                <div>
+                  <label className="text-xs text-muted-foreground mb-2 block">Active days (tap days you have {scheduleType === 'school' ? 'school' : 'work'})</label>
+                  <div className="grid grid-cols-7 gap-1.5">
+                    {['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'].map(d => {
+                      const on = activeDays.includes(d);
+                      return (
+                        <button key={d} type="button"
+                          onClick={() => setActiveDays(prev => prev.includes(d) ? prev.filter(x => x !== d) : [...prev, d])}
+                          className={clsx('py-2 rounded-xl text-[11px] font-medium transition-all',
+                            on ? 'bg-accent text-black' : 'bg-card border border-card-border text-muted-foreground hover:border-accent/30')}>
+                          {d}
+                        </button>
+                      );
+                    })}
+                  </div>
+                  <p className="text-[10px] text-muted mt-1.5">{activeDays.length === 7 ? 'All week' : activeDays.length === 0 ? 'No active days — fully free' : `Free: ${['Mon','Tue','Wed','Thu','Fri','Sat','Sun'].filter(d => !activeDays.includes(d)).join(', ')}`}</p>
+                </div>
+
+                {scheduleType !== 'school' && (
+                  <div>
+                    <label className="text-xs text-muted-foreground mb-2 block">Work location</label>
+                    <div className="flex gap-2">
+                      {(['home', 'office', 'hybrid'] as const).map(v => (
+                        <button key={v} onClick={() => setWorkLocation(v)} className={clsx('flex-1 py-2 rounded-xl text-xs font-medium capitalize transition-all',
+                          workLocation === v ? 'bg-accent text-black' : 'bg-card border border-card-border text-muted-foreground')}>{v}</button>
+                      ))}
+                    </div>
+                  </div>
+                )}
+              </>
+            )}
+
+            {/* Gym access */}
+            <div>
+              <label className="text-xs text-muted-foreground mb-2 block">Do you have gym access?</label>
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+                {([
+                  { v: 'full_gym',  l: '🏋️ Full gym',          d: 'Barbells, racks, machines' },
+                  { v: 'home_gym',  l: '🏠 Home gym',          d: 'Some weights, bands' },
+                  { v: 'minimal',   l: '🤸 Calisthenics only', d: 'Bodyweight + bands' },
+                  { v: 'none',      l: 'None',                d: 'Walking + bodyweight' },
+                ] as const).map(({ v, l, d }) => (
+                  <button key={v} onClick={() => setGymAccess(v)} className={clsx('py-3 px-3 rounded-xl text-xs font-medium transition-all text-left',
+                    gymAccess === v ? 'bg-accent/10 border border-accent/50 text-accent' : 'bg-card border border-card-border text-muted-foreground hover:border-accent/30')}>
+                    <p className="font-semibold">{l}</p>
+                    <p className="text-[10px] text-muted mt-0.5 normal-case">{d}</p>
+                  </button>
+                ))}
+              </div>
+              {(gymAccess === 'home_gym' || gymAccess === 'minimal') && (
+                <div className="mt-2">
+                  <p className="text-[10px] text-muted-foreground mb-1.5">What equipment do you have?</p>
+                  <div className="flex flex-wrap gap-1.5">
+                    {['dumbbells', 'barbell', 'kettlebell', 'pull-up bar', 'resistance bands', 'bench', 'bike/treadmill', 'TRX/rings'].map(e => {
+                      const on = gymEquipment.includes(e);
+                      return (
+                        <button key={e} type="button" onClick={() => setGymEquipment(prev => prev.includes(e) ? prev.filter(x => x !== e) : [...prev, e])}
+                          className={clsx('px-3 py-1 rounded-lg text-[11px] capitalize transition-all',
+                            on ? 'bg-accent/15 text-accent border border-accent/30' : 'bg-card border border-card-border text-muted-foreground hover:border-accent/30')}>
+                          {e}
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+              )}
+            </div>
+
             <div className="grid grid-cols-2 gap-3">
               <div><label className="text-xs text-muted-foreground">Sitting hours/day: <span className="text-accent">{sittingHours}</span></label><input type="range" min={0} max={16} value={sittingHours} onChange={e => setSittingHours(parseInt(e.target.value))} className="w-full mt-2 h-2 bg-card-border rounded-lg appearance-none cursor-pointer accent-[#34d399]" /></div>
               <div><label className="text-xs text-muted-foreground">Screen time/day: <span className="text-accent">{screenTime}h</span></label><input type="range" min={1} max={16} value={screenTime} onChange={e => setScreenTime(parseInt(e.target.value))} className="w-full mt-2 h-2 bg-card-border rounded-lg appearance-none cursor-pointer accent-[#34d399]" /></div>

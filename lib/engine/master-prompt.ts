@@ -320,6 +320,10 @@ export function buildMasterPromptV2(
   const workStart = pick<string>('workStart');
   const workEnd = pick<string>('workEnd');
   const workLocation = pick<string>('workLocation');
+  const scheduleType = pick<string>('scheduleType');
+  const activeDays = pick<string[]>('activeDays', []) || [];
+  const gymAccess = pick<string>('gymAccess');
+  const gymEquipment = pick<string[]>('gymEquipment', []) || [];
   const sittingHours = pick<number>('sittingHours');
   const exerciseWindow = pick<string>('exerciseWindow');
   const screenTime = pick<number>('screenTime');
@@ -383,11 +387,26 @@ export function buildMasterPromptV2(
 ${ethnicity ? `- Ethnicity: ${ethnicity} (adjust biomarker reference ranges where applicable — e.g. vitamin D thresholds vary by skin tone, ferritin varies by sex)` : ''}
 ${restingHR ? `- Resting HR: ${restingHR} bpm ${restingHR < 55 ? '(excellent cardiovascular fitness)' : restingHR > 75 ? '(elevated — indicates poor cardio fitness or stress)' : '(normal)'}` : ''}
 
-💼 WORK
-${workStart && workEnd ? `- Schedule: ${workStart} - ${workEnd} (${workLocation || 'unknown location'})` : '- Work schedule: not specified'}
+💼 WORK / SCHOOL
+${scheduleType === 'school' ? '- Type: SCHOOL (student) — daily schedule MUST show school block, supplements timed around it' :
+  scheduleType === 'work' ? '- Type: Standard work' :
+  scheduleType === 'both' ? '- Type: School + part-time work' :
+  scheduleType === 'freelance' ? '- Type: Freelance — flexible schedule, can plan exercise mid-day' :
+  scheduleType === 'none' ? '- Type: No work/school — fully open schedule' :
+  ''}
+${workStart && workEnd && scheduleType !== 'none' ? `- Hours: ${workStart} - ${workEnd} (${workLocation || 'location unspecified'})` : '- Hours: not specified'}
+${activeDays.length > 0 && activeDays.length < 7 ? `- Active days: ${activeDays.join(', ')} | Free days: ${['Mon','Tue','Wed','Thu','Fri','Sat','Sun'].filter(d => !activeDays.includes(d)).join(', ')} → schedule heavier workouts on free days` : ''}
 ${sittingHours !== undefined ? `- Sedentary: ${sittingHours} hrs/day sitting ${sittingHours > 8 ? '→ CRITICAL: must include hourly movement breaks + evening walk' : ''}` : ''}
-${occupationType ? `- Type: ${occupationType}${occupationType === 'shift' ? ' → circadian misalignment likely, sleep protocol must account for this' : ''}` : ''}
+${occupationType ? `- Occupation type: ${occupationType}${occupationType === 'shift' ? ' → circadian misalignment likely, sleep protocol must account for this' : ''}` : ''}
 ${screenTime !== undefined ? `- Screen time: ${screenTime} hrs/day${screenTime > 10 ? ' → eye strain + blue light at night highly likely' : ''}` : ''}
+
+🏋️ GYM ACCESS
+${gymAccess === 'full_gym' ? '- FULL GYM (barbells, racks, machines) → prescribe traditional progressive overload programming with compound lifts' :
+  gymAccess === 'home_gym' ? `- HOME GYM with equipment: ${gymEquipment.join(', ') || '(unspecified)'} → adapt the plan to use what they have` :
+  gymAccess === 'minimal' ? `- CALISTHENICS / MINIMAL EQUIPMENT: ${gymEquipment.join(', ') || 'bodyweight + bands'} → prescribe pull-ups, push-up variations, pistol squats, hollow body, etc.` :
+  gymAccess === 'none' ? '- NO EQUIPMENT — bodyweight only. Use squats, push-ups, lunges, plank, walking. NO barbell/dumbbell exercises.' :
+  '- Gym access: not specified'}
+- Set exercise.gymAccess in the JSON to: ${gymAccess === 'full_gym' ? '"gym"' : gymAccess === 'home_gym' || gymAccess === 'minimal' ? '"home"' : gymAccess === 'none' ? '"none"' : '(infer)'}
 
 😴 SLEEP
 ${bedtime && wakeTime ? `- Current: ${bedtime} → ${wakeTime}` : ''}

@@ -291,9 +291,16 @@ function buildFallbackProtocol(profile: UserProfile, bioAge: number, score: numb
   const idealWakeTime = (od.idealWakeTime as string) || (profile as UserProfile & { wakeTime?: string }).wakeTime || '06:30';
   const allergies = profile.allergies || [];
   const exercisesDone = (od.exercisesDone as string[]) || [];
+
+  // Prefer explicit onboarding answer; fall back to inference from exercises done
+  const explicitGym = od.gymAccess as 'full_gym' | 'home_gym' | 'minimal' | 'none' | undefined;
   const gymAccess: 'gym' | 'home' | 'none' =
-    exercisesDone.some(e => /weights|crossfit|gym/i.test(e)) ? 'gym' :
-    exercisesDone.some(e => /calisthenics|yoga|hiit|home/i.test(e)) ? 'home' : 'none';
+    explicitGym === 'full_gym' ? 'gym'
+    : explicitGym === 'home_gym' || explicitGym === 'minimal' ? 'home'
+    : explicitGym === 'none' ? 'none'
+    : exercisesDone.some(e => /weights|crossfit|gym/i.test(e)) ? 'gym'
+    : exercisesDone.some(e => /calisthenics|yoga|hiit|home/i.test(e)) ? 'home'
+    : 'none';
 
   // Daily maximums — tighter for users with metabolic/cardio risk
   const hasHighBP = patterns.some(p => /hypertension|cardio/i.test(p.name)) || (od.bloodPressureSys && Number(od.bloodPressureSys) >= 130);
@@ -589,11 +596,13 @@ function buildFallbackDailySchedule(profile: UserProfile) {
   const w = parse(wakeTime);
   const b = parse(idealBed);
 
-  // Work/school block — pull from onboarding workStart/workEnd
+  // Work/school block — prefer explicit scheduleType over age-based inference
   const workStart = (profile.workStart as string) || (od.workStart as string) || '';
   const workEnd = (profile.workEnd as string) || (od.workEnd as string) || '';
-  const isStudent = (profile.age || 30) < 22;
-  const blockLabel = isStudent ? 'School' : 'Work';
+  const scheduleType = od.scheduleType as 'school' | 'work' | 'both' | 'freelance' | 'none' | undefined;
+  const isStudent = scheduleType === 'school' || scheduleType === 'both' || (!scheduleType && (profile.age || 30) < 22);
+  const noSchedule = scheduleType === 'none';
+  const blockLabel = scheduleType === 'school' ? 'School' : scheduleType === 'both' ? 'School + work' : scheduleType === 'freelance' ? 'Focus block' : 'Work';
   const blockCategory = isStudent ? 'school' : 'work';
 
   const schedule: Array<{ time: string; activity: string; category: string; duration: string; notes: string; isBlock?: boolean }> = [];
@@ -602,7 +611,7 @@ function buildFallbackDailySchedule(profile: UserProfile) {
   schedule.push({ time: fmt(w.h, w.m + 15), activity: 'Vitamin D3 + K2 + Omega-3 with breakfast fat', category: 'supplements', duration: '2 min', notes: 'Fat-soluble — needs the breakfast fat to absorb' });
   schedule.push({ time: fmt(w.h + 1), activity: 'Breakfast — protein-forward (≥30g protein)', category: 'meal', duration: '20 min', notes: 'Anchors blood sugar for the day' });
 
-  if (workStart && workEnd) {
+  if (workStart && workEnd && !noSchedule) {
     schedule.push({ time: `${workStart} - ${workEnd}`, activity: blockLabel, category: blockCategory, duration: '', notes: 'Stand + walk 5 min every hour', isBlock: true });
   }
 
