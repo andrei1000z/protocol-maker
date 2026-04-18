@@ -5,6 +5,7 @@ import Anthropic from '@anthropic-ai/sdk';
 import { z } from 'zod';
 import { classifyAll, calculateLongevityScore, estimateBiologicalAge, estimateAgingPace } from '@/lib/engine/classifier';
 import { computeOrganSystems, generateTopWins, generateTopRisks, estimateBiomarkers, buildBryanSummary } from '@/lib/engine/lifestyle-diagnostics';
+import { buildPainPoints, buildFlexRules } from '@/lib/engine/personalization-fills';
 import { detectPatterns } from '@/lib/engine/patterns';
 import { BIOMARKER_DB } from '@/lib/engine/biomarkers';
 import { buildMasterPromptV2 } from '@/lib/engine/master-prompt';
@@ -173,6 +174,17 @@ export async function POST(request: Request) {
       bryanSummary,
       estimatedBiomarkers,
     };
+
+    // Ensure painPointSolutions + flexRules are ALWAYS populated, even when AI skips them.
+    // If AI returned some, keep them; otherwise fall back to our enriched catalog.
+    const existingPP = Array.isArray(protocolJson.painPointSolutions) ? (protocolJson.painPointSolutions as unknown[]) : [];
+    if (existingPP.length < 2) {
+      protocolJson.painPointSolutions = buildPainPoints(profile);
+    }
+    const existingFlex = Array.isArray(protocolJson.flexRules) ? (protocolJson.flexRules as unknown[]) : [];
+    if (existingFlex.length < 2) {
+      protocolJson.flexRules = buildFlexRules(profile);
+    }
 
     // Always add biomarker readout from our classifier
     protocolJson.biomarkerReadout = classified.map((b) => {
@@ -520,8 +532,8 @@ function buildFallbackProtocol(profile: UserProfile, bioAge: number, score: numb
         'Screens off 60 min before bed — done?',
       ],
     },
-    painPointSolutions: buildFallbackPainPoints(profile),
-    flexRules: buildFallbackFlexRules(profile),
+    painPointSolutions: buildPainPoints(profile),
+    flexRules: buildFlexRules(profile),
     weekByWeekPlan: [
       { week: 1, focus: 'Foundation',
         mondayActions: ['Start Vitamin D3 + Omega-3 + Magnesium with breakfast'],
@@ -639,94 +651,6 @@ function buildFallbackDailySchedule(profile: UserProfile) {
   return schedule;
 }
 
-function buildFallbackPainPoints(profile: UserProfile) {
-  const painPoints = profile.painPoints;
-  if (!painPoints || painPoints.trim().length === 0) return [];
-
-  // Split by line/comma and create an entry per distinct concern
-  const concerns = painPoints.split(/[,.\n]+/).map(s => s.trim()).filter(s => s.length > 5).slice(0, 5);
-  return concerns.map(concern => {
-    const lower = concern.toLowerCase();
-    if (lower.includes('energy') || lower.includes('crash') || lower.includes('tired') || lower.includes('fog')) {
-      return {
-        problem: concern,
-        likelyCause: 'Post-meal glucose spike + insufficient protein breakfast + possible sleep debt',
-        solution: 'Higher-protein breakfast (35g+), 10 min walk after meals, avoid refined carbs at lunch, optimize sleep first',
-        supportingBiomarkers: ['GLUC', 'INSULIN', 'HBA1C'],
-        expectedTimeline: '1-2 weeks for first improvements, 4 weeks for full resolution',
-        checkpoints: ['Track 2 PM energy 1-10 daily', 'Compare week 1 vs week 4 averages'],
-      };
-    }
-    if (lower.includes('sleep') || lower.includes('insomnia') || lower.includes('fall asleep')) {
-      return {
-        problem: concern,
-        likelyCause: 'Elevated evening cortisol, blue light exposure, or inconsistent bedtime',
-        solution: 'Magnesium Glycinate 400mg 60 min before bed, no screens 90 min before, consistent bedtime ±30 min, bedroom at 18-19°C',
-        supportingBiomarkers: ['CORTISOL'],
-        expectedTimeline: '3-7 days for first improvements, 3 weeks for stable pattern',
-        checkpoints: ['Time-to-sleep tracked nightly', 'Morning readiness score'],
-      };
-    }
-    if (lower.includes('back') || lower.includes('stiff') || lower.includes('pain') || lower.includes('joint')) {
-      return {
-        problem: concern,
-        likelyCause: 'Prolonged sitting + low omega-3 + possible inflammation',
-        solution: 'Hip flexor stretches 2x/day, hourly movement breaks, Omega-3 2-3g/day, strengthen posterior chain',
-        supportingBiomarkers: ['HSCRP'],
-        expectedTimeline: '2-3 weeks',
-        checkpoints: ['Morning stiffness 1-10 daily', 'Weekly flexibility test'],
-      };
-    }
-    return {
-      problem: concern,
-      likelyCause: 'Multi-factorial — consult detected patterns and biomarker trends',
-      solution: 'Track daily for 2 weeks to identify triggers, address root causes (sleep, stress, nutrition) systematically',
-      supportingBiomarkers: [],
-      expectedTimeline: '4-8 weeks depending on root cause',
-      checkpoints: ['Daily severity tracking 1-10', 'Weekly pattern review'],
-    };
-  });
-}
-
-function buildFallbackFlexRules(profile: UserProfile) {
-  const nonNegotiables = profile.nonNegotiables;
-  if (!nonNegotiables || nonNegotiables.trim().length === 0) return [];
-
-  const items = nonNegotiables.split(/[,.\n]+/).map(s => s.trim()).filter(s => s.length > 3).slice(0, 5);
-  return items.map(item => {
-    const lower = item.toLowerCase();
-    if (lower.includes('pizza') || lower.includes('burger') || lower.includes('fast food')) {
-      return {
-        scenario: item,
-        strategy: '20 min walk before meal + 15 min walk after. Berberine 500mg with meal. Drink water between slices. Extend overnight fast to 14h the next day.',
-        damageControl: 'Day-after: light eating, extra fiber, skip alcohol.',
-        frequency: 'Up to 1x/week without penalty',
-      };
-    }
-    if (lower.includes('coffee') || lower.includes('caffeine')) {
-      return {
-        scenario: item,
-        strategy: 'Keep your morning coffee. Cutoff by 12:00. L-Theanine 200mg with coffee to smooth out peak.',
-        damageControl: 'If consumed late: magnesium at bedtime, chamomile tea',
-        frequency: 'Daily OK if before noon',
-      };
-    }
-    if (lower.includes('alcohol') || lower.includes('wine') || lower.includes('beer') || lower.includes('drink')) {
-      return {
-        scenario: item,
-        strategy: 'Hydrate 1 glass water between drinks. Eat before drinking. Take NAC 600mg before bed. Avoid sugary mixers.',
-        damageControl: 'Day-after: electrolytes, skip workout, hydrate aggressively',
-        frequency: 'Up to 2 drinks, 1-2x/week max',
-      };
-    }
-    return {
-      scenario: item,
-      strategy: 'Enjoy mindfully. Pair with protein+fiber to blunt glucose. Walk 10 min after.',
-      damageControl: 'Return to normal protocol next meal',
-      frequency: 'Within reason',
-    };
-  });
-}
 
 function buildFallbackMeals(dietType: string, calories: number) {
   const pct = (x: number) => Math.round(calories * x);

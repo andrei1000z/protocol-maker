@@ -7,6 +7,7 @@ import { detectPatterns } from '@/lib/engine/patterns';
 import { BIOMARKER_DB } from '@/lib/engine/biomarkers';
 import { buildMasterPromptV2 } from '@/lib/engine/master-prompt';
 import { computeOrganSystems, generateTopWins, generateTopRisks, estimateBiomarkers, buildBryanSummary } from '@/lib/engine/lifestyle-diagnostics';
+import { buildPainPoints, buildFlexRules } from '@/lib/engine/personalization-fills';
 import type { BiomarkerValue, UserProfile } from '@/lib/types';
 
 // Cron jobs can run up to 300s on Vercel Pro. Hobby is 60s — we batch small.
@@ -236,6 +237,16 @@ async function regenerateForUser(userId: string): Promise<{ skipped?: boolean; p
     bryanSummary,
     estimatedBiomarkers: estimatedBm,
   };
+
+  // Ensure painPointSolutions + flexRules are populated, mirroring the /api/generate-protocol route
+  const existingPP = Array.isArray(protocolJson.painPointSolutions) ? (protocolJson.painPointSolutions as unknown[]) : [];
+  if (existingPP.length < 2) {
+    protocolJson.painPointSolutions = buildPainPoints(mergedProfile as UserProfile);
+  }
+  const existingFlex = Array.isArray(protocolJson.flexRules) ? (protocolJson.flexRules as unknown[]) : [];
+  if (existingFlex.length < 2) {
+    protocolJson.flexRules = buildFlexRules(mergedProfile as UserProfile);
+  }
 
   protocolJson.biomarkerReadout = classified.map((b) => {
     const ref = BIOMARKER_DB.find((r) => r.code === b.code);
