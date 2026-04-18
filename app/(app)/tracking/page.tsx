@@ -655,10 +655,20 @@ export default function TrackingPage() {
               ) : (
                 <div className="grid grid-cols-3 sm:grid-cols-4 gap-3">
                   {earned.map(a => (
-                    <div
+                    <button
                       key={a.id}
-                      title={a.description}
-                      className={clsx('aspect-square rounded-xl border flex flex-col items-center justify-center gap-1 p-2 transition-transform hover:scale-105',
+                      title={`${a.description} — click to share`}
+                      onClick={() => {
+                        const text = `🏆 Just unlocked "${a.name}" on Protocol — ${a.description}`;
+                        const url = 'https://protocol-tawny.vercel.app';
+                        const nav = typeof navigator !== 'undefined' ? navigator : null;
+                        if (nav && typeof nav.share === 'function') {
+                          nav.share({ title: 'Protocol achievement', text, url }).catch(() => {});
+                        } else if (nav?.clipboard) {
+                          nav.clipboard.writeText(`${text} ${url}`);
+                        }
+                      }}
+                      className={clsx('aspect-square rounded-xl border flex flex-col items-center justify-center gap-1 p-2 transition-transform hover:scale-105 cursor-pointer relative group',
                         a.tier === 'legendary' ? 'bg-amber-500/10 border-amber-500/30' :
                         a.tier === 'gold' ? 'bg-accent/10 border-accent/30' :
                         a.tier === 'silver' ? 'bg-surface-2 border-card-border' :
@@ -666,7 +676,8 @@ export default function TrackingPage() {
                     >
                       <span className="text-2xl">{a.icon}</span>
                       <span className="text-[9px] text-center leading-tight text-foreground/90 font-medium">{a.name}</span>
-                    </div>
+                      <span className="absolute top-1 right-1 text-[9px] text-muted opacity-0 group-hover:opacity-100 transition-opacity">share</span>
+                    </button>
                   ))}
                 </div>
               )}

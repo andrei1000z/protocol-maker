@@ -181,12 +181,18 @@ function RetestUploader({ bloodTestsCount }: { bloodTestsCount: number }) {
 // ─────────────────────────────────────────────────────────────────────────────
 // Delete account confirmation modal
 // ─────────────────────────────────────────────────────────────────────────────
-function DeleteAccountModal({ open, onClose, onConfirm }: { open: boolean; onClose: () => void; onConfirm: () => Promise<void> }) {
+function DeleteAccountModal({ open, onClose, onConfirm, onExport }: { open: boolean; onClose: () => void; onConfirm: () => Promise<void>; onExport: () => Promise<void> }) {
   const [checked, setChecked] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [exported, setExported] = useState(false);
   const [error, setError] = useState('');
 
   if (!open) return null;
+
+  const handleExport = async () => {
+    try { await onExport(); setExported(true); }
+    catch (e) { setError(e instanceof Error ? e.message : String(e)); }
+  };
 
   const handleDelete = async () => {
     setLoading(true); setError('');
@@ -208,6 +214,22 @@ function DeleteAccountModal({ open, onClose, onConfirm }: { open: boolean; onClo
               This is <strong className="text-foreground">permanent</strong>. Your account, profile, protocols, blood work, tracking history, and shared links will all be gone. We can&apos;t recover them.
             </p>
           </div>
+
+          {/* GDPR: offer data export before delete */}
+          <button
+            onClick={handleExport}
+            disabled={loading}
+            className={clsx('w-full p-3.5 rounded-xl border text-left transition-colors flex items-center gap-3',
+              exported
+                ? 'bg-accent/10 border-accent/30 text-accent'
+                : 'bg-surface-2 border-card-border hover:border-accent/30 hover:text-accent')}
+          >
+            <Download className="w-4 h-4 shrink-0" />
+            <div className="flex-1 min-w-0">
+              <p className="text-sm font-medium">{exported ? 'Data exported ✓' : 'Export my data first (GDPR)'}</p>
+              <p className="text-[11px] text-muted-foreground">{exported ? 'Downloaded as JSON' : 'JSON backup of everything — recommended before deleting'}</p>
+            </div>
+          </button>
 
           <label className={clsx('flex items-start gap-3 p-4 rounded-xl border cursor-pointer transition-colors',
             checked ? 'bg-red-500/10 border-red-500/40' : 'bg-surface-2 border-card-border hover:border-card-border-hover')}>
@@ -724,7 +746,7 @@ export default function SettingsPage() {
         })}
       </div>
 
-      <DeleteAccountModal open={deleteOpen} onClose={() => setDeleteOpen(false)} onConfirm={handleDeleteAccount} />
+      <DeleteAccountModal open={deleteOpen} onClose={() => setDeleteOpen(false)} onConfirm={handleDeleteAccount} onExport={handleExport} />
 
       <p className="text-[11px] text-center text-muted pt-2">Protocol v3 · Not medical advice · Always consult a doctor</p>
     </div>

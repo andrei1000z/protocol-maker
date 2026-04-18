@@ -186,13 +186,32 @@ export default function HistoryPage() {
   const totalBiomarkers = new Set(tests.flatMap(t => t.biomarkers.map(b => b.code))).size;
 
   return (
-    <div className="max-w-3xl mx-auto px-4 sm:px-6 py-6 sm:py-8 space-y-5">
+    <div className="max-w-3xl mx-auto px-4 sm:px-6 py-6 sm:py-8 space-y-5 print:max-w-none print:px-0">
       {/* Page header */}
-      <div className="flex items-end justify-between gap-4 animate-fade-in">
+      <div className="flex items-end justify-between gap-4 animate-fade-in flex-wrap">
         <div>
           <h1 className="text-2xl sm:text-3xl font-semibold tracking-tight">History</h1>
           <p className="text-sm text-muted-foreground mt-1">Your longevity journey over time — tests, protocols, trends.</p>
         </div>
+        <button
+          onClick={() => typeof window !== 'undefined' && window.print()}
+          className="shrink-0 text-xs px-3.5 py-2 rounded-xl bg-surface-2 border border-card-border hover:border-accent/40 text-muted-foreground hover:text-accent transition-all flex items-center gap-1.5 print:hidden"
+          title="Print a doctor-friendly summary of your history"
+        >
+          🖨️ Print / save PDF
+        </button>
+      </div>
+
+      {/* Medical print-mode header — only visible when printing */}
+      <div className="hidden print:block">
+        <h1 className="text-2xl font-bold">Protocol — Patient History Report</h1>
+        <p className="text-xs mt-1">Generated {new Date().toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' })} · Protocol-tawny.vercel.app</p>
+        <p className="text-[10px] mt-2 text-gray-600">
+          This report is generated from user-entered data and AI-derived analysis.
+          It is <strong>not a medical diagnosis</strong>. Reference ranges follow longevity-optimal bands
+          (Levine 2018 PhenoAge + Bryan Johnson Blueprint), which are stricter than population-average lab normals.
+        </p>
+        <hr className="my-3 border-gray-300" />
       </div>
 
       {/* Empty state */}

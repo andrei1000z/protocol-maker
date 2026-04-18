@@ -567,6 +567,10 @@ export default function OnboardingPage() {
     };
   };
 
+  // Auto-save toast — flashes "Saved ✓" after each Next so users see the system is capturing their answers
+  const [savedToast, setSavedToast] = useState(false);
+  const triggerSaved = () => { setSavedToast(true); setTimeout(() => setSavedToast(false), 1800); };
+
   const saveProgress = async (stepNum: number) => {
     await fetch('/api/save-profile', {
       method: 'POST',
@@ -576,9 +580,10 @@ export default function OnboardingPage() {
   };
 
   const handleNext = async () => {
-    if (step === 0 && hasBloodWork === false) { await saveProgress(0); setStep(2); return; }
+    if (step === 0 && hasBloodWork === false) { await saveProgress(0); setStep(2); triggerSaved(); return; }
     await saveProgress(step + 1);
     setStep(step + 1);
+    triggerSaved();
   };
 
   const handleBack = () => {
@@ -1704,6 +1709,13 @@ export default function OnboardingPage() {
           </div>
         )}
       </div>
+
+      {/* Auto-save toast — brief pulse after each Next so the user sees their progress is saved */}
+      {savedToast && (
+        <div className="fixed top-20 left-1/2 -translate-x-1/2 z-[55] bg-accent/15 border border-accent/40 text-accent text-xs font-medium px-3.5 py-1.5 rounded-full backdrop-blur-sm animate-fade-in-up pointer-events-none">
+          ✓ Saved
+        </div>
+      )}
 
       <div className="fixed bottom-0 left-0 right-0 z-50 bg-background/95 backdrop-blur-xl border-t border-card-border px-6 py-4 pb-[calc(1rem+env(safe-area-inset-bottom))] flex gap-3 justify-center">
         <div className="max-w-2xl w-full flex gap-3">
