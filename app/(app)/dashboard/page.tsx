@@ -31,16 +31,17 @@ const TOC_ITEMS = [
   { id: 'shopping', label: 'Shopping List', icon: '🛒' },
 ];
 
-function Section({ id, title, icon, subtitle, children, className }: { id?: string; title: string; icon: string; subtitle?: string; children: React.ReactNode; className?: string }) {
+function Section({ id, title, icon, subtitle, action, children, className }: { id?: string; title: string; icon: string; subtitle?: string; action?: React.ReactNode; children: React.ReactNode; className?: string }) {
   return (
     <div id={id} className={clsx('glass-card rounded-2xl p-6 space-y-5 scroll-mt-20 animate-fade-in-up', className)}>
       <div className="flex items-start justify-between gap-4">
-        <div>
+        <div className="flex-1 min-w-0">
           <h2 className="text-xl font-semibold tracking-tight flex items-center gap-2.5">
             <span className="text-2xl">{icon}</span>{title}
           </h2>
           {subtitle && <p className="text-xs text-muted-foreground mt-1.5 max-w-lg leading-relaxed">{subtitle}</p>}
         </div>
+        {action && <div className="shrink-0">{action}</div>}
       </div>
       {children}
     </div>
@@ -1113,16 +1114,69 @@ export default function DashboardPage() {
       </Section>
 
       {/* Pain Point Solutions */}
-      <Section id="painpoints" title="Your Pain Points" icon="🎯">
+      <Section id="painpoints" title="Your Pain Points" icon="🎯" subtitle="The specific issues you told us about — likely cause, exact fix, and realistic timeline.">
         {(!p.painPointSolutions || p.painPointSolutions.length === 0) ? <EmptyState message="Describe your pain points in onboarding to get personalized solutions." /> : (
           <div className="space-y-3">
             {p.painPointSolutions.map((pp, i) => (
-              <div key={i} className="p-4 rounded-xl bg-background border border-card-border space-y-2">
-                <p className="text-sm font-semibold text-accent">⚡ {pp.problem}</p>
-                <div className="space-y-1 text-xs">
-                  <p className="text-muted-foreground"><span className="text-amber-400 font-medium">Cause:</span> {pp.likelyCause}</p>
-                  <p className="text-muted-foreground"><span className="text-accent font-medium">Solution:</span> {pp.solution}</p>
-                  <p className="text-muted"><span className="text-muted-foreground font-medium">Timeline:</span> {pp.expectedTimeline}</p>
+              <div key={i} className="p-5 rounded-2xl bg-gradient-to-br from-accent/[0.04] to-transparent border border-accent/15 space-y-4">
+                {/* Problem header */}
+                <div className="flex items-start gap-3">
+                  <div className="w-8 h-8 rounded-lg bg-accent/15 border border-accent/25 flex items-center justify-center shrink-0">
+                    <span className="text-accent text-sm">⚡</span>
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <p className="text-[10px] uppercase tracking-widest text-accent">Problem</p>
+                    <p className="text-sm font-semibold text-foreground leading-snug mt-0.5">{pp.problem}</p>
+                  </div>
+                </div>
+
+                {/* 3-row breakdown */}
+                <div className="space-y-2 pl-11">
+                  <div className="p-3 rounded-xl bg-amber-500/[0.04] border border-amber-500/15">
+                    <div className="flex items-center gap-2 mb-1">
+                      <span className="w-1.5 h-1.5 rounded-full bg-amber-400" />
+                      <p className="text-[10px] uppercase tracking-widest text-amber-400 font-semibold">Likely cause</p>
+                    </div>
+                    <p className="text-xs text-foreground/90 leading-relaxed">{pp.likelyCause}</p>
+                  </div>
+
+                  <div className="p-3 rounded-xl bg-accent/[0.04] border border-accent/20">
+                    <div className="flex items-center gap-2 mb-1">
+                      <span className="w-1.5 h-1.5 rounded-full bg-accent" />
+                      <p className="text-[10px] uppercase tracking-widest text-accent font-semibold">The fix</p>
+                    </div>
+                    <p className="text-xs text-foreground/90 leading-relaxed">{pp.solution}</p>
+                  </div>
+
+                  <div className="flex items-center gap-3 px-3 py-2 rounded-xl bg-surface-2 border border-card-border">
+                    <span className="text-sm shrink-0">⏱</span>
+                    <div className="flex-1 min-w-0">
+                      <p className="text-[10px] uppercase tracking-widest text-muted">Expected timeline</p>
+                      <p className="text-xs text-foreground/90 mt-0.5">{pp.expectedTimeline}</p>
+                    </div>
+                  </div>
+
+                  {pp.supportingBiomarkers && pp.supportingBiomarkers.length > 0 && (
+                    <div className="flex flex-wrap gap-1.5 pt-1">
+                      <span className="text-[10px] text-muted">Track via:</span>
+                      {pp.supportingBiomarkers.map(bm => (
+                        <span key={bm} className="text-[9px] font-mono px-2 py-0.5 rounded-full bg-surface-3 text-muted-foreground border border-card-border">
+                          {bm}
+                        </span>
+                      ))}
+                    </div>
+                  )}
+
+                  {pp.checkpoints && pp.checkpoints.length > 0 && (
+                    <div className="pt-2 border-t border-card-border">
+                      <p className="text-[10px] uppercase tracking-widest text-muted mb-1.5">Weekly check-ins</p>
+                      <ul className="space-y-0.5">
+                        {pp.checkpoints.map((c, j) => (
+                          <li key={j} className="text-[11px] text-muted-foreground flex gap-1.5"><span className="text-muted">·</span>{c}</li>
+                        ))}
+                      </ul>
+                    </div>
+                  )}
                 </div>
               </div>
             ))}
@@ -1131,18 +1185,28 @@ export default function DashboardPage() {
       </Section>
 
       {/* Flex Rules */}
-      <Section id="flex" title="Flex Strategies" icon="🧘">
-        {(!p.flexRules || p.flexRules.length === 0) ? <EmptyState message="Describe your non-negotiables (pizza nights, morning coffee) in onboarding to get flex strategies." /> : (<>
-          <p className="text-[10px] text-muted-foreground">Life strategies that keep your non-negotiables without derailing the protocol.</p>
-          <div className="space-y-2">
+      <Section id="flex" title="Flex Strategies" icon="🧘" subtitle="Life strategies for your non-negotiables — so pizza night, morning coffee, and weekend drinks don't derail the protocol.">
+        {(!p.flexRules || p.flexRules.length === 0) ? <EmptyState message="Describe your non-negotiables in onboarding (pizza nights, morning coffee, etc.) and we'll build workarounds that keep the protocol intact." /> : (
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
             {p.flexRules.map((f, i) => (
-              <div key={i} className="p-3 rounded-xl bg-background border border-card-border">
-                <p className="text-sm font-medium text-accent mb-1">🎯 {f.scenario}</p>
-                <p className="text-xs text-muted-foreground">{f.strategy}</p>
+              <div key={i} className="p-4 rounded-2xl bg-surface-2 border border-card-border hover:border-accent/25 transition-colors group">
+                <div className="flex items-start gap-3">
+                  <div className="w-9 h-9 rounded-xl bg-accent/10 border border-accent/20 flex items-center justify-center shrink-0 group-hover:bg-accent/15 transition-colors">
+                    <span className="text-sm">🧘</span>
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <p className="text-[10px] uppercase tracking-widest text-accent font-semibold mb-1">Scenario</p>
+                    <p className="text-sm font-semibold text-foreground leading-snug">{f.scenario}</p>
+                  </div>
+                </div>
+                <div className="mt-3 pl-0 pt-3 border-t border-card-border">
+                  <p className="text-[10px] uppercase tracking-widest text-muted mb-1.5">Strategy</p>
+                  <p className="text-xs text-foreground/90 leading-relaxed">{f.strategy}</p>
+                </div>
               </div>
             ))}
           </div>
-        </>)}
+        )}
       </Section>
 
       {/* Week-by-Week Plan */}
@@ -1167,29 +1231,149 @@ export default function DashboardPage() {
       </Section>
 
       {/* Doctor Questions */}
-      <Section id="doctor-questions" title="Questions for Your Doctor" icon="📋">
-        {(!p.doctorQuestions || p.doctorQuestions.length === 0) ? <EmptyState message="Printable questions for your next doctor visit will appear here." /> : (<>
-          <p className="text-[10px] text-muted-foreground">Print this for your next appointment.</p>
-          <div className="space-y-2">
+      <Section
+        id="doctor-questions"
+        title="Questions for Your Doctor"
+        icon="📋"
+        subtitle="Print this and take it to your next appointment — specific, ordered, ready to ask."
+        action={
+          p.doctorQuestions && p.doctorQuestions.length > 0 ? (
+            <button
+              onClick={() => window.print()}
+              className="no-print text-xs px-3 py-1.5 rounded-lg bg-surface-2 border border-card-border hover:border-accent/40 text-muted-foreground hover:text-accent transition-all"
+            >
+              📄 Print
+            </button>
+          ) : undefined
+        }
+      >
+        {(!p.doctorQuestions || p.doctorQuestions.length === 0) ? <EmptyState message="Printable questions for your next doctor visit will appear here." /> : (
+          <ol className="space-y-2 counter-reset-questions list-none">
             {p.doctorQuestions.map((q, i) => (
-              <div key={i} className="flex gap-3 p-3 rounded-xl bg-background border border-card-border">
-                <span className="text-xs font-mono text-accent shrink-0">{i + 1}.</span>
-                <p className="text-sm">{q}</p>
-              </div>
+              <li key={i} className="flex gap-3 p-4 rounded-xl bg-surface-2 border border-card-border hover:border-accent/25 transition-colors">
+                <div className="flex items-center justify-center w-7 h-7 rounded-lg bg-accent/10 border border-accent/25 shrink-0">
+                  <span className="text-xs font-mono font-semibold text-accent tabular-nums">{i + 1}</span>
+                </div>
+                <p className="text-sm leading-relaxed flex-1 pt-0.5">{q}</p>
+              </li>
             ))}
-          </div>
-        </>)}
+          </ol>
+        )}
       </Section>
 
       {/* Doctor Discussion */}
-      <Section id="doctor" title="Doctor Discussion" icon="👨‍⚕️">
-        {!p.doctorDiscussion || (!p.doctorDiscussion.redFlags?.length && !p.doctorDiscussion.rxSuggestions?.length && !p.doctorDiscussion.specialistReferrals?.length) ? <EmptyState message="No red flags or referrals detected from your data. Good news!" /> : (
-          <div className="rounded-xl bg-warning/5 border border-warning/20 p-3">
-            <p className="text-[10px] text-warning font-medium mb-2">⚠️ These recommendations do NOT replace medical consultation.</p>
-            {p.doctorDiscussion.redFlags?.map((f, i) => <p key={i} className="text-xs text-danger mb-1">🚩 {f}</p>)}
-            {p.doctorDiscussion.rxSuggestions?.map((r, i) => <p key={i} className="text-xs text-muted-foreground mb-1">💊 {r}</p>)}
-            {p.doctorDiscussion.specialistReferrals?.map((s, i) => <p key={i} className="text-xs text-muted-foreground mb-1">🏥 {s}</p>)}
-            {p.doctorDiscussion.testsToOrder?.map((t, i) => <p key={i} className="text-xs text-muted-foreground mb-1">🧪 {t}</p>)}
+      <Section id="doctor" title="Doctor Discussion" icon="👨‍⚕️" subtitle="Red flags from your data, Rx to consider, specialists worth visiting, and tests to order. This doesn't replace medical consultation.">
+        {!p.doctorDiscussion || (!p.doctorDiscussion.redFlags?.length && !p.doctorDiscussion.rxSuggestions?.length && !p.doctorDiscussion.specialistReferrals?.length && !p.doctorDiscussion.testsToOrder?.length) ? (
+          <div className="p-6 rounded-xl bg-gradient-to-br from-accent/[0.04] to-transparent border border-accent/15 text-center">
+            <div className="w-12 h-12 rounded-2xl bg-accent/15 border border-accent/25 mx-auto flex items-center justify-center mb-3">
+              <span className="text-xl">✅</span>
+            </div>
+            <p className="text-sm font-semibold text-accent">No red flags detected</p>
+            <p className="text-xs text-muted-foreground mt-1.5 max-w-sm mx-auto leading-relaxed">
+              Based on your current data, no urgent medical concerns surfaced. Keep your annual physical + blood panel on schedule.
+            </p>
+          </div>
+        ) : (
+          <div className="space-y-3">
+            {/* Disclaimer callout */}
+            <div className="flex items-start gap-3 p-3 rounded-xl bg-amber-500/[0.05] border border-amber-500/20">
+              <span className="text-base shrink-0">⚠️</span>
+              <p className="text-[11px] text-amber-400/95 leading-relaxed">
+                These are pattern-based suggestions, not prescriptions. Bring them to a qualified physician before acting.
+              </p>
+            </div>
+
+            {/* Red flags — highest priority */}
+            {p.doctorDiscussion.redFlags && p.doctorDiscussion.redFlags.length > 0 && (
+              <div className="p-4 rounded-xl bg-red-500/[0.06] border border-red-500/25">
+                <div className="flex items-center gap-2 mb-2.5">
+                  <div className="w-8 h-8 rounded-lg bg-red-500/15 border border-red-500/30 flex items-center justify-center">
+                    <span className="text-sm">🚩</span>
+                  </div>
+                  <div>
+                    <p className="text-xs font-bold text-danger uppercase tracking-wider">Red flags · See a doctor</p>
+                    <p className="text-[10px] text-muted-foreground">Don't wait on these</p>
+                  </div>
+                </div>
+                <ul className="space-y-1.5 pl-1">
+                  {p.doctorDiscussion.redFlags.map((f, i) => (
+                    <li key={i} className="text-sm text-foreground/95 leading-snug flex gap-2">
+                      <span className="text-danger shrink-0 mt-0.5">·</span>
+                      <span>{f}</span>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            )}
+
+            {/* Specialist referrals */}
+            {p.doctorDiscussion.specialistReferrals && p.doctorDiscussion.specialistReferrals.length > 0 && (
+              <div className="p-4 rounded-xl bg-surface-2 border border-card-border">
+                <div className="flex items-center gap-2 mb-2.5">
+                  <div className="w-8 h-8 rounded-lg bg-blue-500/10 border border-blue-500/25 flex items-center justify-center">
+                    <span className="text-sm">🏥</span>
+                  </div>
+                  <div>
+                    <p className="text-xs font-bold text-blue-400 uppercase tracking-wider">Specialists to see</p>
+                    <p className="text-[10px] text-muted-foreground">Worth an appointment based on your data</p>
+                  </div>
+                </div>
+                <ul className="space-y-1.5 pl-1">
+                  {p.doctorDiscussion.specialistReferrals.map((s, i) => (
+                    <li key={i} className="text-sm text-foreground/90 leading-snug flex gap-2">
+                      <span className="text-blue-400/80 shrink-0 mt-0.5">·</span>
+                      <span>{s}</span>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            )}
+
+            {/* Rx to consider */}
+            {p.doctorDiscussion.rxSuggestions && p.doctorDiscussion.rxSuggestions.length > 0 && (
+              <div className="p-4 rounded-xl bg-surface-2 border border-card-border">
+                <div className="flex items-center gap-2 mb-2.5">
+                  <div className="w-8 h-8 rounded-lg bg-purple-500/10 border border-purple-500/25 flex items-center justify-center">
+                    <span className="text-sm">💊</span>
+                  </div>
+                  <div>
+                    <p className="text-xs font-bold text-purple-400 uppercase tracking-wider">Rx to discuss</p>
+                    <p className="text-[10px] text-muted-foreground">Prescription-level — doctor's call</p>
+                  </div>
+                </div>
+                <ul className="space-y-1.5 pl-1">
+                  {p.doctorDiscussion.rxSuggestions.map((r, i) => (
+                    <li key={i} className="text-sm text-foreground/90 leading-snug flex gap-2">
+                      <span className="text-purple-400/80 shrink-0 mt-0.5">·</span>
+                      <span>{r}</span>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            )}
+
+            {/* Tests to order */}
+            {p.doctorDiscussion.testsToOrder && p.doctorDiscussion.testsToOrder.length > 0 && (
+              <div className="p-4 rounded-xl bg-surface-2 border border-card-border">
+                <div className="flex items-center gap-2 mb-2.5">
+                  <div className="w-8 h-8 rounded-lg bg-accent/10 border border-accent/25 flex items-center justify-center">
+                    <span className="text-sm">🧪</span>
+                  </div>
+                  <div>
+                    <p className="text-xs font-bold text-accent uppercase tracking-wider">Tests to request</p>
+                    <p className="text-[10px] text-muted-foreground">Order these at your next lab visit</p>
+                  </div>
+                </div>
+                <ul className="space-y-1.5 pl-1">
+                  {p.doctorDiscussion.testsToOrder.map((t, i) => (
+                    <li key={i} className="text-sm text-foreground/90 leading-snug flex gap-2">
+                      <span className="text-accent shrink-0 mt-0.5">·</span>
+                      <span>{t}</span>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            )}
           </div>
         )}
       </Section>

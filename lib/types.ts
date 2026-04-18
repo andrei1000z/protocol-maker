@@ -296,6 +296,8 @@ export interface ProtocolOutput {
     likelyCause: string;
     solution: string;
     expectedTimeline: string;
+    supportingBiomarkers?: string[];
+    checkpoints?: string[];
   }[];
   flexRules?: {
     scenario: string;
