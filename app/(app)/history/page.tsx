@@ -9,6 +9,7 @@ import {
 import { BIOMARKER_DB } from '@/lib/engine/biomarkers';
 import clsx from 'clsx';
 import { LineChart, Line, ResponsiveContainer, XAxis, YAxis, CartesianGrid, Tooltip } from 'recharts';
+import { SectionCard as Section, StatTile as Stat } from '@/components/ui/SectionCard';
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Types
@@ -35,44 +36,6 @@ const LOWER_BETTER = new Set([
   'LDL', 'TRIG', 'HSCRP', 'HOMOCYS', 'HBA1C', 'GLUC', 'INSULIN',
   'ALT', 'AST', 'GGT', 'CREAT', 'URIC_ACID', 'WBC', 'CORTISOL', 'APOB',
 ]);
-
-// ─────────────────────────────────────────────────────────────────────────────
-// Shared card
-// ─────────────────────────────────────────────────────────────────────────────
-function Section({ icon: Icon, title, subtitle, children, action }: {
-  icon: React.ElementType; title: string; subtitle?: string; children: React.ReactNode; action?: React.ReactNode;
-}) {
-  return (
-    <div className="glass-card rounded-2xl p-5 sm:p-6 space-y-4 animate-fade-in-up">
-      <div className="flex items-start justify-between gap-4">
-        <div className="flex items-start gap-3 flex-1 min-w-0">
-          <div className="w-9 h-9 rounded-xl bg-accent/10 border border-accent/20 flex items-center justify-center shrink-0">
-            <Icon className="w-4 h-4 text-accent" />
-          </div>
-          <div className="flex-1 min-w-0">
-            <h2 className="text-base sm:text-lg font-semibold tracking-tight">{title}</h2>
-            {subtitle && <p className="text-xs text-muted-foreground mt-0.5">{subtitle}</p>}
-          </div>
-        </div>
-        {action && <div className="shrink-0">{action}</div>}
-      </div>
-      {children}
-    </div>
-  );
-}
-
-function Stat({ label, value, trend, tone = 'default' }: {
-  label: string; value: React.ReactNode; trend?: React.ReactNode; tone?: 'default' | 'accent' | 'danger' | 'warning';
-}) {
-  const color = tone === 'accent' ? 'text-accent' : tone === 'danger' ? 'text-danger' : tone === 'warning' ? 'text-warning' : 'text-foreground';
-  return (
-    <div className="metric-tile">
-      <p className="text-[10px] text-muted uppercase tracking-widest">{label}</p>
-      <p className={clsx('text-2xl sm:text-3xl font-bold font-mono tabular-nums mt-2 leading-none', color)}>{value}</p>
-      {trend && <div className="mt-2 text-[11px]">{trend}</div>}
-    </div>
-  );
-}
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Page
@@ -240,24 +203,24 @@ export default function HistoryPage() {
           <Stat
             label="Tests"
             value={tests.length}
-            trend={totalBiomarkers > 0 && <span className="text-muted-foreground">{totalBiomarkers} unique markers</span>}
+            subtext={totalBiomarkers > 0 && <span className="text-muted-foreground">{totalBiomarkers} unique markers</span>}
           />
           <Stat
             label="Protocols"
             value={protocols.length}
             tone={protocols.length > 0 ? 'accent' : 'default'}
-            trend={protocols.length > 0 && <span className="text-muted-foreground">{protocols[protocols.length - 1].generation_source || 'ai'}</span>}
+            subtext={protocols.length > 0 && <span className="text-muted-foreground">{protocols[protocols.length - 1].generation_source || 'ai'}</span>}
           />
           <Stat
             label="Days tracked"
             value={daysTracked || '—'}
-            trend={daysTracked > 0 && <span className="text-muted-foreground">since first test</span>}
+            subtext={daysTracked > 0 && <span className="text-muted-foreground">since first test</span>}
           />
           <Stat
             label="Score Δ"
             value={scoreDelta !== null ? `${scoreDelta > 0 ? '+' : ''}${scoreDelta}` : '—'}
             tone={scoreDelta !== null ? (scoreDelta > 0 ? 'accent' : scoreDelta < 0 ? 'danger' : 'default') : 'default'}
-            trend={scoreDelta !== null && (
+            subtext={scoreDelta !== null && (
               <span className="text-muted-foreground">{scoreDelta > 0 ? 'improving' : scoreDelta < 0 ? 'declining' : 'steady'}</span>
             )}
           />

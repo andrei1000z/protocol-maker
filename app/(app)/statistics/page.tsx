@@ -10,6 +10,7 @@ import {
   Activity, Moon, HeartPulse, Droplet, Dumbbell, Brain, Sparkles, Flame,
   TrendingUp, TrendingDown, Minus,
 } from 'lucide-react';
+import { SectionCard as Section } from '@/components/ui/SectionCard';
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Metric catalog — maps daily_metrics columns to UI metadata
@@ -153,28 +154,6 @@ function fmtValue(n: number, def: MetricDef): string {
 
 function fmtDate(iso: string): string {
   return new Date(iso).toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
-}
-
-// ─────────────────────────────────────────────────────────────────────────────
-// Small UI pieces — reused pattern from settings + history
-// ─────────────────────────────────────────────────────────────────────────────
-function Section({ icon: Icon, title, subtitle, children }: {
-  icon: React.ElementType; title: string; subtitle?: string; children: React.ReactNode;
-}) {
-  return (
-    <div className="glass-card rounded-2xl p-5 sm:p-6 space-y-4 animate-fade-in-up">
-      <div className="flex items-start gap-3">
-        <div className="w-9 h-9 rounded-xl bg-accent/10 border border-accent/20 flex items-center justify-center shrink-0">
-          <Icon className="w-4 h-4 text-accent" />
-        </div>
-        <div className="flex-1 min-w-0">
-          <h2 className="text-base sm:text-lg font-semibold tracking-tight">{title}</h2>
-          {subtitle && <p className="text-xs text-muted-foreground mt-0.5">{subtitle}</p>}
-        </div>
-      </div>
-      {children}
-    </div>
-  );
 }
 
 function MetricChart({ def, series }: { def: MetricDef; series: { date: string; value: number }[] }) {

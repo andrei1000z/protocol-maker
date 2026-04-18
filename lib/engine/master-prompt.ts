@@ -912,8 +912,12 @@ Return ONLY valid JSON matching this EXACT structure. No markdown, no backticks,
 
 FINAL REMINDERS:
 - Every supplement justification MUST cite a specific biomarker with its actual value
+- Every supplement MUST have a non-empty "howToTake" (water amount, with/without food, timing, absorption tips)
 - Respect the ${profile.monthlyBudgetRon} RON/month budget — do NOT exceed it
 - Adapt nutrition to ${profile.dietType} diet — do NOT force veganism
+- bryanComparison MUST have at least 5 entries if the user uploaded biomarkers (pull from their actual values)
+- dailyBriefing.morningPriorities and eveningReview MUST be populated (3 each) — these power the home screen
+- weekByWeekPlan MUST cover at least 4 weeks with concrete actions per day block
 ${painPoints ? '- painPointSolutions MUST be populated with ALL pain points from the patient' : ''}
 ${nonNegotiables ? '- flexRules MUST be populated with ALL non-negotiables — NEVER tell them to eliminate these' : ''}
 ${chronotype === 'night' ? '- Chronotype: night owl. Do NOT demand instant 10 PM bedtime. Shift gradually over 2-4 weeks using morning light + caffeine cutoff.' : ''}
@@ -927,7 +931,8 @@ ${sittingHours && sittingHours > 8 ? '- SEDENTARY job (8+h sitting) → explicit
 - ${(profile.sleepHoursAvg || 7) < 6 ? 'Sleep deprivation detected — make this the #1 priority' : ''}
 - Exercise recommendations must fit ${profile.timeBudgetMin} min/day
 - Include Romanian-specific shopping sources (eMAG, Farmacia Tei, Catena, Kaufland)
-- The output must be VALID JSON — no trailing commas, no comments`;
+- The output must be VALID JSON — no trailing commas, no comments
+- QUALITY CHECK before returning: every array we ask for MUST be non-empty. If you have nothing real to say, pick the user's single biggest lever and say it there — never leave an empty array.`;
 }
 
 // For quick/cheap operations (PDF parsing, classification verification)

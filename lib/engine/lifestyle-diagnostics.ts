@@ -26,6 +26,16 @@ const num = (v: unknown): number => {
   return Number.isFinite(n) ? n : NaN;
 };
 
+// Substring-match against the user's supplement list, case-insensitive.
+// Takes an array of keyword aliases and returns true if ANY match.
+// Exists because `currentSupplements` can be a string, string[], or absent.
+const supplementsMatch = (profile: Profile, keywords: string[]): boolean => {
+  const raw = pick(profile, 'current_supplements', pick(profile, 'currentSupplements', '')) as string | string[];
+  const asStr = Array.isArray(raw) ? raw.join(' ').toLowerCase() : (raw || '').toString().toLowerCase();
+  if (!asStr) return false;
+  return keywords.some(kw => asStr.includes(kw.toLowerCase()));
+};
+
 // ============================================================================
 // ORGAN SYSTEM SCORES — 0-100 for each of 8 systems
 // ============================================================================
@@ -527,7 +537,9 @@ export function estimateBiomarkers(profile: Profile): BiomarkerEstimate[] {
   if (sunlight >= 15) vdMid += 10;
   else if (sunlight === 0) vdMid -= 8;
   if (bmi >= 30) vdMid -= 5;
-  if ((pick(profile, 'current_supplements', '') as string | string[]).toString().toLowerCase().includes('d')) vdMid += 10;
+  // Explicit match on common Vitamin D supplement names to avoid "d" false-positives
+  // (previously "creatine" was triggering the bump because the letter d appears).
+  if (supplementsMatch(profile, ['vitamin d', 'vit d', 'd3', 'cholecalciferol'])) vdMid += 10;
   estimates.push({
     code: 'VITD', shortName: 'Vitamin D', unit: 'ng/mL',
     estimatedLow: Math.round(vdMid - 6),
@@ -541,7 +553,7 @@ export function estimateBiomarkers(profile: Profile): BiomarkerEstimate[] {
   if (fish >= 3) o3Mid += 2.5;
   else if (fish >= 2) o3Mid += 1.5;
   else if (fish === 0) o3Mid -= 1;
-  if ((pick(profile, 'current_supplements', '') as string | string[]).toString().toLowerCase().includes('omega')) o3Mid += 2;
+  if (supplementsMatch(profile, ['omega', 'fish oil', 'dha', 'epa', 'algal'])) o3Mid += 2;
   estimates.push({
     code: 'OMEGA3', shortName: 'Omega-3 Index', unit: '%',
     estimatedLow: +Math.max(2, o3Mid - 1).toFixed(1),
