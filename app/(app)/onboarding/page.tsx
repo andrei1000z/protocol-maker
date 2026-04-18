@@ -87,7 +87,7 @@ export default function OnboardingPage() {
   const [supportSystem, setSupportSystem] = useState(false);
 
   // Step 1 — basics expanded panels
-  const [basicsExpanded, setBasicsExpanded] = useState({ location: false, identity: false, measurements: false, family: false, motivation: false });
+  const [basicsExpanded, setBasicsExpanded] = useState({ location: false, identity: false, measurements: false, family: false });
 
   // Step 2 — Biomarkers
   const [biomarkers, setBiomarkers] = useState<Record<string, string>>({});
@@ -118,7 +118,8 @@ export default function OnboardingPage() {
   const [familyHistory, setFamilyHistory] = useState<string[]>([]);
   const [medications, setMedications] = useState<Medication[]>([]);
   const [supplements, setSupplements] = useState('');
-  const [lifestyleExpanded, setLifestyleExpanded] = useState({ sleep: false, diet: false, exercise: false, mental: false, medical: false, environment: false, social: false });
+  // Pre-open sleep + diet: biggest levers, highest drop-off if hidden
+  const [lifestyleExpanded, setLifestyleExpanded] = useState({ sleep: true, diet: true, exercise: false, mental: false, medical: false, environment: false, social: false });
 
   // Sleep deep
   const [lastNight1Hours, setLastNight1Hours] = useState('');
@@ -245,7 +246,9 @@ export default function OnboardingPage() {
   const [timelineMonths, setTimelineMonths] = useState(3);
   const [timeBudget, setTimeBudget] = useState(60);
   const [monthlyBudget, setMonthlyBudget] = useState(500);
-  const [experimental, setExperimental] = useState('otc_only');
+  // Default 'open_rx' so AI can discuss Rx like metformin/HRT — user can dial down to OTC-only.
+  // Previous default 'otc_only' silently excluded prescription discussion (Bryan-tier protocols not available).
+  const [experimental, setExperimental] = useState('open_rx');
 
   // Restore saved state on mount
   useEffect(() => {
@@ -436,17 +439,36 @@ export default function OnboardingPage() {
   };
 
   const handlePdfUpload = async (file: File) => {
-    setPdfParsing(true);
     setError('');
+    // Validate: only PDFs, max 10MB (Groq parse cost protection + sanity)
+    if (!file.type.includes('pdf') && !file.name.toLowerCase().endsWith('.pdf')) {
+      setError('Only PDF files are supported. Try a Synevo / Regina Maria / MedLife lab report.');
+      return;
+    }
+    if (file.size > 10 * 1024 * 1024) {
+      setError(`PDF is ${(file.size / 1024 / 1024).toFixed(1)}MB — max 10MB. Try the lab's "compact" or "summary" version.`);
+      return;
+    }
+    if (file.size < 1024) {
+      setError('PDF seems too small (under 1KB) — possibly corrupted. Re-download from your lab portal.');
+      return;
+    }
+    setPdfParsing(true);
     try {
       const formData = new FormData();
       formData.append('file', file);
       const res = await fetch('/api/parse-bloodwork', { method: 'POST', body: formData });
-      if (!res.ok) throw new Error('PDF parsing failed');
+      if (!res.ok) {
+        const j = await res.json().catch(() => ({}));
+        throw new Error(j.error || 'PDF parsing failed — try a different file or enter values manually below');
+      }
       const { biomarkers: parsed } = await res.json();
       const newBiomarkers: Record<string, string> = {};
-      for (const b of parsed) {
+      for (const b of parsed || []) {
         if (b.code && b.code !== 'UNKNOWN' && b.value) newBiomarkers[b.code] = String(b.value);
+      }
+      if (Object.keys(newBiomarkers).length === 0) {
+        throw new Error('No recognizable biomarkers found in PDF. Enter values manually below — we have detailed input fields.');
       }
       setBiomarkers(prev => ({ ...prev, ...newBiomarkers }));
       setPdfParsed(true);
@@ -564,7 +586,17 @@ export default function OnboardingPage() {
     setStep(Math.max(0, step - 1));
   };
 
+  // Red-flag hard-stop: if user reported acute symptoms, block finish until they
+  // explicitly acknowledge that an AI protocol is NOT a substitute for a doctor.
+  const [redFlagAck, setRedFlagAck] = useState(false);
+  const [showRedFlagModal, setShowRedFlagModal] = useState(false);
+
   const handleFinish = async () => {
+    // Hard-stop check before anything else
+    if (redFlagsAcute.length > 0 && !redFlagAck) {
+      setShowRedFlagModal(true);
+      return;
+    }
     setLoading(true);
     setError('');
 
@@ -669,6 +701,27 @@ export default function OnboardingPage() {
                 {[{ v: true, l: 'Yes, I have results' }, { v: false, l: 'No, skip this' }].map(({ v, l }) => (
                   <button key={String(v)} onClick={() => setHasBloodWork(v)} className={clsx('flex-1 py-3 rounded-xl text-sm font-medium transition-all', hasBloodWork === v ? 'bg-accent text-black' : 'bg-card border border-card-border text-muted-foreground')}>{l}</button>
                 ))}
+              </div>
+            </div>
+
+            {/* Motivation — always visible, drives AI coaching tone */}
+            <div className="rounded-2xl bg-accent/5 border border-accent/20 p-4 space-y-3">
+              <div className="flex items-center gap-2">
+                <span className="text-lg">🎯</span>
+                <h3 className="text-sm font-semibold">Your &ldquo;why&rdquo; — the most important field</h3>
+              </div>
+              <div>
+                <label className="text-xs text-muted-foreground">Top reasons + what triggered you NOW?</label>
+                <textarea value={motivation} onChange={e => setMotivation(e.target.value)} rows={3} placeholder="e.g. Dad had heart attack at 67 — I want to avoid that. I turned 35 and energy dropped. I want to be present for my kids long-term." className="w-full mt-1 rounded-xl bg-card border border-card-border px-3 py-2.5 text-sm outline-none focus:border-accent resize-none" />
+                <p className="text-[10px] text-muted-foreground mt-1">The AI uses this to calibrate coaching tone + prioritize the right interventions for you.</p>
+              </div>
+              <div>
+                <label className="text-xs text-muted-foreground mb-2 block">How disciplined are you with habits? <span className="text-accent">{discipline}/10</span></label>
+                <input type="range" min={1} max={10} value={discipline} onChange={e => setDiscipline(parseInt(e.target.value))} className="w-full h-2 bg-card-border rounded-lg appearance-none cursor-pointer accent-[#34d399]" />
+              </div>
+              <div className="flex items-center gap-3">
+                <button onClick={() => setSupportSystem(!supportSystem)} className={clsx('w-6 h-6 rounded-lg border-2 flex items-center justify-center shrink-0', supportSystem ? 'bg-accent border-accent' : 'border-card-border')}>{supportSystem && <span className="text-black text-xs">✓</span>}</button>
+                <span className="text-sm">I have support from family/partner</span>
               </div>
             </div>
 
@@ -868,21 +921,6 @@ export default function OnboardingPage() {
               </div>
             </CollapseSection>
 
-            {/* Motivation */}
-            <CollapseSection title="🎯 Motivation & Context (helps the AI coach you right)" expanded={basicsExpanded.motivation} onToggle={() => setBasicsExpanded(p => ({ ...p, motivation: !p.motivation }))}>
-              <div>
-                <label className="text-xs text-muted-foreground">WHY do you want this protocol? Top 3 reasons + what triggered you NOW?</label>
-                <textarea value={motivation} onChange={e => setMotivation(e.target.value)} rows={4} placeholder="e.g. Dad had heart attack at 67 — I want to avoid that. I turned 35 and energy dropped. I want to be present for my kids long-term." className="w-full mt-1 rounded-xl bg-card border border-card-border px-3 py-2.5 text-sm outline-none focus:border-accent resize-none" />
-              </div>
-              <div>
-                <label className="text-xs text-muted-foreground mb-2 block">How disciplined do you consider yourself? <span className="text-accent">{discipline}/10</span></label>
-                <input type="range" min={1} max={10} value={discipline} onChange={e => setDiscipline(parseInt(e.target.value))} className="w-full h-2 bg-card-border rounded-lg appearance-none cursor-pointer accent-[#34d399]" />
-              </div>
-              <div className="flex items-center gap-3">
-                <button onClick={() => setSupportSystem(!supportSystem)} className={clsx('w-6 h-6 rounded-lg border-2 flex items-center justify-center shrink-0', supportSystem ? 'bg-accent border-accent' : 'border-card-border')}>{supportSystem && <span className="text-black text-xs">✓</span>}</button>
-                <span className="text-sm">I have support from family/partner (critical for long-term success)</span>
-              </div>
-            </CollapseSection>
           </div>
         )}
 
@@ -1680,6 +1718,60 @@ export default function OnboardingPage() {
         </button>
         </div>
       </div>
+
+      {/* RED FLAG HARD-STOP MODAL — legal + ethical block before AI protocol if user reported acute symptoms */}
+      {showRedFlagModal && (
+        <div className="fixed inset-0 z-[60] flex items-end sm:items-center justify-center animate-fade-in">
+          <div className="absolute inset-0 bg-black/80 backdrop-blur-sm" onClick={() => setShowRedFlagModal(false)} />
+          <div className="relative bg-surface-1 rounded-t-3xl sm:rounded-3xl w-full sm:max-w-md mx-0 sm:mx-4 p-6 sm:p-7 space-y-5 border border-card-border animate-fade-in-up">
+            <div className="w-12 h-12 rounded-2xl bg-red-500/10 border border-red-500/30 flex items-center justify-center">
+              <span className="text-2xl">⚠️</span>
+            </div>
+            <div>
+              <h2 className="text-xl font-semibold tracking-tight">See a doctor first</h2>
+              <p className="text-sm text-muted-foreground mt-2 leading-relaxed">
+                You reported {redFlagsAcute.length === 1 ? 'a symptom' : `${redFlagsAcute.length} symptoms`} that need real medical evaluation:
+              </p>
+              <ul className="mt-3 space-y-1 pl-1">
+                {redFlagsAcute.map(f => (
+                  <li key={f} className="text-xs text-foreground/95 flex gap-1.5"><span className="text-danger">·</span>{f}</li>
+                ))}
+              </ul>
+              <p className="text-sm text-foreground/95 mt-4 leading-relaxed">
+                An AI protocol is <strong>not</strong> a substitute for a doctor when symptoms like these are present. Please book an appointment <strong>this week</strong>.
+              </p>
+            </div>
+
+            <label className={clsx('flex items-start gap-3 p-3.5 rounded-xl border cursor-pointer transition-colors',
+              redFlagAck ? 'bg-amber-500/10 border-amber-500/40' : 'bg-surface-2 border-card-border hover:border-card-border-hover')}>
+              <div className={clsx('mt-0.5 w-5 h-5 rounded border-2 flex items-center justify-center shrink-0 transition-all',
+                redFlagAck ? 'bg-warning border-warning' : 'border-card-border')}>
+                {redFlagAck && <span className="text-black text-xs font-bold">✓</span>}
+              </div>
+              <span className="text-xs leading-relaxed">
+                I understand. I&apos;ll see a doctor about these symptoms. I want to use this AI protocol as <strong>complementary lifestyle guidance only</strong>, not a replacement for medical care.
+              </span>
+              <input type="checkbox" checked={redFlagAck} onChange={(e) => setRedFlagAck(e.target.checked)} className="sr-only" />
+            </label>
+
+            <div className="flex gap-2 pt-1">
+              <button
+                onClick={() => { setShowRedFlagModal(false); setRedFlagAck(false); }}
+                className="flex-1 py-3 rounded-xl bg-surface-3 text-foreground text-sm font-medium hover:bg-card-hover transition-colors"
+              >
+                Go to a doctor first
+              </button>
+              <button
+                onClick={() => { setShowRedFlagModal(false); handleFinish(); }}
+                disabled={!redFlagAck}
+                className="flex-1 py-3 rounded-xl bg-accent text-black text-sm font-semibold hover:bg-accent-bright transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+              >
+                I understand, continue
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

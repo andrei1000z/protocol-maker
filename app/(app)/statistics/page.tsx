@@ -342,14 +342,53 @@ export default function StatisticsPage() {
     metricsByCategory[c.key] && metricsByCategory[c.key].length > 0
   );
 
+  // CSV export — wide format: one row per date, columns for every tracked metric.
+  // Doctor-friendly. Opens in Excel / Google Sheets.
+  const exportCSV = () => {
+    if (metrics.length === 0) return;
+    const allKeys = new Set<string>();
+    metrics.forEach(r => Object.keys(r).forEach(k => { if (k !== 'date' && k !== 'id' && k !== 'user_id' && k !== 'created_at' && k !== 'updated_at') allKeys.add(k); }));
+    const cols = Array.from(allKeys).sort();
+    const header = ['date', ...cols].join(',');
+    const sortedRows = [...metrics].sort((a, b) => String(a.date).localeCompare(String(b.date)));
+    const lines = sortedRows.map(r => [
+      r.date,
+      ...cols.map(c => {
+        const v = r[c];
+        if (v === null || v === undefined) return '';
+        if (typeof v === 'string') return /[",\n]/.test(v) ? `"${v.replace(/"/g, '""')}"` : v;
+        if (Array.isArray(v)) return `"${v.join('; ')}"`;
+        return String(v);
+      }),
+    ].join(','));
+    const blob = new Blob([header + '\n' + lines.join('\n')], { type: 'text/csv;charset=utf-8' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `protocol-stats-${new Date().toISOString().slice(0, 10)}.csv`;
+    a.click();
+    URL.revokeObjectURL(url);
+  };
+
   return (
     <div className="max-w-4xl mx-auto px-4 sm:px-6 py-6 sm:py-8 space-y-5">
       {/* Header */}
-      <div className="animate-fade-in">
-        <h1 className="text-2xl sm:text-3xl font-semibold tracking-tight">Statistics</h1>
-        <p className="text-sm text-muted-foreground mt-1">
-          Every metric you&apos;ve logged, over time. Improvement shown relative to when you started the protocol.
-        </p>
+      <div className="flex items-end justify-between gap-4 animate-fade-in">
+        <div>
+          <h1 className="text-2xl sm:text-3xl font-semibold tracking-tight">Statistics</h1>
+          <p className="text-sm text-muted-foreground mt-1">
+            Every metric you&apos;ve logged, over time. Improvement shown relative to when you started the protocol.
+          </p>
+        </div>
+        {metrics.length > 0 && (
+          <button
+            onClick={exportCSV}
+            className="shrink-0 text-xs px-3.5 py-2 rounded-xl bg-surface-2 border border-card-border hover:border-accent/40 text-muted-foreground hover:text-accent transition-all flex items-center gap-1.5"
+            title="Download CSV — doctor-friendly, opens in Excel / Sheets"
+          >
+            📥 Export CSV
+          </button>
+        )}
       </div>
 
       {/* Empty state */}

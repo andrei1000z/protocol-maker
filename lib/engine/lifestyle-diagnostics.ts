@@ -565,15 +565,10 @@ export interface BryanSummary {
   keyGaps: { marker: string; your: number | string; bryan: number | string }[];
 }
 
-// Bryan Johnson's published longevity benchmarks (April 2026 snapshot).
-// Kept here as constants so UI can show side-by-side comparisons without
-// hard-coding magic numbers in components.
-export const BRYAN = {
-  chronoAge: 48,      // born Aug 1977 → ~48.7y as of April 2026
-  bioAge: 42.0,       // epigenetic age from his published tests (Horvath DNAm)
-  longevityScore: 94, // our scoring → Bryan tier
-  agingPace: 0.64,    // DunedinPACE self-reported
-} as const;
+// Bryan benchmark — re-exported from the single source of truth.
+// All numbers live in lib/engine/bryan-constants.ts. Update there only.
+import { BRYAN as BRYAN_SOURCE } from './bryan-constants';
+export const BRYAN = BRYAN_SOURCE;
 
 export function buildBryanSummary(
   longevityScore: number,

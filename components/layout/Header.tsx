@@ -1,8 +1,11 @@
 'use client';
 
 import Link from 'next/link';
-import { usePathname } from 'next/navigation';
+import { usePathname, useRouter } from 'next/navigation';
+import { useEffect, useRef, useState } from 'react';
 import clsx from 'clsx';
+import { LogOut, Settings, User } from 'lucide-react';
+import { useMyData, invalidate } from '@/lib/hooks/useApiData';
 
 const LINKS = [
   { href: '/dashboard', label: 'Protocol' },
@@ -10,16 +13,90 @@ const LINKS = [
   { href: '/statistics', label: 'Stats' },
   { href: '/chat', label: 'Chat' },
   { href: '/history', label: 'History' },
-  { href: '/settings', label: 'Settings' },
-];
+] as const;
+
+// User menu — avatar dropdown with name + settings + logout
+function UserMenu() {
+  const [open, setOpen] = useState(false);
+  const ref = useRef<HTMLDivElement>(null);
+  const router = useRouter();
+  const { data: myData } = useMyData();
+
+  useEffect(() => {
+    const close = (e: MouseEvent) => { if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false); };
+    document.addEventListener('mousedown', close);
+    return () => document.removeEventListener('mousedown', close);
+  }, []);
+
+  const od = (myData?.profile?.onboarding_data || {}) as Record<string, unknown>;
+  const name = (typeof od.name === 'string' && od.name.trim()) ? od.name.trim() : null;
+  const initial = (name || 'P').charAt(0).toUpperCase();
+
+  const handleLogout = async () => {
+    await fetch('/api/logout', { method: 'POST' });
+    invalidate.all();
+    window.location.replace('/login');
+  };
+
+  return (
+    <div ref={ref} className="relative">
+      <button
+        onClick={() => setOpen(o => !o)}
+        className="w-8 h-8 sm:w-9 sm:h-9 rounded-xl bg-accent/10 border border-accent/25 hover:bg-accent/15 hover:border-accent/40 flex items-center justify-center text-xs font-semibold text-accent transition-all"
+        aria-label="Account menu"
+      >
+        {initial}
+      </button>
+      {open && (
+        <div className="absolute right-0 top-full mt-2 w-56 rounded-xl bg-surface-1 border border-card-border shadow-xl p-1.5 z-50 animate-fade-in-up">
+          <div className="px-3 py-2.5 border-b border-card-border mb-1">
+            <p className="text-[10px] uppercase tracking-widest text-muted">Signed in</p>
+            <p className="text-sm font-medium truncate mt-0.5">{name || 'Your account'}</p>
+          </div>
+          <Link
+            href="/settings"
+            onClick={() => setOpen(false)}
+            className="flex items-center gap-2.5 px-3 py-2 rounded-lg hover:bg-surface-2 text-sm transition-colors"
+          >
+            <Settings className="w-4 h-4 text-muted-foreground" />
+            Settings
+          </Link>
+          <Link
+            href="/history"
+            onClick={() => setOpen(false)}
+            className="flex items-center gap-2.5 px-3 py-2 rounded-lg hover:bg-surface-2 text-sm transition-colors"
+          >
+            <User className="w-4 h-4 text-muted-foreground" />
+            Protocol history
+          </Link>
+          <button
+            onClick={() => { router.refresh(); setOpen(false); }}
+            className="w-full flex items-center gap-2.5 px-3 py-2 rounded-lg hover:bg-surface-2 text-sm text-left transition-colors"
+          >
+            <span className="w-4 h-4 text-muted-foreground flex items-center justify-center text-[10px]">↻</span>
+            Refresh data
+          </button>
+          <div className="my-1 border-t border-card-border" />
+          <button
+            onClick={handleLogout}
+            className="w-full flex items-center gap-2.5 px-3 py-2 rounded-lg hover:bg-red-500/10 text-sm text-danger text-left transition-colors"
+          >
+            <LogOut className="w-4 h-4" />
+            Log out
+          </button>
+        </div>
+      )}
+    </div>
+  );
+}
 
 export function Header() {
   const pathname = usePathname();
 
   return (
-    <header className="flex items-center justify-between gap-2 px-4 sm:px-6 py-2.5 sm:py-3 border-b border-card-border bg-background/70 backdrop-blur-xl sticky top-0 z-40">
+    <header className="grid grid-cols-[auto_1fr_auto] items-center gap-2 px-4 sm:px-6 py-2.5 sm:py-3 border-b border-card-border bg-background/70 backdrop-blur-xl sticky top-0 z-40">
       <Link href="/dashboard" className="text-accent font-bold text-base sm:text-lg shrink-0">Protocol</Link>
-      <nav className="flex items-center gap-0.5 sm:gap-1 overflow-x-auto scrollbar-none -mx-1 px-1">
+      <nav className="flex items-center justify-center gap-0.5 sm:gap-1 overflow-x-auto scrollbar-none -mx-1 px-1">
         {LINKS.map(({ href, label }) => {
           const active = pathname === href || pathname.startsWith(href + '/');
           return (
@@ -31,7 +108,7 @@ export function Header() {
           );
         })}
       </nav>
-      <div className="hidden md:block w-20" />
+      <UserMenu />
     </header>
   );
 }

@@ -276,10 +276,30 @@ function QuickLogBar({ metrics, onChange }: { metrics: DailyMetrics; onChange: (
 // Page
 // ─────────────────────────────────────────────────────────────────────────────
 export default function TrackingPage() {
-  const [date] = useState(new Date().toISOString().split('T')[0]);
+  // Retroactive logging: user can switch to any day in the past 7 to log what they missed
+  const todayIso = new Date().toISOString().split('T')[0];
+  const [date, setDate] = useState(todayIso);
   const [activeTab, setActiveTab] = useState<TabId>('today');
   const [items, setItems] = useState<ComplianceItem[]>([]);
   const [smartLogOpen, setSmartLogOpen] = useState(false);
+
+  // Build last-7-days option list for the date picker (labels + ISO dates)
+  const recentDates = useMemo(() => {
+    const out: { iso: string; label: string; isToday: boolean }[] = [];
+    for (let i = 0; i < 7; i++) {
+      const d = new Date();
+      d.setDate(d.getDate() - i);
+      const iso = d.toISOString().split('T')[0];
+      const isToday = i === 0;
+      const label = isToday
+        ? 'Today'
+        : i === 1 ? 'Yesterday'
+        : d.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' });
+      out.push({ iso, label, isToday });
+    }
+    return out;
+  }, []);
+  const isRetroactive = date !== todayIso;
 
   // SWR data sources — all deduped + cached across routes
   const { data: myData, isLoading: loadingMy } = useMyData();
@@ -325,9 +345,9 @@ export default function TrackingPage() {
     const exercise = protocol.exercise as { weeklyPlan?: Array<{ day: string; activity: string }> } | undefined;
     if (exercise?.weeklyPlan) {
       const dayNames = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
-      const today = dayNames[new Date().getDay()];
+      const selectedDayName = dayNames[new Date(date + 'T12:00:00').getDay()];
       exercise.weeklyPlan
-        .filter(d => d.day?.toLowerCase() === today.toLowerCase())
+        .filter(d => d.day?.toLowerCase() === selectedDayName.toLowerCase())
         .forEach(d => {
           allItems.push({ type: 'EXERCISE', name: d.activity, completed: completedSet.has(`EXERCISE::${d.activity}`) });
         });
@@ -345,7 +365,7 @@ export default function TrackingPage() {
     });
 
     setItems(allItems);
-  }, [myData, compToday]);
+  }, [myData, compToday, date]);
 
   const toggleCompliance = useCallback(async (index: number) => {
     const item = items[index];
@@ -406,20 +426,51 @@ export default function TrackingPage() {
   }, {});
   Object.keys(grouped).forEach(k => grouped[k].sort((a, b) => priorityRank(a.priority) - priorityRank(b.priority)));
 
-  // Today's day label
-  const today = new Date();
-  const weekday = today.toLocaleDateString('en-US', { weekday: 'long' });
-  const dateStr = today.toLocaleDateString('en-US', { month: 'long', day: 'numeric' });
+  // Day label (uses selected `date`, not necessarily today)
+  const selectedDate = new Date(date + 'T12:00:00');
+  const weekday = selectedDate.toLocaleDateString('en-US', { weekday: 'long' });
+  const dateStr = selectedDate.toLocaleDateString('en-US', { month: 'long', day: 'numeric' });
 
   return (
     <div className="max-w-3xl mx-auto px-4 sm:px-6 py-6 sm:py-8 space-y-5">
       {/* ═══════════ PAGE HEADER ═══════════ */}
-      <div className="flex items-end justify-between gap-4 animate-fade-in">
+      <div className="flex items-end justify-between gap-4 animate-fade-in flex-wrap">
         <div>
           <h1 className="text-2xl sm:text-3xl font-semibold tracking-tight">Daily Tracking</h1>
           <p className="text-sm text-muted-foreground mt-1">{weekday} · {dateStr}</p>
         </div>
+        <div className="flex items-center gap-1.5 overflow-x-auto scrollbar-none max-w-full">
+          {recentDates.map(d => (
+            <button
+              key={d.iso}
+              onClick={() => setDate(d.iso)}
+              className={clsx('shrink-0 px-2.5 py-1.5 rounded-lg text-[11px] font-medium transition-colors whitespace-nowrap',
+                date === d.iso
+                  ? 'bg-accent text-black'
+                  : 'bg-surface-2 border border-card-border text-muted-foreground hover:text-foreground hover:bg-surface-3')}
+            >
+              {d.label}
+            </button>
+          ))}
+        </div>
       </div>
+
+      {/* Retroactive logging banner */}
+      {isRetroactive && (
+        <div className="flex items-center gap-3 p-3.5 rounded-xl bg-amber-500/5 border border-amber-500/20 animate-fade-in">
+          <AlertCircle className="w-4 h-4 text-warning shrink-0" />
+          <p className="text-[11px] sm:text-xs leading-relaxed">
+            <span className="text-warning font-medium">Logging retroactively for {weekday}.</span>{' '}
+            <span className="text-muted-foreground">Be honest — the protocol adapts to real adherence, not wishful ticks.</span>
+          </p>
+          <button
+            onClick={() => setDate(todayIso)}
+            className="ml-auto shrink-0 text-[11px] text-accent hover:underline"
+          >
+            Back to today
+          </button>
+        </div>
+      )}
 
       {/* ═══════════ HERO: SMART LOG + TODAY'S PROGRESS ═══════════ */}
       <div className="grid grid-cols-1 md:grid-cols-5 gap-3">

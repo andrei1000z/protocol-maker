@@ -77,8 +77,8 @@ export default function LandingPage() {
 
           <div className="flex flex-col sm:flex-row items-center justify-center gap-3 mt-10 animate-fade-in-up stagger-3">
             <Link href="/login"
-              className="inline-flex items-center gap-2 px-8 py-4 bg-accent text-black rounded-xl font-bold text-sm hover:bg-accent-dim transition-all active:scale-[0.98] glow-cta">
-              Get your protocol — free
+              className="inline-flex items-center gap-2 px-8 py-4 bg-accent text-black rounded-xl font-bold text-sm hover:bg-accent-bright transition-all active:scale-[0.98] glow-cta">
+              Start in 3 minutes
               <ArrowRight className="w-4 h-4" />
             </Link>
             <Link
@@ -255,16 +255,77 @@ export default function LandingPage() {
           {[
             { cat: 'Diet', bryan: 'Vegan · 2,250 kcal · strict', yours: 'Adapted to YOUR diet + goals' },
             { cat: 'Supplements', bryan: '100+ pills daily', yours: '8-15 based on YOUR biomarker gaps' },
-            { cat: 'Cost', bryan: '$2M / year', yours: 'Fits YOUR budget (RON)' },
+            { cat: 'Cost', bryan: '$2M / year', yours: 'Free · fits YOUR budget (RON)' },
             { cat: 'Exercise', bryan: '6 hrs/week rigid', yours: 'Fits YOUR schedule' },
             { cat: 'Sleep', bryan: '8:30 PM sharp every night', yours: 'Optimized to YOUR chronotype' },
             { cat: 'Tracking', bryan: '30-person medical team', yours: 'AI coach in your pocket' },
             { cat: 'Bio age', bryan: '-5.1 years (age 47)', yours: 'Calculated from YOUR bloodwork' },
+            { cat: 'Genetics', bryan: 'Full-genome · $10K+', yours: 'Integrates your 23andMe / Nebula results' },
+            { cat: 'Drug safety', bryan: 'Physician-supervised', yours: '25+ drug-supplement interactions checked' },
           ].map((row) => (
             <div key={row.cat} className="grid grid-cols-3 text-center text-sm py-4 border-b border-card-border last:border-0 hover:bg-card-hover transition-colors">
               <span className="font-medium">{row.cat}</span>
               <span className="text-muted-foreground">{row.bryan}</span>
               <span className="text-accent font-medium">{row.yours}</span>
+            </div>
+          ))}
+        </div>
+      </section>
+
+      {/* Why not ChatGPT */}
+      <section className="max-w-5xl mx-auto px-6 py-24">
+        <div className="text-center mb-12">
+          <p className="text-xs uppercase tracking-wider text-accent mb-3">Why not just ChatGPT?</p>
+          <h2 className="text-3xl sm:text-4xl font-bold">A chatbot can&apos;t replace a <span className="gradient-text">longevity engine</span>.</h2>
+          <p className="text-sm text-muted-foreground mt-4 max-w-2xl mx-auto">
+            ChatGPT is a great generalist. But longevity protocols need structure, reproducibility, and a grounding in the biomarker data — not &ldquo;general healthy advice&rdquo;.
+          </p>
+        </div>
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          {[
+            {
+              title: 'Deterministic engine + AI',
+              chatgpt: 'Pure LLM — answers can shift every conversation. No reproducibility.',
+              protocol: `Rule-based engine scores ${BIOMARKER_COUNT} biomarkers, detects ${PATTERN_COUNT}+ clinical patterns, then the AI writes the coaching layer on top. Same biomarkers → same protocol.`,
+            },
+            {
+              title: 'Drug × supplement safety',
+              chatgpt: 'No structured check. May recommend St John&apos;s Wort while you&apos;re on SSRIs.',
+              protocol: 'Every supplement cross-checked against your Rx + conditions from a 25+ interaction database. Contraindications shown inline.',
+            },
+            {
+              title: 'Longevity-calibrated ranges',
+              chatgpt: 'Uses population-average &ldquo;in-range&rdquo; values. Your doctor&apos;s lab-normal is not longevity-optimal.',
+              protocol: 'Each biomarker has a longevity-optimal band (calibrated to Bryan Johnson, Inflammaging, CR studies) — not the lab &ldquo;normal range&rdquo;.',
+            },
+            {
+              title: 'PhenoAge + aging velocity',
+              chatgpt: 'Cannot compute. No memory of your prior labs.',
+              protocol: 'Implements Levine 2018 PhenoAge (9 markers) + DunedinPACE-style aging velocity. Tracked across protocols v1 → v2 → v3.',
+            },
+            {
+              title: 'Bryan Johnson benchmark',
+              chatgpt: 'Mentions Bryan vaguely. No side-by-side of your actual numbers.',
+              protocol: 'Every biomarker in your protocol shows your value vs Bryan&apos;s actual lab result. You see exactly where the gap is.',
+            },
+            {
+              title: 'Daily follow-through',
+              chatgpt: 'Stateless — forgets what it told you yesterday.',
+              protocol: 'Tracks your habit + supplement + metric compliance daily. Weekly adherence score. Auto-regenerates protocol at 3 AM.',
+            },
+          ].map((r, i) => (
+            <div key={r.title} className={`rounded-2xl bg-card border border-card-border p-5 hover:border-accent/30 transition-colors animate-fade-in-up stagger-${(i % 5) + 1}`}>
+              <h3 className="text-sm font-semibold mb-3">{r.title}</h3>
+              <div className="space-y-2.5 text-xs">
+                <div className="flex gap-2">
+                  <span className="shrink-0 px-1.5 py-0.5 rounded bg-muted/20 text-muted-foreground text-[10px] font-mono">GPT</span>
+                  <p className="text-muted-foreground leading-relaxed">{r.chatgpt}</p>
+                </div>
+                <div className="flex gap-2">
+                  <span className="shrink-0 px-1.5 py-0.5 rounded bg-accent/20 text-accent text-[10px] font-mono">PROTOCOL</span>
+                  <p className="leading-relaxed">{r.protocol}</p>
+                </div>
+              </div>
             </div>
           ))}
         </div>
@@ -283,8 +344,8 @@ export default function LandingPage() {
               Not Bryan&apos;s. Not generic. Yours.
             </p>
             <Link href="/login"
-              className="inline-flex items-center gap-2 mt-10 px-10 py-4 bg-accent text-black rounded-xl font-bold text-base hover:bg-accent-dim transition-all active:scale-[0.98] glow-cta">
-              Get started — it&apos;s free
+              className="inline-flex items-center gap-2 mt-10 px-10 py-4 bg-accent text-black rounded-xl font-bold text-base hover:bg-accent-bright transition-all active:scale-[0.98] glow-cta">
+              Get my protocol
               <ArrowRight className="w-5 h-5" />
             </Link>
             <p className="text-xs text-muted mt-5">Takes 3 minutes · No credit card required</p>

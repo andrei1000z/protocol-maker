@@ -7,6 +7,7 @@ import { AnimatedNumber } from '@/components/ui/AnimatedNumber';
 import { DashboardTOC } from '@/components/layout/DashboardTOC';
 import { useMyData, useProtocolDiff } from '@/lib/hooks/useApiData';
 import { SAMPLE_PROTOCOL, SAMPLE_LONGEVITY_SCORE, SAMPLE_BIO_AGE } from '@/lib/engine/sample-protocol';
+import { BRYAN } from '@/lib/engine/bryan-constants';
 import clsx from 'clsx';
 import {
   Radar, RadarChart, PolarGrid, PolarAngleAxis, ResponsiveContainer,
@@ -411,10 +412,10 @@ export default function DashboardPage() {
       <Section id="bryan" title="You vs Bryan Johnson" icon="🏆" subtitle="Bryan runs the most documented longevity protocol on earth. Side-by-side numbers: what % younger each of you is vs chronological, plus score and aging speed.">
         {/* Side-by-side comparison card */}
         {(() => {
-          const BRYAN_CHRONO = 48;
-          const BRYAN_BIO = 42.0;
-          const BRYAN_SCORE = 94;
-          const BRYAN_PACE = 0.64;
+          const BRYAN_CHRONO = BRYAN.chronoAge;
+          const BRYAN_BIO = BRYAN.bioAge;
+          const BRYAN_SCORE = BRYAN.longevityScore;
+          const BRYAN_PACE = BRYAN.agingPace;
           const bryanBioDeltaPct = +((BRYAN_CHRONO - BRYAN_BIO) / BRYAN_CHRONO * 100).toFixed(1);
           const bryanBioYears = Math.floor(BRYAN_BIO);
           const bryanBioMonths = Math.round((BRYAN_BIO - bryanBioYears) * 12);
