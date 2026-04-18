@@ -69,6 +69,24 @@ export async function POST(request: Request) {
     const agingPace = estimateAgingPace(profile, classified);
     const chronoAge = Number(profile.age) || 35;
 
+    // Adherence score — 30-day compliance % calculated via existing SQL function
+    // (get_adherence_rate was added in scripts/upgrade.sql). Snapshot at generation
+    // time so you can see "v1 had 72% adherence, v2 had 85% → regenerate working".
+    let adherenceScore30d: number | null = null;
+    try {
+      const { data: ad } = await supabase.rpc('get_adherence_rate', { p_user_id: user.id, p_days: 30 });
+      if (typeof ad === 'number') adherenceScore30d = ad;
+    } catch { /* RPC may not exist yet — gracefully null */ }
+
+    // Previous protocol ID for diff comparison on history page
+    let previousProtocolId: string | null = null;
+    try {
+      const { data: prev } = await supabase.from('protocols')
+        .select('id').eq('user_id', user.id).is('deleted_at', null)
+        .order('created_at', { ascending: false }).limit(1).maybeSingle();
+      previousProtocolId = prev?.id ?? null;
+    } catch { /* no prior protocol */ }
+
     // Try AI generation, fallback to deterministic protocol if fails
     let protocolJson: Record<string, unknown>;
     let modelUsed = 'llama-3.3-70b-versatile';
@@ -162,6 +180,9 @@ export async function POST(request: Request) {
       agingVelocity: finalPace < 0.95 ? 'decelerated' : finalPace > 1.05 ? 'accelerated' : 'steady',
       chronologicalAge: chronoAge,
       longevityScore: finalScore,
+      adherenceScore30d,          // % of protocol items completed last 30d
+      previousProtocolId,          // for v1 vs v2 diff in /history
+      protocolVersion: (existingDiag.protocolVersion as number ?? 0) + 1,
       // Always-populated sections (merge AI's if provided, else use our lifestyle-based)
       topWins: Array.isArray(existingDiag.topWins) && existingDiag.topWins.length >= 2
         ? [...(existingDiag.topWins as string[]).slice(0, 2), ...topWins.slice(0, 2)]

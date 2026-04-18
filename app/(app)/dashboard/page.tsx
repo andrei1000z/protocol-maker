@@ -5,7 +5,7 @@ import { ProtocolOutput, Classification } from '@/lib/types';
 import { getClassificationColor, getClassificationBg } from '@/lib/engine/classifier';
 import { AnimatedNumber } from '@/components/ui/AnimatedNumber';
 import { DashboardTOC } from '@/components/layout/DashboardTOC';
-import { useMyData } from '@/lib/hooks/useApiData';
+import { useMyData, useProtocolDiff } from '@/lib/hooks/useApiData';
 import clsx from 'clsx';
 import {
   Radar, RadarChart, PolarGrid, PolarAngleAxis, ResponsiveContainer,
@@ -110,6 +110,7 @@ function BiomarkerBar({ value, low, high, popLow, popHigh, bryanVal, unit }: {
 
 export default function DashboardPage() {
   const { data: myData, isLoading } = useMyData();
+  const { data: diffData } = useProtocolDiff();
   const [expandedBiomarker, setExpandedBiomarker] = useState<string | null>(null);
 
   // Derive stable view-model from cached data
@@ -175,6 +176,58 @@ export default function DashboardPage() {
       <DashboardTOC items={TOC_ITEMS} />
 
       <div className="flex-1 min-w-0 space-y-5 max-w-3xl">
+      {/* ═══════════════ PROTOCOL CHANGE BANNER (v2 vs v1) ═══════════════ */}
+      {diffData?.diff && (diffData.diff.totalChanges > 0 || diffData.diff.score.delta !== 0 || Math.abs(diffData.diff.bioAge.delta) >= 0.1) && (() => {
+        const d = diffData.diff;
+        const scoreUp = d.score.delta > 0;
+        const bioYounger = d.bioAge.delta < 0;
+        const overallPositive = (scoreUp ? 1 : -1) + (bioYounger ? 1 : -1) > 0;
+        return (
+          <div className={clsx(
+            'rounded-2xl border p-5 animate-fade-in-up flex items-start gap-4',
+            overallPositive
+              ? 'bg-gradient-to-br from-accent/[0.06] to-transparent border-accent/25'
+              : 'bg-gradient-to-br from-amber-500/[0.05] to-transparent border-amber-500/20'
+          )}>
+            <div className={clsx('w-10 h-10 rounded-xl border flex items-center justify-center shrink-0',
+              overallPositive ? 'bg-accent/15 border-accent/30' : 'bg-amber-500/15 border-amber-500/30')}>
+              <span className="text-base">{overallPositive ? '📈' : '🔄'}</span>
+            </div>
+            <div className="flex-1 min-w-0">
+              <div className="flex items-baseline gap-2 flex-wrap">
+                <p className={clsx('text-sm font-semibold', overallPositive ? 'text-accent' : 'text-amber-400')}>
+                  Protocol updated — {d.totalChanges} change{d.totalChanges === 1 ? '' : 's'} from last version
+                </p>
+                <p className="text-[11px] text-muted-foreground">{d.daysBetween} day{d.daysBetween === 1 ? '' : 's'} ago</p>
+              </div>
+              <div className="flex flex-wrap gap-2 mt-2">
+                {d.score.delta !== 0 && (
+                  <span className={clsx('text-[11px] font-mono px-2 py-1 rounded-md', d.score.delta > 0 ? 'pill-optimal' : 'pill-critical')}>
+                    Score {d.score.delta > 0 ? '+' : ''}{d.score.delta}
+                  </span>
+                )}
+                {Math.abs(d.bioAge.delta) >= 0.1 && (
+                  <span className={clsx('text-[11px] font-mono px-2 py-1 rounded-md', d.bioAge.delta < 0 ? 'pill-optimal' : 'pill-critical')}>
+                    Bio age {d.bioAge.delta > 0 ? '+' : ''}{d.bioAge.delta.toFixed(1)}y
+                  </span>
+                )}
+                {d.supplements.addedCount > 0 && (
+                  <span className="text-[11px] font-mono px-2 py-1 rounded-md bg-accent/10 text-accent border border-accent/25">
+                    +{d.supplements.addedCount} supp
+                  </span>
+                )}
+                {d.supplements.removedCount > 0 && (
+                  <span className="text-[11px] font-mono px-2 py-1 rounded-md bg-surface-3 text-muted-foreground border border-card-border">
+                    −{d.supplements.removedCount} supp
+                  </span>
+                )}
+                <a href="/history" className="text-[11px] text-accent hover:underline ml-auto">See full diff →</a>
+              </div>
+            </div>
+          </div>
+        );
+      })()}
+
       {/* ═══════════════ HERO DIAGNOSTIC ═══════════════ */}
       <div id="diagnostic" className="hero-card rounded-3xl p-8 scroll-mt-20 animate-fade-in-up relative overflow-hidden">
         <div className="flex items-start justify-between gap-4 mb-8">

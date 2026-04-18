@@ -119,6 +119,26 @@ export function useProtocolHistory() {
   return useSWR<ProtocolHistoryResponse>('/api/protocol-history', fastCache);
 }
 
+interface ProtocolDiffResponse {
+  diff: null | {
+    currentId: string;
+    previousId: string;
+    currentDate: string;
+    previousDate: string;
+    daysBetween: number;
+    score: { prev: number | null; curr: number | null; delta: number };
+    bioAge: { prev: number | null; curr: number | null; delta: number };
+    agingPace: { prev: number | null; curr: number | null; delta: number };
+    supplements: { added: string[]; removed: string[]; kept: string[]; addedCount: number; removedCount: number; keptCount: number };
+    totalChanges: number;
+  };
+}
+
+/** Latest vs previous protocol diff — drives the v1→v2 banner on the dashboard. */
+export function useProtocolDiff() {
+  return useSWR<ProtocolDiffResponse>('/api/protocol-history/diff', fastCache);
+}
+
 export function useComplianceToday(date: string) {
   return useSWR<ComplianceTodayResponse>(date ? `/api/compliance?date=${date}` : null, realtimeish);
 }

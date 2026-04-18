@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useRef } from 'react';
 import { useMyData, invalidate } from '@/lib/hooks/useApiData';
 import clsx from 'clsx';
 import {
@@ -91,6 +91,91 @@ function Chip({ children, tone = 'neutral' }: { children: React.ReactNode; tone?
     danger: 'bg-red-500/10 text-danger border-red-500/20',
   } as const;
   return <span className={clsx('text-[11px] px-2.5 py-1 rounded-full border', map[tone])}>{children}</span>;
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// RetestUploader — feedback loop: upload new lab PDF/biomarkers → auto-regen
+// protocol. The "where's the data that proves it works" fix from the audit.
+// ─────────────────────────────────────────────────────────────────────────────
+function RetestUploader({ bloodTestsCount }: { bloodTestsCount: number }) {
+  const [busy, setBusy] = useState(false);
+  const [status, setStatus] = useState<string>('');
+  const [error, setError] = useState('');
+  const fileRef = useRef<HTMLInputElement>(null);
+
+  const handleFile = async (file: File) => {
+    setBusy(true); setError(''); setStatus('Parsing PDF…');
+    try {
+      const fd = new FormData();
+      fd.append('file', file);
+      const parseRes = await fetch('/api/parse-bloodwork', { method: 'POST', body: fd });
+      if (!parseRes.ok) throw new Error('PDF parsing failed — try entering biomarkers manually from /onboarding');
+      const { biomarkers: parsed } = await parseRes.json();
+      const biomarkers = (parsed || []).filter((b: { code?: string; value?: number }) => b.code && b.code !== 'UNKNOWN' && b.value);
+      if (biomarkers.length === 0) throw new Error('No biomarkers detected in PDF — use /onboarding to enter manually');
+
+      setStatus(`Regenerating with ${biomarkers.length} markers…`);
+      const retestRes = await fetch('/api/retest', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ biomarkers, labName: file.name.slice(0, 80) }),
+      });
+      if (!retestRes.ok) {
+        const err = await retestRes.json().catch(() => ({}));
+        throw new Error(err.error || `Regen failed (${retestRes.status})`);
+      }
+      setStatus('New protocol generated — refreshing…');
+      invalidate.all();
+      setTimeout(() => window.location.href = '/dashboard', 600);
+    } catch (e) {
+      setError(e instanceof Error ? e.message : String(e));
+      setBusy(false);
+      setStatus('');
+    }
+  };
+
+  return (
+    <div className="space-y-2">
+      <input
+        ref={fileRef}
+        type="file"
+        accept=".pdf,application/pdf"
+        className="hidden"
+        onChange={(e) => { const f = e.target.files?.[0]; if (f) handleFile(f); }}
+      />
+      <button
+        onClick={() => fileRef.current?.click()}
+        disabled={busy}
+        className="w-full p-4 rounded-xl border border-dashed border-accent/40 bg-accent/[0.03] hover:bg-accent/[0.06] hover:border-accent/60 transition-all flex items-center gap-3 text-left disabled:opacity-60 disabled:cursor-wait"
+      >
+        <div className="w-10 h-10 rounded-xl bg-accent/10 border border-accent/25 flex items-center justify-center shrink-0">
+          {busy ? (
+            <span className="w-4 h-4 border-2 border-accent/40 border-t-accent rounded-full animate-spin" />
+          ) : (
+            <FileText className="w-4 h-4 text-accent" />
+          )}
+        </div>
+        <div className="flex-1 min-w-0">
+          <p className="text-sm font-semibold text-accent">{bloodTestsCount === 0 ? 'Upload first blood test' : '+ Upload new blood test + regenerate'}</p>
+          <p className="text-[11px] text-muted-foreground mt-0.5">
+            {busy
+              ? (status || 'Working…')
+              : bloodTestsCount === 0
+                ? 'PDF from Synevo, Regina Maria, MedLife, LabCorp, Quest'
+                : 'Auto-generates Protocol v' + (bloodTestsCount + 1) + ' with diff vs current'}
+          </p>
+        </div>
+        <span className="text-accent">→</span>
+      </button>
+      {error && <p className="text-xs text-danger p-2 rounded-lg bg-red-500/10 border border-red-500/20">{error}</p>}
+      <button
+        onClick={async () => { await fetch('/api/reset-onboarding', { method: 'POST' }); window.location.href = '/onboarding'; }}
+        className="text-[11px] text-muted-foreground hover:text-accent underline"
+      >
+        Or re-do onboarding from scratch →
+      </button>
+    </div>
+  );
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -536,12 +621,7 @@ export default function SettingsPage() {
             ))}
           </div>
         )}
-        <button
-          onClick={async () => { await fetch('/api/reset-onboarding', { method: 'POST' }); window.location.href = '/onboarding'; }}
-          className="text-xs text-accent hover:underline font-medium"
-        >
-          + Add new blood work <span className="text-muted">(regenerates protocol)</span>
-        </button>
+        <RetestUploader bloodTestsCount={bloodTests.length} />
       </SettingsCard>
 
       {/* ═══════════ SHARE PROTOCOL ═══════════ */}

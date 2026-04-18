@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useMemo } from 'react';
-import { useMyData, useProtocolHistory } from '@/lib/hooks/useApiData';
+import { useMyData, useProtocolHistory, useProtocolDiff } from '@/lib/hooks/useApiData';
 import {
   FileText, TrendingUp, TrendingDown, Minus, Calendar, GitCompareArrows,
   Activity, Sparkles, Clock,
@@ -80,6 +80,7 @@ function Stat({ label, value, trend, tone = 'default' }: {
 export default function HistoryPage() {
   const { data: myData, isLoading: loadingMy } = useMyData();
   const { data: historyData, isLoading: loadingHist } = useProtocolHistory();
+  const { data: diffData } = useProtocolDiff();
   const loading = loadingMy || loadingHist;
 
   const tests = useMemo(() => {
@@ -327,6 +328,113 @@ export default function HistoryPage() {
           </div>
         </Section>
       )}
+
+      {/* Protocol v2 vs v1 diff — full breakdown */}
+      {diffData?.diff && (() => {
+        const d = diffData.diff;
+        const overallPositive = (d.score.delta > 0 ? 1 : -1) + (d.bioAge.delta < 0 ? 1 : -1) > 0;
+        return (
+          <Section
+            icon={GitCompareArrows}
+            title="Latest protocol vs previous"
+            subtitle={`Generated ${d.daysBetween} days apart · ${d.totalChanges} supplement change${d.totalChanges === 1 ? '' : 's'}`}
+          >
+            {/* Hero comparison */}
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+              <div className={clsx('p-4 rounded-xl border',
+                d.score.delta > 0 ? 'bg-accent/[0.04] border-accent/25' :
+                d.score.delta < 0 ? 'bg-red-500/[0.04] border-red-500/20' :
+                'bg-surface-2 border-card-border')}>
+                <p className="text-[10px] uppercase tracking-widest text-muted">Longevity score</p>
+                <div className="flex items-baseline gap-2 mt-2">
+                  <span className="text-2xl font-bold font-mono tabular-nums text-muted">{d.score.prev ?? '—'}</span>
+                  <span className="text-muted">→</span>
+                  <span className={clsx('text-2xl font-bold font-mono tabular-nums', d.score.delta > 0 ? 'text-accent' : d.score.delta < 0 ? 'text-danger' : 'text-foreground')}>{d.score.curr ?? '—'}</span>
+                </div>
+                {d.score.delta !== 0 && (
+                  <p className={clsx('text-xs font-mono mt-2', d.score.delta > 0 ? 'text-accent' : 'text-danger')}>
+                    {d.score.delta > 0 ? '+' : ''}{d.score.delta} pts
+                  </p>
+                )}
+              </div>
+
+              <div className={clsx('p-4 rounded-xl border',
+                d.bioAge.delta < 0 ? 'bg-accent/[0.04] border-accent/25' :
+                d.bioAge.delta > 0 ? 'bg-red-500/[0.04] border-red-500/20' :
+                'bg-surface-2 border-card-border')}>
+                <p className="text-[10px] uppercase tracking-widest text-muted">Biological age</p>
+                <div className="flex items-baseline gap-2 mt-2">
+                  <span className="text-2xl font-bold font-mono tabular-nums text-muted">{d.bioAge.prev?.toFixed(1) ?? '—'}</span>
+                  <span className="text-muted">→</span>
+                  <span className={clsx('text-2xl font-bold font-mono tabular-nums', d.bioAge.delta < 0 ? 'text-accent' : d.bioAge.delta > 0 ? 'text-danger' : 'text-foreground')}>{d.bioAge.curr?.toFixed(1) ?? '—'}</span>
+                </div>
+                {Math.abs(d.bioAge.delta) >= 0.1 && (
+                  <p className={clsx('text-xs font-mono mt-2', d.bioAge.delta < 0 ? 'text-accent' : 'text-danger')}>
+                    {d.bioAge.delta > 0 ? '+' : ''}{d.bioAge.delta.toFixed(1)}y
+                  </p>
+                )}
+              </div>
+
+              <div className={clsx('p-4 rounded-xl border',
+                d.agingPace.delta < 0 ? 'bg-accent/[0.04] border-accent/25' :
+                d.agingPace.delta > 0 ? 'bg-red-500/[0.04] border-red-500/20' :
+                'bg-surface-2 border-card-border')}>
+                <p className="text-[10px] uppercase tracking-widest text-muted">Aging pace</p>
+                <div className="flex items-baseline gap-2 mt-2">
+                  <span className="text-2xl font-bold font-mono tabular-nums text-muted">{d.agingPace.prev?.toFixed(2) ?? '—'}×</span>
+                  <span className="text-muted">→</span>
+                  <span className={clsx('text-2xl font-bold font-mono tabular-nums', d.agingPace.delta < 0 ? 'text-accent' : d.agingPace.delta > 0 ? 'text-danger' : 'text-foreground')}>{d.agingPace.curr?.toFixed(2) ?? '—'}×</span>
+                </div>
+                {Math.abs(d.agingPace.delta) >= 0.01 && (
+                  <p className={clsx('text-xs font-mono mt-2', d.agingPace.delta < 0 ? 'text-accent' : 'text-danger')}>
+                    {d.agingPace.delta > 0 ? '+' : ''}{d.agingPace.delta.toFixed(2)}
+                  </p>
+                )}
+              </div>
+            </div>
+
+            {/* Supplement diff */}
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+              <div className="p-4 rounded-xl bg-accent/[0.04] border border-accent/20">
+                <p className="text-[10px] uppercase tracking-widest text-accent font-semibold">+ Added ({d.supplements.addedCount})</p>
+                {d.supplements.added.length > 0 ? (
+                  <ul className="mt-2 space-y-1">
+                    {d.supplements.added.map(s => (
+                      <li key={s} className="text-xs text-foreground/90 flex gap-1.5"><span className="text-accent">·</span>{s}</li>
+                    ))}
+                  </ul>
+                ) : <p className="text-xs text-muted-foreground mt-1.5 italic">No new supplements</p>}
+              </div>
+
+              <div className="p-4 rounded-xl bg-surface-2 border border-card-border">
+                <p className="text-[10px] uppercase tracking-widest text-muted-foreground font-semibold">− Removed ({d.supplements.removedCount})</p>
+                {d.supplements.removed.length > 0 ? (
+                  <ul className="mt-2 space-y-1">
+                    {d.supplements.removed.map(s => (
+                      <li key={s} className="text-xs text-foreground/90 flex gap-1.5"><span className="text-muted">·</span><span className="line-through text-muted">{s}</span></li>
+                    ))}
+                  </ul>
+                ) : <p className="text-xs text-muted-foreground mt-1.5 italic">Nothing dropped</p>}
+              </div>
+
+              <div className="p-4 rounded-xl bg-surface-2 border border-card-border">
+                <p className="text-[10px] uppercase tracking-widest text-muted-foreground font-semibold">= Kept ({d.supplements.keptCount})</p>
+                {d.supplements.kept.length > 0 ? (
+                  <p className="text-xs text-muted-foreground mt-2 leading-relaxed">{d.supplements.kept.slice(0, 6).join(', ')}{d.supplements.kept.length > 6 ? ` + ${d.supplements.kept.length - 6} more` : ''}</p>
+                ) : <p className="text-xs text-muted-foreground mt-1.5 italic">Stack rebuilt from scratch</p>}
+              </div>
+            </div>
+
+            <div className={clsx('p-3 rounded-xl border', overallPositive ? 'bg-gradient-to-r from-accent/[0.04] to-transparent border-accent/15' : 'bg-gradient-to-r from-amber-500/[0.04] to-transparent border-amber-500/15')}>
+              <p className="text-xs text-foreground/95 leading-relaxed">
+                {overallPositive
+                  ? '↑ Trending in the right direction. Whatever you changed is working — keep going.'
+                  : 'Numbers slipped slightly. Check the supplement changes + your tracking trends. Could be tracked-data drift, missed adherence, or a new lab panel showing different markers.'}
+              </p>
+            </div>
+          </Section>
+        );
+      })()}
 
       {/* Blood test list */}
       {tests.length > 0 && (

@@ -1,4 +1,8 @@
 import { ImageResponse } from 'next/og';
+import { BIOMARKER_DB } from '@/lib/engine/biomarkers';
+import { PATTERN_COUNT } from '@/lib/engine/patterns';
+
+const BIOMARKER_COUNT = BIOMARKER_DB.length;
 
 export const alt = 'Protocol — AI Longevity Engine';
 export const size = { width: 1200, height: 630 };
@@ -99,8 +103,7 @@ export default function OpenGraphImage() {
             zIndex: 1,
           }}
         >
-          37 biomarkers analyzed. 12 health patterns detected. Personalized
-          protocol in 60 seconds — calibrated to YOU, not Bryan Johnson.
+          {`${BIOMARKER_COUNT} biomarkers analyzed. ${PATTERN_COUNT} health patterns detected. Personalized protocol in 60 seconds — calibrated to YOU, not Bryan Johnson.`}
         </div>
 
         {/* Metrics strip */}
@@ -113,8 +116,8 @@ export default function OpenGraphImage() {
           }}
         >
           {[
-            { n: '37', l: 'biomarkers' },
-            { n: '12', l: 'patterns' },
+            { n: String(BIOMARKER_COUNT), l: 'biomarkers' },
+            { n: String(PATTERN_COUNT), l: 'patterns' },
             { n: '8', l: 'organ systems' },
             { n: '60s', l: 'analysis' },
           ].map((m) => (

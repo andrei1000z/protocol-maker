@@ -1,5 +1,11 @@
 import Link from 'next/link';
 import { BIOMARKER_DB } from '@/lib/engine/biomarkers';
+import { PATTERN_COUNT } from '@/lib/engine/patterns';
+import { DAILY_HABITS } from '@/lib/engine/daily-habits';
+
+// Single source of truth — derived at build time from the engine
+const BIOMARKER_COUNT = BIOMARKER_DB.length;
+const HABIT_COUNT = DAILY_HABITS.length;
 import { ArrowRight, Sparkles, Activity, Target, FileText, Zap, Brain, Heart, Shield } from 'lucide-react';
 
 function BiomarkerDemo() {
@@ -81,7 +87,7 @@ export default function LandingPage() {
           </div>
 
           <p className="text-xs text-muted mt-6 animate-fade-in-up stagger-4">
-            Takes 3 minutes · No credit card · 37 biomarkers · 12 patterns analyzed
+            Takes 3 minutes · No credit card · {BIOMARKER_COUNT} biomarkers · {PATTERN_COUNT} patterns analyzed
           </p>
         </div>
       </section>
@@ -90,10 +96,10 @@ export default function LandingPage() {
       <section className="border-y border-card-border bg-card/30">
         <div className="max-w-6xl mx-auto px-6 py-8 grid grid-cols-2 sm:grid-cols-4 gap-6 text-center">
           {[
-            { num: '37', label: 'Biomarkers analyzed' },
-            { num: '12', label: 'Health patterns detected' },
+            { num: String(BIOMARKER_COUNT), label: 'Biomarkers analyzed' },
+            { num: String(PATTERN_COUNT), label: 'Health patterns detected' },
             { num: '<60s', label: 'Protocol generation' },
-            { num: '14', label: 'Daily habits tracked' },
+            { num: String(HABIT_COUNT), label: 'Daily habits tracked' },
           ].map((s, i) => (
             <div key={i} className={`animate-fade-in-up stagger-${i + 1}`}>
               <p className="text-3xl sm:text-4xl font-bold font-mono text-accent">{s.num}</p>
@@ -119,7 +125,7 @@ export default function LandingPage() {
             {
               step: '02', icon: Activity,
               title: 'AI analyzes your data',
-              desc: 'Your 37 biomarkers are classified against longevity-optimal ranges. 12 health patterns scanned. Biological age estimated via PhenoAge algorithm.',
+              desc: `Your ${BIOMARKER_COUNT} biomarkers are classified against longevity-optimal ranges. ${PATTERN_COUNT} health patterns scanned. Biological age estimated via PhenoAge algorithm.`,
             },
             {
               step: '03', icon: Target,

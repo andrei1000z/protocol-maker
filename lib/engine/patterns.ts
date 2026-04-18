@@ -176,6 +176,10 @@ const PATTERNS: PatternRule[] = [
   },
 ];
 
+// Count of known patterns — exported so landing page can use it as single
+// source of truth (don't hardcode "12 patterns" in UI copy).
+export const PATTERN_COUNT = PATTERNS.length;
+
 export function detectPatterns(biomarkers: BiomarkerValue[]): DetectedPattern[] {
   const markerMap = new Map<string, BiomarkerValue>();
   for (const b of biomarkers) markerMap.set(b.code, b);
