@@ -1,7 +1,8 @@
 'use client';
 
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import { createClient } from '@/lib/supabase/client';
+import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 
 export default function LoginPage() {
@@ -12,6 +13,13 @@ export default function LoginPage() {
   const [error, setError] = useState('');
   const [message, setMessage] = useState('');
   const supabase = useMemo(() => createClient(), []);
+  const router = useRouter();
+
+  // Prefetch dashboard + onboarding so navigation after sign-in is instant
+  useEffect(() => {
+    router.prefetch('/dashboard');
+    router.prefetch('/onboarding');
+  }, [router]);
 
   const handleSubmit = async () => {
     setLoading(true);
@@ -25,7 +33,7 @@ export default function LoginPage() {
       } else {
         const { error: err } = await supabase.auth.signInWithPassword({ email, password });
         if (err) setError(err.message);
-        else window.location.href = '/dashboard';
+        else router.replace('/dashboard');
       }
     } catch { setError('Connection error.'); }
     setLoading(false);

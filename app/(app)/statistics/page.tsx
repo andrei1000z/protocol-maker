@@ -1,6 +1,7 @@
 'use client';
 
-import { useEffect, useState, useMemo } from 'react';
+import { useState, useMemo } from 'react';
+import { useStatistics } from '@/lib/hooks/useApiData';
 import clsx from 'clsx';
 import {
   LineChart, Line, ResponsiveContainer, XAxis, YAxis, CartesianGrid, Tooltip, ReferenceLine,
@@ -285,21 +286,10 @@ function MetricChart({ def, series }: { def: MetricDef; series: { date: string; 
 // Page
 // ─────────────────────────────────────────────────────────────────────────────
 export default function StatisticsPage() {
-  const [metrics, setMetrics] = useState<MetricRow[]>([]);
-  const [protocolStartedAt, setProtocolStartedAt] = useState<string | null>(null);
-  const [loading, setLoading] = useState(true);
+  const { data: stats, isLoading: loading } = useStatistics();
+  const metrics = (stats?.metrics as MetricRow[] | undefined) ?? [];
+  const protocolStartedAt = stats?.protocolStartedAt ?? null;
   const [activeCategory, setActiveCategory] = useState<string>('all');
-
-  useEffect(() => {
-    fetch('/api/statistics')
-      .then(r => r.json())
-      .then(d => {
-        setMetrics(d.metrics || []);
-        setProtocolStartedAt(d.protocolStartedAt || null);
-        setLoading(false);
-      })
-      .catch(() => setLoading(false));
-  }, []);
 
   // Filter metrics to only those with ≥1 data point, grouped by category
   const metricsWithData = useMemo(() => {

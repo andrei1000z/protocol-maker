@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
+import { useMyData, invalidate } from '@/lib/hooks/useApiData';
 import clsx from 'clsx';
 import {
   Share2, Download, RotateCcw, LogOut, Copy, Check, FileText, User, Heart,
@@ -173,19 +174,21 @@ function DeleteAccountModal({ open, onClose, onConfirm }: { open: boolean; onClo
 // Page
 // ─────────────────────────────────────────────────────────────────────────────
 export default function SettingsPage() {
-  const [profile, setProfile] = useState<Profile | null>(null);
-  const [bloodTests, setBloodTests] = useState<BloodTest[]>([]);
-  const [protocolId, setProtocolId] = useState('');
+  const { data: myData, isLoading: loading } = useMyData();
+
+  const profile = (myData?.profile as Profile | null) ?? null;
+  const bloodTests = (myData?.bloodTests as BloodTest[] | undefined) ?? [];
+  const protocolId = myData?.protocol?.id ?? '';
+
   const [shareUrl, setShareUrl] = useState('');
   const [shareError, setShareError] = useState('');
   const [shareBusy, setShareBusy] = useState(false);
   const [copied, setCopied] = useState(false);
-  const [loading, setLoading] = useState(true);
   const [editing, setEditing] = useState(false);
   const [saved, setSaved] = useState(false);
   const [deleteOpen, setDeleteOpen] = useState(false);
 
-  // Editable fields
+  // Editable fields — hydrate from SWR data when it lands
   const [weight, setWeight] = useState('');
   const [height, setHeight] = useState('');
   const [age, setAge] = useState('');
@@ -193,20 +196,13 @@ export default function SettingsPage() {
   const [timeBudget, setTimeBudget] = useState('');
 
   useEffect(() => {
-    fetch('/api/my-data').then(r => r.json()).then(d => {
-      setProfile(d.profile);
-      if (d.protocol) setProtocolId(d.protocol.id);
-      setBloodTests(d.bloodTests || []);
-      if (d.profile) {
-        setWeight(String(d.profile.weight_kg ?? ''));
-        setHeight(String(d.profile.height_cm ?? ''));
-        setAge(String(d.profile.age ?? ''));
-        setMonthlyBudget(String(d.profile.monthly_budget_ron ?? ''));
-        setTimeBudget(String(d.profile.time_budget_min ?? ''));
-      }
-      setLoading(false);
-    });
-  }, []);
+    if (!profile) return;
+    setWeight(String(profile.weight_kg ?? ''));
+    setHeight(String(profile.height_cm ?? ''));
+    setAge(String(profile.age ?? ''));
+    setMonthlyBudget(String(profile.monthly_budget_ron ?? ''));
+    setTimeBudget(String(profile.time_budget_min ?? ''));
+  }, [profile]);
 
   const handleSave = async () => {
     if (!profile) return;
@@ -236,8 +232,7 @@ export default function SettingsPage() {
       setSaved(true);
       setEditing(false);
       setTimeout(() => setSaved(false), 2000);
-      const d = await fetch('/api/my-data').then(r => r.json());
-      setProfile(d.profile);
+      invalidate.myData(); // SWR revalidates in background — no manual state plumbing
     }
   };
 
@@ -281,7 +276,8 @@ export default function SettingsPage() {
 
   const handleLogout = async () => {
     await fetch('/api/logout', { method: 'POST' });
-    window.location.href = '/login';
+    invalidate.all();
+    window.location.replace('/login');  // replace (not href assignment) — doesn't push a history entry we'd bounce back to
   };
 
   const handleDeleteAccount = async () => {
@@ -294,7 +290,8 @@ export default function SettingsPage() {
       const j = await res.json().catch(() => ({}));
       throw new Error(j.error || `Delete failed (${res.status})`);
     }
-    window.location.href = '/';
+    invalidate.all();
+    window.location.replace('/');
   };
 
   if (loading) return (

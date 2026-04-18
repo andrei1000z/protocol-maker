@@ -2,6 +2,7 @@ import type { Metadata, Viewport } from "next";
 import { Inter, JetBrains_Mono } from "next/font/google";
 import { Analytics } from "@vercel/analytics/react";
 import { SWRegister } from "@/components/layout/SWRegister";
+import { Providers } from "./providers";
 import "./globals.css";
 
 const inter = Inter({ variable: "--font-geist-sans", subsets: ["latin"] });
@@ -117,7 +118,9 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         />
       </head>
       <body className="min-h-dvh bg-background text-foreground antialiased">
-        {children}
+        <Providers>
+          {children}
+        </Providers>
         <Analytics />
         <SWRegister />
       </body>

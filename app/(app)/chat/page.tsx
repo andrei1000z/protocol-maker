@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useRef, useEffect, useCallback } from 'react';
+import { useMyData, useStatistics } from '@/lib/hooks/useApiData';
 import { Send, Sparkles, Trash2, Brain } from 'lucide-react';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
@@ -90,9 +91,22 @@ export default function ChatPage() {
   const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState('');
   const [streaming, setStreaming] = useState(false);
-  const [ctx, setCtx] = useState<UserContext | null>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
   const textareaRef = useAutoResize(input);
+
+  // SWR-cached context — shared with every other page, no extra fetch on navigation
+  const { data: myData } = useMyData();
+  const { data: stats } = useStatistics();
+  const ctx: UserContext | null = myData ? (() => {
+    const od = (myData.profile?.onboarding_data || {}) as Record<string, unknown>;
+    return {
+      hasProtocol: !!myData.protocol,
+      bloodTests: (myData.bloodTests || []).length,
+      metricsDays: (stats?.metrics || []).length,
+      longevityScore: myData.protocol?.longevity_score ?? null,
+      name: (typeof od.name === 'string' && od.name.trim()) ? od.name.trim() : null,
+    };
+  })() : null;
 
   // Load persisted conversation
   useEffect(() => {
@@ -109,24 +123,6 @@ export default function ChatPage() {
       else localStorage.removeItem(STORAGE_KEY);
     } catch { /* ignore */ }
   }, [messages]);
-
-  // Load user context for header + suggestions
-  useEffect(() => {
-    fetch('/api/my-data').then(r => r.json()).then(d => {
-      const od = d.profile?.onboarding_data || {};
-      setCtx({
-        hasProtocol: !!d.protocol,
-        bloodTests: (d.bloodTests || []).length,
-        metricsDays: 0, // filled by separate fetch below
-        longevityScore: d.protocol?.longevity_score ?? null,
-        name: (typeof od.name === 'string' && od.name.trim()) ? od.name.trim() : null,
-      });
-    }).catch(() => {});
-
-    fetch('/api/statistics').then(r => r.json()).then(d => {
-      setCtx(prev => prev ? { ...prev, metricsDays: (d.metrics || []).length } : prev);
-    }).catch(() => {});
-  }, []);
 
   // Auto-scroll when messages change
   useEffect(() => {

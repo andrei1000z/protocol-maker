@@ -1,10 +1,11 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
 import { ProtocolOutput, Classification } from '@/lib/types';
 import { getClassificationColor, getClassificationBg } from '@/lib/engine/classifier';
 import { AnimatedNumber } from '@/components/ui/AnimatedNumber';
 import { DashboardTOC } from '@/components/layout/DashboardTOC';
+import { useMyData } from '@/lib/hooks/useApiData';
 import clsx from 'clsx';
 import {
   Radar, RadarChart, PolarGrid, PolarAngleAxis, ResponsiveContainer,
@@ -107,23 +108,17 @@ function BiomarkerBar({ value, low, high, popLow, popHigh, bryanVal, unit }: {
 }
 
 export default function DashboardPage() {
-  const [data, setData] = useState<{ protocol: ProtocolOutput; longevityScore: number; biologicalAge: number } | null>(null);
-  const [loading, setLoading] = useState(true);
+  const { data: myData, isLoading } = useMyData();
   const [expandedBiomarker, setExpandedBiomarker] = useState<string | null>(null);
 
-  useEffect(() => {
-    fetch('/api/my-data')
-      .then((r) => r.json())
-      .then((d) => {
-        if (d.protocol) {
-          setData({ protocol: d.protocol.protocol_json, longevityScore: d.protocol.longevity_score, biologicalAge: d.protocol.biological_age });
-        }
-        setLoading(false);
-      })
-      .catch(() => setLoading(false));
-  }, []);
+  // Derive stable view-model from cached data
+  const data = myData?.protocol ? {
+    protocol: myData.protocol.protocol_json as unknown as ProtocolOutput,
+    longevityScore: myData.protocol.longevity_score ?? 0,
+    biologicalAge: myData.protocol.biological_age ?? 0,
+  } : null;
 
-  if (loading) return (
+  if (isLoading && !data) return (
     <div className="max-w-3xl mx-auto px-4 py-6 space-y-5">
       <div className="text-center space-y-2">
         <div className="h-8 w-32 mx-auto rounded-xl bg-card-border/30 animate-pulse" />

@@ -1,6 +1,7 @@
 'use client';
 
-import { useEffect, useState, useMemo } from 'react';
+import { useState, useMemo } from 'react';
+import { useMyData, useProtocolHistory } from '@/lib/hooks/useApiData';
 import {
   FileText, TrendingUp, TrendingDown, Minus, Calendar, GitCompareArrows,
   Activity, Sparkles, Clock,
@@ -77,24 +78,17 @@ function Stat({ label, value, trend, tone = 'default' }: {
 // Page
 // ─────────────────────────────────────────────────────────────────────────────
 export default function HistoryPage() {
-  const [tests, setTests] = useState<BloodTest[]>([]);
-  const [protocols, setProtocols] = useState<ProtocolRow[]>([]);
-  const [selected, setSelected] = useState<[string | null, string | null]>([null, null]);
-  const [loading, setLoading] = useState(true);
+  const { data: myData, isLoading: loadingMy } = useMyData();
+  const { data: historyData, isLoading: loadingHist } = useProtocolHistory();
+  const loading = loadingMy || loadingHist;
 
-  useEffect(() => {
-    Promise.all([
-      fetch('/api/my-data').then(r => r.json()),
-      fetch('/api/protocol-history').then(r => r.json()).catch(() => ({ protocols: [] })),
-    ]).then(([dataRes, protocolRes]) => {
-      const rawTests = (dataRes.bloodTests || []) as BloodTest[];
-      // Sort ascending (oldest first) for natural timeline reading
-      const sortedTests = [...rawTests].sort((a, b) => new Date(a.taken_at).getTime() - new Date(b.taken_at).getTime());
-      setTests(sortedTests);
-      setProtocols(protocolRes.protocols || []);
-      setLoading(false);
-    }).catch(() => setLoading(false));
-  }, []);
+  const tests = useMemo(() => {
+    const raw = (myData?.bloodTests as BloodTest[] | undefined) ?? [];
+    return [...raw].sort((a, b) => new Date(a.taken_at).getTime() - new Date(b.taken_at).getTime());
+  }, [myData]);
+  const protocols = (historyData?.protocols as unknown as ProtocolRow[] | undefined) ?? [];
+
+  const [selected, setSelected] = useState<[string | null, string | null]>([null, null]);
 
   // Derived data — protocol timeline chart
   const protocolChartData = useMemo(() =>

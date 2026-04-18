@@ -1,6 +1,7 @@
 'use client';
 
-import { useState, useEffect, useCallback } from 'react';
+import { useCallback } from 'react';
+import useSWR, { mutate as globalMutate } from 'swr';
 
 export interface DailyMetrics {
   date: string;
@@ -44,40 +45,55 @@ export interface DailyMetrics {
   ages_index?: number | null;
 }
 
-export function useDailyMetrics(date: string) {
-  const [metrics, setMetrics] = useState<DailyMetrics | null>(null);
-  const [loading, setLoading] = useState(true);
+interface SingleResponse { metrics: DailyMetrics | null; }
+interface RangeResponse  { metrics: DailyMetrics[]; }
 
-  useEffect(() => {
-    fetch(`/api/daily-metrics?date=${date}`)
-      .then(r => r.json())
-      .then(d => { setMetrics(d.metrics || { date }); setLoading(false); })
-      .catch(() => setLoading(false));
-  }, [date]);
+// ─────────────────────────────────────────────────────────────────────────────
+// Single-day metrics with optimistic local updates.
+// Same date key across pages hits the SWR cache — no re-fetch on nav.
+// ─────────────────────────────────────────────────────────────────────────────
+export function useDailyMetrics(date: string) {
+  const key = `/api/daily-metrics?date=${date}`;
+  const { data, error, isLoading, mutate } = useSWR<SingleResponse>(date ? key : null);
+
+  const metrics = data?.metrics || ({ date } as DailyMetrics);
 
   const save = useCallback(async (updates: Partial<DailyMetrics>) => {
     const merged = { ...metrics, ...updates, date };
-    setMetrics(merged);
-    await fetch('/api/daily-metrics', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(merged),
-    });
-  }, [date, metrics]);
+    // Optimistic update — UI reflects instantly, rollback if server errors
+    await mutate(
+      async () => {
+        const res = await fetch('/api/daily-metrics', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(merged),
+        });
+        if (!res.ok) throw new Error(`Save failed: HTTP ${res.status}`);
+        return { metrics: merged };
+      },
+      {
+        optimisticData: { metrics: merged },
+        rollbackOnError: true,
+        populateCache: true,
+        revalidate: false,
+      }
+    );
+    // Invalidate dependent caches (stats page, insights) so they re-read
+    globalMutate('/api/statistics');
+  }, [date, metrics, mutate]);
 
-  return { metrics: metrics || { date }, loading, save };
+  return { metrics, loading: isLoading, error, save };
 }
 
+// ─────────────────────────────────────────────────────────────────────────────
+// Range metrics — single SWR key per range, cached & deduped across pages.
+// ─────────────────────────────────────────────────────────────────────────────
 export function useDailyMetricsRange(startDate: string, endDate: string) {
-  const [metrics, setMetrics] = useState<DailyMetrics[]>([]);
-  const [loading, setLoading] = useState(true);
-
-  useEffect(() => {
-    fetch(`/api/daily-metrics?startDate=${startDate}&endDate=${endDate}`)
-      .then(r => r.json())
-      .then(d => { setMetrics(d.metrics || []); setLoading(false); })
-      .catch(() => setLoading(false));
-  }, [startDate, endDate]);
-
-  return { metrics, loading };
+  const key = startDate && endDate ? `/api/daily-metrics?startDate=${startDate}&endDate=${endDate}` : null;
+  const { data, error, isLoading } = useSWR<RangeResponse>(key);
+  return {
+    metrics: data?.metrics || [],
+    loading: isLoading,
+    error,
+  };
 }

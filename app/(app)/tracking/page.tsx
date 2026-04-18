@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useState, useCallback, useMemo } from 'react';
+import { useMyData, useComplianceToday, useComplianceHistory, invalidate } from '@/lib/hooks/useApiData';
 import clsx from 'clsx';
 import {
   Check, Pill, Dumbbell, Moon, Apple, Flame, Sparkles, ClipboardCheck, Trophy,
@@ -278,14 +279,21 @@ export default function TrackingPage() {
   const [date] = useState(new Date().toISOString().split('T')[0]);
   const [activeTab, setActiveTab] = useState<TabId>('today');
   const [items, setItems] = useState<ComplianceItem[]>([]);
-  const [protocolId, setProtocolId] = useState('');
-  const [loading, setLoading] = useState(true);
-  const [history, setHistory] = useState<ComplianceEntry[]>([]);
-  const [bloodTestsCount, setBloodTestsCount] = useState(0);
-  const [protocolsCount, setProtocolsCount] = useState(0);
   const [smartLogOpen, setSmartLogOpen] = useState(false);
-  const [agingPace, setAgingPace] = useState<number | null>(null);
-  const [longevityScore, setLongevityScore] = useState<number | null>(null);
+
+  // SWR data sources — all deduped + cached across routes
+  const { data: myData, isLoading: loadingMy } = useMyData();
+  const { data: compToday } = useComplianceToday(date);
+  const thirtyDaysAgoStr = useMemo(() => { const d = new Date(); d.setDate(d.getDate() - 30); return d.toISOString().split('T')[0]; }, []);
+  const { data: compHistoryData } = useComplianceHistory(thirtyDaysAgoStr, date);
+
+  const history = useMemo(() => (compHistoryData?.history ?? []) as ComplianceEntry[], [compHistoryData]);
+  const protocolId = myData?.protocol?.id ?? '';
+  const bloodTestsCount = (myData?.bloodTests?.length) ?? 0;
+  const protocolsCount = myData?.protocol ? 1 : 0;
+  const agingPace = myData?.protocol?.aging_pace ?? null;
+  const longevityScore = myData?.protocol?.longevity_score ?? null;
+  const loading = loadingMy;
 
   // Current hour-based label + subtitle for the smart log CTA
   const bucketInfo = useMemo(() => {
@@ -296,85 +304,61 @@ export default function TrackingPage() {
     return { label: 'Log before bed', sub: 'Quick wind-down — tomorrow\'s sleep intention' };
   }, []);
 
-  const thirtyDaysAgo = useMemo(() => { const d = new Date(); d.setDate(d.getDate() - 30); return d.toISOString().split('T')[0]; }, []);
   const { metrics: todayMetrics, save: saveMetrics } = useDailyMetrics(date);
-  const { metrics: rangeMetrics } = useDailyMetricsRange(thirtyDaysAgo, date);
+  const { metrics: rangeMetrics } = useDailyMetricsRange(thirtyDaysAgoStr, date);
 
+  // Build compliance checklist whenever protocol or today's logs change
   useEffect(() => {
-    async function load() {
-      const [dataRes, compTodayRes, historyRes, complianceHistoryRes] = await Promise.all([
-        fetch('/api/my-data').then(r => r.json()),
-        fetch(`/api/compliance?date=${date}`).then(r => r.json()),
-        fetch(`/api/compliance/history?startDate=${thirtyDaysAgo}&endDate=${date}`).then(r => r.json()),
-        fetch(`/api/compliance/history?startDate=${thirtyDaysAgo}&endDate=${date}&raw=1`).then(r => r.json()).catch(() => ({ history: [] })),
-      ]);
+    const protocol = myData?.protocol?.protocol_json as Record<string, unknown> | undefined;
+    if (!protocol) { setItems([]); return; }
 
-      if (!dataRes.protocol) { setLoading(false); return; }
+    const completedSet = new Set(
+      (compToday?.logs ?? []).filter(l => l.completed).map(l => `${l.item_type}::${l.item_name}`)
+    );
 
-      setProtocolId(dataRes.protocol.id);
-      setBloodTestsCount((dataRes.bloodTests || []).length);
-      setProtocolsCount(dataRes.protocol ? 1 : 0);
-      setHistory(historyRes.history || []);
-      setAgingPace(dataRes.protocol.aging_pace ?? null);
-      setLongevityScore(dataRes.protocol.longevity_score ?? null);
-      void complianceHistoryRes;
+    const allItems: ComplianceItem[] = [];
+    const supps = protocol.supplements as Array<{ name: string; priority?: string }> | undefined;
+    if (supps) supps.forEach(s => {
+      allItems.push({ type: 'SUPPLEMENT', name: s.name, priority: s.priority, completed: completedSet.has(`SUPPLEMENT::${s.name}`) });
+    });
 
-      const protocol = dataRes.protocol.protocol_json;
-      const completedSet = new Set(
-        (compTodayRes.logs || []).filter((l: { completed: boolean }) => l.completed)
-          .map((l: { item_type: string; item_name: string }) => `${l.item_type}::${l.item_name}`)
-      );
-
-      const allItems: ComplianceItem[] = [];
-      if (protocol.supplements) {
-        protocol.supplements.forEach((s: { name: string; priority?: string }) => {
-          allItems.push({ type: 'SUPPLEMENT', name: s.name, priority: s.priority, completed: completedSet.has(`SUPPLEMENT::${s.name}`) });
+    const exercise = protocol.exercise as { weeklyPlan?: Array<{ day: string; activity: string }> } | undefined;
+    if (exercise?.weeklyPlan) {
+      const dayNames = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
+      const today = dayNames[new Date().getDay()];
+      exercise.weeklyPlan
+        .filter(d => d.day?.toLowerCase() === today.toLowerCase())
+        .forEach(d => {
+          allItems.push({ type: 'EXERCISE', name: d.activity, completed: completedSet.has(`EXERCISE::${d.activity}`) });
         });
-      }
-      if (protocol.exercise?.weeklyPlan) {
-        const dayNames = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
-        const today = dayNames[new Date().getDay()];
-        protocol.exercise.weeklyPlan
-          .filter((d: { day: string }) => d.day?.toLowerCase() === today.toLowerCase())
-          .forEach((d: { activity: string }) => {
-            allItems.push({ type: 'EXERCISE', name: d.activity, completed: completedSet.has(`EXERCISE::${d.activity}`) });
-          });
-      }
-      if (protocol.sleep?.windDownRoutine) {
-        protocol.sleep.windDownRoutine.forEach((s: string | { action: string }) => {
-          const name = typeof s === 'string' ? s : s.action;
-          allItems.push({ type: 'SLEEP', name, completed: completedSet.has(`SLEEP::${name}`) });
-        });
-      }
-      if (protocol.nutrition?.meals) {
-        protocol.nutrition.meals.forEach((m: { name: string }) => {
-          allItems.push({ type: 'NUTRITION', name: m.name, completed: completedSet.has(`NUTRITION::${m.name}`) });
-        });
-      }
-
-      setItems(allItems);
-      setLoading(false);
     }
-    load();
-  }, [date, thirtyDaysAgo]);
+
+    const sleep = protocol.sleep as { windDownRoutine?: Array<string | { action: string }> } | undefined;
+    if (sleep?.windDownRoutine) sleep.windDownRoutine.forEach(s => {
+      const name = typeof s === 'string' ? s : s.action;
+      allItems.push({ type: 'SLEEP', name, completed: completedSet.has(`SLEEP::${name}`) });
+    });
+
+    const nutrition = protocol.nutrition as { meals?: Array<{ name: string }> } | undefined;
+    if (nutrition?.meals) nutrition.meals.forEach(m => {
+      allItems.push({ type: 'NUTRITION', name: m.name, completed: completedSet.has(`NUTRITION::${m.name}`) });
+    });
+
+    setItems(allItems);
+  }, [myData, compToday]);
 
   const toggleCompliance = useCallback(async (index: number) => {
     const item = items[index];
     const newCompleted = !item.completed;
+    // Optimistic local toggle — UI flips instantly
     setItems(prev => prev.map((it, i) => i === index ? { ...it, completed: newCompleted } : it));
     await fetch('/api/compliance', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ itemType: item.type, itemName: item.name, date, completed: newCompleted, protocolId }),
     });
-    setHistory(prev => {
-      const todayCompleted = items.filter((it, i) => i === index ? newCompleted : it.completed).length;
-      const total = items.length;
-      const pct = total > 0 ? Math.round((todayCompleted / total) * 100) : 0;
-      const existing = prev.find(h => h.date === date);
-      if (existing) return prev.map(h => h.date === date ? { ...h, completed: todayCompleted, total, pct } : h);
-      return [...prev, { date, completed: todayCompleted, total, pct }];
-    });
+    // Revalidate compliance caches in the background so streak/history stay fresh
+    invalidate.compliance();
   }, [items, date, protocolId]);
 
   const toggleHabit = useCallback((habitId: string) => {
