@@ -6,6 +6,83 @@ import { BiomarkerValue, UserProfile, DetectedPattern, BiomarkerReference } from
 // Every word matters. Do not edit without testing extensively.
 // ═══════════════════════════════════════════════════════════════
 
+// ─────────────────────────────────────────────────────────────────────────────
+// Token trimmers — reduce prompt size by filtering out content not relevant
+// to THIS user's actual biomarkers. Saves ~30-40% tokens for users with few
+// markers, leaves room for richer AI output before hitting the 16k cap.
+// ─────────────────────────────────────────────────────────────────────────────
+
+// Maps biomarker code prefix in BRYAN_REFERENCE / INTERVENTION_RULES sections
+// to our internal codes. Lines mentioning markers user doesn't have are dropped.
+const SECTION_MARKER_KEYWORDS: Record<string, string[]> = {
+  HBA1C:    ['hba1c', 'a1c'],
+  GLUC:     ['glucose', 'fasting glucose'],
+  INSULIN:  ['insulin'],
+  LDL:      ['ldl', 'ldl-c'],
+  HDL:      ['hdl', 'hdl-c'],
+  TRIG:     ['triglycerides', 'tg/hdl'],
+  HSCRP:    ['hscrp', 'crp', 'inflammation'],
+  HOMOCYS:  ['homocysteine'],
+  WBC:      ['wbc'],
+  TSH:      ['tsh'],
+  TESTO:    ['testosterone'],
+  ALT:      ['alt'],
+  AST:      ['ast'],
+  GGT:      ['ggt'],
+  CREAT:    ['creatinine', 'cystatin'],
+  URIC:     ['uric acid'],
+  VITD:     ['vitamin d'],
+  B12:      ['b12'],
+  FERRITIN: ['ferritin'],
+  FOLAT:    ['folate'],
+  MAGNE:    ['magnesium'],
+  OMEGA3:   ['omega-3', 'omega 3'],
+  APOB:     ['apob', 'apo b'],
+};
+
+function trimBryanReference(ref: string, classified: BiomarkerValue[]): string {
+  const userCodes = new Set(classified.map(b => b.code));
+  // Always include all lines NOT tied to a specific marker (intro, supplements,
+  // nutrition, exercise, sleep — those are universal). For "KEY BIOMARKER
+  // TARGETS" section, drop lines for markers user doesn't have.
+  let inTargetsSection = false;
+  return ref.split('\n').filter(line => {
+    if (line.includes('KEY BIOMARKER TARGETS')) { inTargetsSection = true; return true; }
+    if (line.includes('BRYAN\'S TOP 30 SUPPLEMENTS') || line.includes('BRYAN\'S DAILY NUTRITION')) { inTargetsSection = false; return true; }
+    if (!inTargetsSection) return true;
+    // Inside targets section — only keep markers the user has
+    const trimmed = line.trim();
+    if (!trimmed.startsWith('- ')) return true;  // section header / blank
+    return Object.entries(SECTION_MARKER_KEYWORDS).some(([code, keywords]) =>
+      userCodes.has(code) && keywords.some(kw => trimmed.toLowerCase().includes(kw))
+    );
+  }).join('\n');
+}
+
+function trimInterventionRules(rules: string, classified: BiomarkerValue[]): string {
+  // Intervention rules are organized in blocks per system (INFLAMMATION,
+  // GLUCOSE/INSULIN, LIPIDS, etc.). Keep only blocks where user has at least
+  // one relevant marker.
+  const userCodes = new Set(classified.map(b => b.code));
+  const sections = rules.split(/\n(?=[A-Z][A-Z/ ]+:)/);  // split on lines like "INFLAMMATION (..."
+  return sections.filter((section, i) => {
+    if (i === 0) return true; // intro
+    const headerMatch = section.match(/^([A-Z/ ]+)/);
+    if (!headerMatch) return true;
+    const header = headerMatch[1].toLowerCase();
+    // Keep section if any of its keywords match user's markers
+    if (header.includes('inflammation')) return userCodes.has('HSCRP') || userCodes.has('HOMOCYS') || userCodes.has('WBC');
+    if (header.includes('glucose') || header.includes('insulin')) return userCodes.has('GLUC') || userCodes.has('HBA1C') || userCodes.has('INSULIN');
+    if (header.includes('lipid')) return userCodes.has('LDL') || userCodes.has('HDL') || userCodes.has('TRIG') || userCodes.has('APOB');
+    if (header.includes('thyroid')) return userCodes.has('TSH') || userCodes.has('FT4') || userCodes.has('FT3');
+    if (header.includes('hormone')) return userCodes.has('TESTO') || userCodes.has('ESTRA') || userCodes.has('DHEAS');
+    if (header.includes('liver')) return userCodes.has('ALT') || userCodes.has('AST') || userCodes.has('GGT');
+    if (header.includes('kidney')) return userCodes.has('CREAT') || userCodes.has('URIC');
+    if (header.includes('vitamin') || header.includes('mineral')) return userCodes.has('VITD') || userCodes.has('B12') || userCodes.has('FERRITIN') || userCodes.has('FOLAT') || userCodes.has('MAGNE');
+    return true;
+  }).join('\n');
+}
+
 const BRYAN_REFERENCE = `
 ═══ BRYAN JOHNSON BLUEPRINT REFERENCE (calibration anchor) ═══
 
@@ -492,9 +569,9 @@ CRITICAL SAFETY RULES:
 5. Never exceed their stated budget of ${profile.monthlyBudgetRon} RON/month for supplements
 6. Do NOT double-stack supplements they already take: ${supplementList}
 
-${BRYAN_REFERENCE}
+${trimBryanReference(BRYAN_REFERENCE, classifiedBiomarkers)}
 
-${INTERVENTION_RULES}
+${trimInterventionRules(INTERVENTION_RULES, classifiedBiomarkers)}
 
 ${BUDGET_RULES}
 

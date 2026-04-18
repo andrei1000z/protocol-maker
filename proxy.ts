@@ -21,7 +21,9 @@ export default async function proxy(request: NextRequest) {
 
   const { data: { user } } = await supabase.auth.getUser();
   const path = request.nextUrl.pathname;
-  const isPublic = path === '/' || path === '/login' || path.startsWith('/api') || path === '/auth/callback' || path.startsWith('/share') || path === '/privacy' || path === '/terms' || path === '/sitemap.xml' || path === '/robots.txt';
+  // Demo mode: anyone can view /dashboard?demo=1 (sample protocol, no real data)
+  const isDemoMode = path === '/dashboard' && request.nextUrl.searchParams.has('demo');
+  const isPublic = path === '/' || path === '/login' || path.startsWith('/api') || path === '/auth/callback' || path.startsWith('/share') || path === '/privacy' || path === '/terms' || path === '/sitemap.xml' || path === '/robots.txt' || isDemoMode;
 
   if (isPublic) return supabaseResponse;
 

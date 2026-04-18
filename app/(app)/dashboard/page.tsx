@@ -1,11 +1,12 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { ProtocolOutput, Classification } from '@/lib/types';
 import { getClassificationColor, getClassificationBg } from '@/lib/engine/classifier';
 import { AnimatedNumber } from '@/components/ui/AnimatedNumber';
 import { DashboardTOC } from '@/components/layout/DashboardTOC';
 import { useMyData, useProtocolDiff } from '@/lib/hooks/useApiData';
+import { SAMPLE_PROTOCOL, SAMPLE_LONGEVITY_SCORE, SAMPLE_BIO_AGE } from '@/lib/engine/sample-protocol';
 import clsx from 'clsx';
 import {
   Radar, RadarChart, PolarGrid, PolarAngleAxis, ResponsiveContainer,
@@ -112,15 +113,26 @@ export default function DashboardPage() {
   const { data: myData, isLoading } = useMyData();
   const { data: diffData } = useProtocolDiff();
   const [expandedBiomarker, setExpandedBiomarker] = useState<string | null>(null);
+  const [demoMode, setDemoMode] = useState(false);
 
-  // Derive stable view-model from cached data
-  const data = myData?.protocol ? {
-    protocol: myData.protocol.protocol_json as unknown as ProtocolOutput,
-    longevityScore: myData.protocol.longevity_score ?? 0,
-    biologicalAge: myData.protocol.biological_age ?? 0,
-  } : null;
+  // Detect ?demo=1 — render sample data instead of fetching the user's protocol.
+  // Powers the landing-page "Try with sample data" CTA without forcing signup.
+  useEffect(() => {
+    if (typeof window !== 'undefined' && new URLSearchParams(window.location.search).has('demo')) {
+      setDemoMode(true);
+    }
+  }, []);
 
-  if (isLoading && !data) return (
+  // Derive stable view-model from cached data — or use sample data in demo mode
+  const data = demoMode
+    ? { protocol: SAMPLE_PROTOCOL, longevityScore: SAMPLE_LONGEVITY_SCORE, biologicalAge: SAMPLE_BIO_AGE }
+    : myData?.protocol ? {
+        protocol: myData.protocol.protocol_json as unknown as ProtocolOutput,
+        longevityScore: myData.protocol.longevity_score ?? 0,
+        biologicalAge: myData.protocol.biological_age ?? 0,
+      } : null;
+
+  if (!demoMode && isLoading && !data) return (
     <div className="max-w-3xl mx-auto px-4 py-6 space-y-5">
       <div className="text-center space-y-2">
         <div className="h-8 w-32 mx-auto rounded-xl bg-card-border/30 animate-pulse" />
@@ -176,6 +188,22 @@ export default function DashboardPage() {
       <DashboardTOC items={TOC_ITEMS} />
 
       <div className="flex-1 min-w-0 space-y-5 max-w-3xl">
+      {/* ═══════════════ DEMO MODE BANNER ═══════════════ */}
+      {demoMode && (
+        <div className="rounded-2xl bg-gradient-to-r from-accent/[0.08] to-blue-500/[0.05] border border-accent/30 p-4 flex items-center gap-3 animate-fade-in-up">
+          <div className="w-10 h-10 rounded-xl bg-accent/15 border border-accent/30 flex items-center justify-center shrink-0">
+            <span className="text-base">👀</span>
+          </div>
+          <div className="flex-1 min-w-0">
+            <p className="text-sm font-semibold text-accent">Demo mode — sample protocol for a fictional 35-year-old</p>
+            <p className="text-[11px] text-muted-foreground mt-0.5">Real numbers from a real-feeling profile (mediterranean eater, mild metabolic risk, gym access). Sign up to get yours.</p>
+          </div>
+          <a href="/login" className="shrink-0 px-4 py-2 rounded-xl bg-accent text-black text-xs font-semibold hover:bg-accent-bright transition-colors glow-cta">
+            Get mine →
+          </a>
+        </div>
+      )}
+
       {/* ═══════════════ PROTOCOL CHANGE BANNER (v2 vs v1) ═══════════════ */}
       {diffData?.diff && (diffData.diff.totalChanges > 0 || diffData.diff.score.delta !== 0 || Math.abs(diffData.diff.bioAge.delta) >= 0.1) && (() => {
         const d = diffData.diff;

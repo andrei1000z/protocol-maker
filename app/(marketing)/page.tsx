@@ -81,9 +81,12 @@ export default function LandingPage() {
               Get your protocol — free
               <ArrowRight className="w-4 h-4" />
             </Link>
-            <a href="#demo" className="px-6 py-4 rounded-xl border border-card-border text-sm text-muted-foreground hover:text-foreground hover:border-card-border-hover transition-colors">
-              See Bryan&apos;s numbers
-            </a>
+            <Link
+              href="/dashboard?demo=1"
+              className="px-6 py-4 rounded-xl border border-accent/40 bg-accent/[0.04] text-sm text-accent hover:bg-accent/[0.08] hover:border-accent/60 transition-all flex items-center gap-2"
+            >
+              👀 See a live sample protocol
+            </Link>
           </div>
 
           <p className="text-xs text-muted mt-6 animate-fade-in-up stagger-4">
@@ -146,23 +149,69 @@ export default function LandingPage() {
         </div>
       </section>
 
-      {/* Biomarker demo */}
-      <section id="demo" className="max-w-5xl mx-auto px-6 py-24">
+      {/* Live sample protocol — shows REAL output, not just Bryan's grid */}
+      <section id="demo" className="max-w-6xl mx-auto px-6 py-24">
         <div className="rounded-3xl bg-card border border-card-border p-6 sm:p-10">
           <div className="text-center mb-10">
-            <p className="text-xs uppercase tracking-wider text-accent mb-3">Interactive demo</p>
-            <h2 className="text-3xl sm:text-4xl font-bold mb-3">Bryan Johnson&apos;s actual biomarkers</h2>
+            <p className="text-xs uppercase tracking-wider text-accent mb-3">Live sample protocol</p>
+            <h2 className="text-3xl sm:text-4xl font-bold mb-3">Don&apos;t take our word — see the actual output</h2>
             <p className="text-sm text-muted-foreground max-w-xl mx-auto">
-              This is what $2M/year of optimization looks like. Our engine will compare your values against his — and generate YOUR personalized protocol.
+              A fully-rendered dashboard for a fictional 35-year-old man — same UI, real engine, no signup. Click around, scroll the supplements, check the meal options, see how your protocol would actually look.
+            </p>
+          </div>
+
+          {/* Hero stats from sample protocol */}
+          <div className="grid grid-cols-3 gap-3 max-w-2xl mx-auto mb-8">
+            <div className="metric-tile text-center">
+              <p className="text-3xl font-bold font-mono text-accent">78</p>
+              <p className="text-[10px] text-muted uppercase tracking-widest mt-1">Longevity</p>
+            </div>
+            <div className="metric-tile text-center">
+              <p className="text-3xl font-bold font-mono text-accent">32y 5m</p>
+              <p className="text-[10px] text-muted uppercase tracking-widest mt-1">Bio age (vs 35)</p>
+            </div>
+            <div className="metric-tile text-center">
+              <p className="text-3xl font-bold font-mono text-accent">0.84×</p>
+              <p className="text-[10px] text-muted uppercase tracking-widest mt-1">Aging speed</p>
+            </div>
+          </div>
+
+          <div className="text-center space-y-3">
+            <Link
+              href="/dashboard?demo=1"
+              className="inline-flex items-center gap-2 px-8 py-4 bg-accent text-black rounded-xl font-bold text-sm hover:bg-accent-bright transition-all glow-cta"
+            >
+              👀 Open the sample dashboard <ArrowRight className="w-4 h-4" />
+            </Link>
+            <p className="text-[11px] text-muted">Opens in this tab · Sign up button at the top to get yours</p>
+          </div>
+
+          {/* Mini feature strip */}
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mt-10 pt-10 border-t border-card-border">
+            {[
+              { e: '🧬', l: 'Bio age + aging speed' },
+              { e: '🍽️', l: '12 meal options personalized' },
+              { e: '💊', l: 'Supplement stack with how-to' },
+              { e: '🏆', l: 'Bryan Johnson side-by-side' },
+            ].map(f => (
+              <div key={f.l} className="text-center p-3 rounded-xl bg-background border border-card-border">
+                <p className="text-2xl">{f.e}</p>
+                <p className="text-[11px] text-muted-foreground mt-1.5">{f.l}</p>
+              </div>
+            ))}
+          </div>
+        </div>
+
+        {/* Bryan's static grid as secondary, now properly framed */}
+        <div className="mt-16 max-w-4xl mx-auto">
+          <div className="text-center mb-6">
+            <p className="text-xs uppercase tracking-wider text-muted mb-2">For reference</p>
+            <h3 className="text-xl sm:text-2xl font-semibold">Bryan Johnson&apos;s actual numbers</h3>
+            <p className="text-sm text-muted-foreground mt-2 max-w-md mx-auto">
+              Your dashboard compares your biomarkers against these targets. $2M/year of optimization, in numbers:
             </p>
           </div>
           <BiomarkerDemo />
-          <div className="text-center mt-10">
-            <Link href="/login"
-              className="inline-flex items-center gap-2 px-7 py-3.5 bg-accent text-black rounded-xl font-bold text-sm hover:bg-accent-dim transition-all">
-              Compare your biomarkers <ArrowRight className="w-4 h-4" />
-            </Link>
-          </div>
         </div>
       </section>
 
