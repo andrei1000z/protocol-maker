@@ -1194,16 +1194,18 @@ export default function DashboardPage() {
             return PHASES.find(p => h >= p.range[0] && h < p.range[1]) || PHASES[0];
           };
 
+          // Border classes are FULL static literals — Tailwind JIT doesn't scan
+          // string concatenation, so `'border-' + name` would silently miss compilation.
           const colorFor = (cat: string) =>
-            cat === 'sleep' || cat === 'wind-down'         ? { text: 'text-blue-400',   bar: 'bg-blue-400/30',   bg: 'bg-blue-500/[0.03]', dot: 'bg-blue-400' }
-            : cat === 'exercise'                           ? { text: 'text-amber-400',  bar: 'bg-amber-400/30',  bg: 'bg-amber-500/[0.04]', dot: 'bg-amber-400' }
-            : cat === 'meal' || cat === 'snack'            ? { text: 'text-orange-400', bar: 'bg-orange-400/30', bg: 'bg-orange-500/[0.03]', dot: 'bg-orange-400' }
-            : cat === 'supplements'                        ? { text: 'text-purple-400', bar: 'bg-purple-400/30', bg: 'bg-purple-500/[0.03]', dot: 'bg-purple-400' }
-            : cat === 'hydration'                          ? { text: 'text-cyan-400',   bar: 'bg-cyan-400/30',   bg: 'bg-cyan-500/[0.03]', dot: 'bg-cyan-400' }
-            : cat === 'movement-break'                     ? { text: 'text-lime-400',   bar: 'bg-lime-400/30',   bg: 'bg-lime-500/[0.03]', dot: 'bg-lime-400' }
-            : cat === 'work' || cat === 'school'           ? { text: 'text-foreground', bar: 'bg-card-border',   bg: 'bg-surface-2', dot: 'bg-foreground/50' }
-            : cat === 'mindset'                            ? { text: 'text-pink-400',   bar: 'bg-pink-400/30',   bg: 'bg-pink-500/[0.03]', dot: 'bg-pink-400' }
-            :                                                { text: 'text-accent',     bar: 'bg-accent/30',     bg: 'bg-accent/[0.03]', dot: 'bg-accent' };
+            cat === 'sleep' || cat === 'wind-down'         ? { text: 'text-blue-400',   bar: 'bg-blue-400/30',   bg: 'bg-blue-500/[0.03]', dot: 'bg-blue-400',   border: 'border-blue-400/20' }
+            : cat === 'exercise'                           ? { text: 'text-amber-400',  bar: 'bg-amber-400/30',  bg: 'bg-amber-500/[0.04]', dot: 'bg-amber-400',  border: 'border-amber-400/20' }
+            : cat === 'meal' || cat === 'snack'            ? { text: 'text-orange-400', bar: 'bg-orange-400/30', bg: 'bg-orange-500/[0.03]', dot: 'bg-orange-400', border: 'border-orange-400/20' }
+            : cat === 'supplements'                        ? { text: 'text-purple-400', bar: 'bg-purple-400/30', bg: 'bg-purple-500/[0.03]', dot: 'bg-purple-400', border: 'border-purple-400/20' }
+            : cat === 'hydration'                          ? { text: 'text-cyan-400',   bar: 'bg-cyan-400/30',   bg: 'bg-cyan-500/[0.03]', dot: 'bg-cyan-400',   border: 'border-cyan-400/20' }
+            : cat === 'movement-break'                     ? { text: 'text-lime-400',   bar: 'bg-lime-400/30',   bg: 'bg-lime-500/[0.03]', dot: 'bg-lime-400',   border: 'border-lime-400/20' }
+            : cat === 'work' || cat === 'school'           ? { text: 'text-foreground', bar: 'bg-card-border',   bg: 'bg-surface-2', dot: 'bg-foreground/50',     border: 'border-card-border' }
+            : cat === 'mindset'                            ? { text: 'text-pink-400',   bar: 'bg-pink-400/30',   bg: 'bg-pink-500/[0.03]', dot: 'bg-pink-400',   border: 'border-pink-400/20' }
+            :                                                { text: 'text-accent',     bar: 'bg-accent/30',     bg: 'bg-accent/[0.03]', dot: 'bg-accent',       border: 'border-accent/25' };
 
           const iconFor = (cat: string) =>
             cat === 'sleep'          ? '🛏️' :
@@ -1244,7 +1246,7 @@ export default function DashboardPage() {
 
                     if (isBlock) {
                       return (
-                        <div key={i} className={clsx('flex items-center gap-3 p-3.5 rounded-xl border', c.bg, 'border-' + c.text.replace('text-', '') + '/20')}>
+                        <div key={i} className={clsx('flex items-center gap-3 p-3.5 rounded-xl border', c.bg, c.border)}>
                           <div className="flex items-center justify-center w-11 h-11 rounded-xl bg-surface-3 border border-card-border shrink-0">
                             <span className="text-lg">{iconFor(item.category)}</span>
                           </div>

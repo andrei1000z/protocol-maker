@@ -8,7 +8,7 @@ import { computeOrganSystems, generateTopWins, generateTopRisks, estimateBiomark
 import { buildPainPoints, buildFlexRules } from '@/lib/engine/personalization-fills';
 import { detectPatterns } from '@/lib/engine/patterns';
 import { BIOMARKER_DB } from '@/lib/engine/biomarkers';
-import { buildMasterPromptV2 } from '@/lib/engine/master-prompt';
+import { buildMasterPromptV2, CACHEABLE_SYSTEM_PREFIX } from '@/lib/engine/master-prompt';
 import { buildFallbackProtocol } from '@/lib/engine/fallback-protocol';
 import { BiomarkerValue, UserProfile } from '@/lib/types';
 import { getProtocolRateLimit, checkRateLimit } from '@/lib/rate-limit';
@@ -257,9 +257,17 @@ async function generateWithClaude(prompt: string): Promise<Record<string, unknow
 
   const anthropic = new Anthropic({ apiKey });
 
+  // PROMPT CACHING: the system prefix is ~15k tokens of identical reference data
+  // across every user (Bryan's blueprint, intervention rules, budget tables, tips,
+  // and global output contract). Anthropic charges 1.25× on first write but only
+  // 0.1× on subsequent reads within the 5-min TTL. Post first call of the day,
+  // every generate saves ~90% of input-token cost on the cached portion.
   const response = await anthropic.messages.create({
     model: 'claude-sonnet-4-5',
     max_tokens: 16000,
+    system: [
+      { type: 'text', text: CACHEABLE_SYSTEM_PREFIX, cache_control: { type: 'ephemeral' } },
+    ],
     messages: [
       { role: 'user', content: prompt + '\n\nRespond with ONLY the JSON object. No markdown, no backticks, no explanation. Start your response with { and end with }.' },
     ],

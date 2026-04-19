@@ -5,7 +5,7 @@ import { createAdminClient } from '@/lib/supabase/admin';
 import { classifyAll, calculateLongevityScore, estimateBiologicalAge, estimateAgingPace } from '@/lib/engine/classifier';
 import { detectPatterns } from '@/lib/engine/patterns';
 import { BIOMARKER_DB } from '@/lib/engine/biomarkers';
-import { buildMasterPromptV2 } from '@/lib/engine/master-prompt';
+import { buildMasterPromptV2, CACHEABLE_SYSTEM_PREFIX } from '@/lib/engine/master-prompt';
 import { computeOrganSystems, generateTopWins, generateTopRisks, estimateBiomarkers, buildBryanSummary } from '@/lib/engine/lifestyle-diagnostics';
 import { buildPainPoints, buildFlexRules } from '@/lib/engine/personalization-fills';
 import type { BiomarkerValue, UserProfile } from '@/lib/types';
@@ -23,9 +23,14 @@ const BATCH_CONCURRENCY = 3;
 export async function GET(request: Request) {
   // Vercel auto-injects Authorization: Bearer $CRON_SECRET on scheduled runs.
   // Manual calls from Vercel Dashboard also include it. Reject anything else.
+  //
+  // SECURITY: earlier version did `if (secret && authHeader !== ...)` which
+  // silently allowed ALL unauthenticated traffic when CRON_SECRET was unset
+  // or empty. Now we REQUIRE the secret to be configured AND to match.
+  // If the env var is missing in prod, the cron is disabled — fail closed.
   const authHeader = request.headers.get('authorization');
   const secret = process.env.CRON_SECRET;
-  if (secret && authHeader !== `Bearer ${secret}`) {
+  if (!secret || authHeader !== `Bearer ${secret}`) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }
 
@@ -43,7 +48,15 @@ export async function GET(request: Request) {
   if (usersErr) return NextResponse.json({ error: `Profile fetch failed: ${usersErr.message}` }, { status: 500 });
   if (!users || users.length === 0) return NextResponse.json({ ok: true, processed: 0, note: 'No onboarded users' });
 
-  const results = { total: users.length, success: 0, failed: 0, skipped: 0, errors: [] as { userId: string; err: string }[] };
+  const results = {
+    total: users.length,
+    success: 0,
+    failed: 0,
+    skipped: 0,
+    skippedInactive: 0,
+    skippedIncomplete: 0,
+    errors: [] as { userId: string; err: string }[],
+  };
 
   // Process in small batches to respect AI rate limits + Vercel timeout
   for (let i = 0; i < users.length; i += BATCH_CONCURRENCY) {
@@ -52,8 +65,13 @@ export async function GET(request: Request) {
     outcomes.forEach((o, idx) => {
       const userId = batch[idx].id;
       if (o.status === 'fulfilled') {
-        if (o.value.skipped) results.skipped++;
-        else results.success++;
+        if (o.value.skipped) {
+          results.skipped++;
+          if (o.value.skippedReason === 'inactive_7d') results.skippedInactive++;
+          else if (o.value.skippedReason === 'incomplete_profile') results.skippedIncomplete++;
+        } else {
+          results.success++;
+        }
       } else {
         results.failed++;
         results.errors.push({ userId, err: o.reason?.message || String(o.reason) });
@@ -81,14 +99,20 @@ export const POST = GET;
 // ─────────────────────────────────────────────────────────────────────────────
 // Per-user regeneration — mirrors /api/generate-protocol but service-role auth
 // ─────────────────────────────────────────────────────────────────────────────
-async function regenerateForUser(userId: string): Promise<{ skipped?: boolean; protocolId?: string }> {
+async function regenerateForUser(userId: string): Promise<{ skipped?: boolean; skippedReason?: string; protocolId?: string }> {
   const supabase = createAdminClient();
 
-  // Load profile, latest bloodtest, last 30d daily metrics, last 7d compliance
-  const [profileRes, bloodRes, metricsRes] = await Promise.all([
+  const sevenDaysAgo = new Date(Date.now() - 7 * 864e5).toISOString().slice(0, 10);
+  const thirtyDaysAgo = new Date(Date.now() - 30 * 864e5).toISOString().slice(0, 10);
+
+  // Load profile + latest bloodtest + last 30d daily metrics + last 7d compliance.
+  // The extra compliance query is cheap (indexed on user_id+date) and lets us skip
+  // idle users, which is the biggest cost lever in the cron pipeline.
+  const [profileRes, bloodRes, metricsRes, complianceCountRes] = await Promise.all([
     supabase.from('profiles').select('*').eq('id', userId).single(),
     supabase.from('blood_tests').select('*').eq('user_id', userId).is('deleted_at', null).order('taken_at', { ascending: false }).limit(1).maybeSingle(),
-    supabase.from('daily_metrics').select('*').eq('user_id', userId).gte('date', new Date(Date.now() - 30 * 864e5).toISOString().slice(0, 10)),
+    supabase.from('daily_metrics').select('*').eq('user_id', userId).gte('date', thirtyDaysAgo),
+    supabase.from('compliance_logs').select('id', { count: 'exact', head: true }).eq('user_id', userId).eq('completed', true).gte('date', sevenDaysAgo),
   ]);
 
   if (profileRes.error || !profileRes.data) throw new Error(`profile load: ${profileRes.error?.message}`);
@@ -96,7 +120,19 @@ async function regenerateForUser(userId: string): Promise<{ skipped?: boolean; p
 
   // Skip users who haven't actually filled anything meaningful
   if (!dbProfile.age || !dbProfile.height_cm || !dbProfile.weight_kg) {
-    return { skipped: true };
+    return { skipped: true, skippedReason: 'incomplete_profile' };
+  }
+
+  // INACTIVE USER SKIP: if the user hasn't logged any daily_metric in the last
+  // 7 days AND hasn't checked off any compliance task, regenerating their
+  // protocol burns ~$0.08 for zero signal change. Skip. They'll get a fresh
+  // protocol the moment they log again (dashboard has its own regen trigger,
+  // and the next cron run after their first log will pick them up).
+  const metricsLast7d = (metricsRes.data || []).filter((m: { date: string }) => m.date >= sevenDaysAgo);
+  const hasRecentMetrics = metricsLast7d.length > 0;
+  const hasRecentCompliance = (complianceCountRes.count ?? 0) > 0;
+  if (!hasRecentMetrics && !hasRecentCompliance) {
+    return { skipped: true, skippedReason: 'inactive_7d' };
   }
 
   // Roll 7-day averages from daily_metrics back into the profile before regen.
@@ -286,9 +322,15 @@ async function regenerateForUser(userId: string): Promise<{ skipped?: boolean; p
 // ─────────────────────────────────────────────────────────────────────────────
 async function generateWithClaude(prompt: string): Promise<Record<string, unknown>> {
   const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY! });
+  // Cached system prefix — cron processes N users back-to-back, so after the
+  // first user the prefix is a cache-hit for every remaining user in the batch.
+  // Biggest cost win in the whole pipeline.
   const response = await anthropic.messages.create({
     model: 'claude-sonnet-4-5',
     max_tokens: 16000,
+    system: [
+      { type: 'text', text: CACHEABLE_SYSTEM_PREFIX, cache_control: { type: 'ephemeral' } },
+    ],
     messages: [{ role: 'user', content: prompt + '\n\nRespond with ONLY the JSON object. Start with { and end with }.' }],
   });
   const text = response.content[0]?.type === 'text' ? response.content[0].text : '';

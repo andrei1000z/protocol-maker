@@ -217,10 +217,13 @@ ${topMissed.length > 0 ? '- Most missed: ' + topMissed.map(([k, n]) => `${k} (×
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// System prompt — the AI's persona, constraints, and formatting rules
+// System prompt — split into CACHEABLE persona/rules + per-call user context.
+// Persona block is ~3k tokens of stable instructions; caches on Anthropic side
+// for the 5-min TTL. Context block changes per user per session.
+// Dates are passed into the user block (not the cached persona) so the prefix
+// stays byte-identical across days.
 // ─────────────────────────────────────────────────────────────────────────────
-function buildSystemPrompt(context: string) {
-  return `You are "Protocol", a world-class longevity physician + coach speaking directly to ONE patient whose full data is below.
+const CHAT_CACHED_PERSONA = `You are "Protocol", a world-class longevity physician + coach speaking directly to ONE patient whose full data is below.
 
 # WHO YOU ARE
 - Evidence-based. You reference their ACTUAL NUMBERS from the context.
@@ -255,13 +258,13 @@ Every response should feel like you KNOW this specific person. If they ask "how 
 # ACTION MARKERS — your editing power
 You can suggest concrete edits to this user's profile, daily metrics, or protocol. The user reviews each one as a tap-to-apply chip below your message. Use them WHENEVER the user gives you a fact you can persist — never make the user navigate away to update something you could update right here.
 
-Emit each action on its OWN line, anywhere in your reply, in this exact format:
+Emit each action on its OWN line, anywhere in your reply, in this exact format (replace TODAY and YESTERDAY with the real ISO dates from the user context block):
 
 [[ACTION:update_profile {"height_cm": 178}]]
 [[ACTION:update_profile {"weight_kg": 81.5, "smoker": false}]]
 [[ACTION:update_profile {"onboarding_data_patch": {"chronotype": "morning", "stressLevel": 4}}]]
-[[ACTION:log_metric {"date": "${new Date().toISOString().slice(0, 10)}", "sleep_hours": 8.0, "sleep_quality": 7}]]
-[[ACTION:log_metric {"date": "${new Date(Date.now() - 864e5).toISOString().slice(0, 10)}", "steps": 9420}]]
+[[ACTION:log_metric {"date": "TODAY", "sleep_hours": 8.0, "sleep_quality": 7}]]
+[[ACTION:log_metric {"date": "YESTERDAY", "steps": 9420}]]
 [[ACTION:adjust_protocol {"path": "sleep.targetBedtime", "value": "22:40"}]]
 [[ACTION:adjust_protocol {"path": "exercise.dailyStepsTarget", "value": 9000}]]
 [[ACTION:adjust_protocol {"path": "nutrition.eatingWindow", "value": "11:00 - 19:00 (8h window)"}]]
@@ -285,19 +288,27 @@ KEY RULES:
 - adjust_protocol.path must be one of: sleep.targetBedtime, sleep.targetWakeTime, sleep.idealBedtime, sleep.idealWakeTime, sleep.caffeineLimit, sleep.morningLightMinutes, nutrition.eatingWindow, nutrition.dailyCalories, nutrition.macros.protein, nutrition.macros.carbs, nutrition.macros.fat, exercise.dailyStepsTarget, exercise.zone2Target, exercise.strengthSessions, exercise.hiitSessions, dailyBriefing.morningPriorities, dailyBriefing.eveningReview
 - BRIEFLY confirm in your normal message text what each action will do, so the user understands what they're approving
 
----
-
-${context}
-
----
-
 Now respond to the user's message. Be specific, cite their data, and be useful.`;
+
+function buildChatUserContext(context: string): string {
+  const today = new Date().toISOString().slice(0, 10);
+  const yesterday = new Date(Date.now() - 864e5).toISOString().slice(0, 10);
+  return `═══ RUNTIME CONTEXT ═══
+Today: ${today}
+Yesterday: ${yesterday}
+
+═══ PATIENT DATA ═══
+${context}`;
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Streaming handler — tries Claude Sonnet 4.5 first, falls back to Groq
 // ─────────────────────────────────────────────────────────────────────────────
-async function streamResponse(systemPrompt: string, messages: ChatMessage[]): Promise<ReadableStream<Uint8Array>> {
+async function streamResponse(
+  cachedPersona: string,
+  userContext: string,
+  messages: ChatMessage[],
+): Promise<ReadableStream<Uint8Array>> {
   const encoder = new TextEncoder();
 
   return new ReadableStream<Uint8Array>({
@@ -308,7 +319,13 @@ async function streamResponse(systemPrompt: string, messages: ChatMessage[]): Pr
           const stream = await anthropic.messages.stream({
             model: 'claude-sonnet-4-5',
             max_tokens: 1500,
-            system: systemPrompt,
+            // Two-block system prompt: cached persona first (qualifies for prompt
+            // caching across all users within the 5-min TTL), then per-user
+            // context (never cached — fresh every request).
+            system: [
+              { type: 'text', text: cachedPersona, cache_control: { type: 'ephemeral' } },
+              { type: 'text', text: userContext },
+            ],
             messages: messages.map(m => ({ role: m.role, content: m.content })),
           });
           for await (const chunk of stream) {
@@ -318,10 +335,13 @@ async function streamResponse(systemPrompt: string, messages: ChatMessage[]): Pr
           }
         } else if (process.env.GROQ_API_KEY) {
           const groq = new Groq({ apiKey: process.env.GROQ_API_KEY });
+          // Groq doesn't support prompt caching — concatenate persona + context
+          // into a single system message.
+          const fullSystem = `${cachedPersona}\n\n${userContext}`;
           const completion = await groq.chat.completions.create({
             model: 'llama-3.3-70b-versatile',
             messages: [
-              { role: 'system', content: systemPrompt },
+              { role: 'system', content: fullSystem },
               ...messages,
             ],
             temperature: 0.65,
@@ -364,11 +384,11 @@ export async function POST(request: Request) {
     }
 
     const { context } = await buildContext(supabase, user.id);
-    const systemPrompt = buildSystemPrompt(context);
+    const userContext = buildChatUserContext(context);
 
     // Streaming response (default)
     if (body.stream !== false) {
-      const stream = await streamResponse(systemPrompt, body.messages);
+      const stream = await streamResponse(CHAT_CACHED_PERSONA, userContext, body.messages);
       return new Response(stream, {
         headers: {
           'Content-Type': 'text/plain; charset=utf-8',
@@ -385,7 +405,10 @@ export async function POST(request: Request) {
       const response = await anthropic.messages.create({
         model: 'claude-sonnet-4-5',
         max_tokens: 1500,
-        system: systemPrompt,
+        system: [
+          { type: 'text', text: CHAT_CACHED_PERSONA, cache_control: { type: 'ephemeral' } },
+          { type: 'text', text: userContext },
+        ],
         messages: body.messages.map(m => ({ role: m.role, content: m.content })),
       });
       reply = response.content[0]?.type === 'text' ? response.content[0].text : '';
@@ -393,7 +416,7 @@ export async function POST(request: Request) {
       const groq = new Groq({ apiKey: process.env.GROQ_API_KEY });
       const completion = await groq.chat.completions.create({
         model: 'llama-3.3-70b-versatile',
-        messages: [{ role: 'system', content: systemPrompt }, ...body.messages],
+        messages: [{ role: 'system', content: `${CHAT_CACHED_PERSONA}\n\n${userContext}` }, ...body.messages],
         temperature: 0.65,
         max_tokens: 1500,
       });

@@ -1,13 +1,13 @@
 import { Metadata } from 'next';
 import Link from 'next/link';
+import { SITE_URL } from '@/lib/config';
 
 export async function generateMetadata({ params }: { params: Promise<{ slug: string }> }): Promise<Metadata> {
   const { slug } = await params;
   // Title carries the score so Twitter shows "Longevity score 84/100" in unfurls
   // even before the OG image renders. Fallback if the share is missing.
   try {
-    const base = process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : 'https://protocol-tawny.vercel.app';
-    const res = await fetch(`${base}/api/share?slug=${slug}`, { cache: 'no-store' });
+    const res = await fetch(`${SITE_URL}/api/share?slug=${slug}`, { cache: 'no-store' });
     if (!res.ok) throw new Error('not found');
     const data = await res.json();
     const score = data?.longevity_score ?? null;
@@ -34,9 +34,8 @@ export async function generateMetadata({ params }: { params: Promise<{ slug: str
 }
 
 async function getSharedProtocol(slug: string) {
-  const baseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL ? 'https://protocol-tawny.vercel.app' : 'http://localhost:3000';
   try {
-    const res = await fetch(`${baseUrl}/api/share?slug=${slug}`, { cache: 'no-store' });
+    const res = await fetch(`${SITE_URL}/api/share?slug=${slug}`, { cache: 'no-store' });
     if (!res.ok) return null;
     return res.json();
   } catch {

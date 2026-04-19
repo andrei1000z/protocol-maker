@@ -1,4 +1,5 @@
 import { ImageResponse } from 'next/og';
+import { SITE_URL } from '@/lib/config';
 
 export const alt = 'Shared longevity protocol';
 export const size = { width: 1200, height: 630 };
@@ -11,9 +12,8 @@ interface SharedProtocol {
 }
 
 async function fetchShared(slug: string): Promise<SharedProtocol | null> {
-  const base = process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : 'https://protocol-tawny.vercel.app';
   try {
-    const res = await fetch(`${base}/api/share?slug=${slug}`, { cache: 'no-store' });
+    const res = await fetch(`${SITE_URL}/api/share?slug=${slug}`, { cache: 'no-store' });
     if (!res.ok) return null;
     return res.json();
   } catch { return null; }

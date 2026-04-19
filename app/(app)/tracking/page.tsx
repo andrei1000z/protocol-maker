@@ -19,6 +19,7 @@ import { useDailyMetrics, useDailyMetricsRange, DailyMetrics } from '@/lib/hooks
 import { buildInsights, currentWorkoutStreak, loggedDaysInLastN, Insight } from '@/lib/engine/tracking-insights';
 import { SectionCard as Section, StatTile as Stat, ProgressRing } from '@/components/ui/SectionCard';
 import { summarizeUserDevices, type UserDeviceSummary, CAPABILITY_TO_COLUMNS, EQUIPMENT_TO_COLUMNS } from '@/lib/engine/device-catalog';
+import { SITE_URL } from '@/lib/config';
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Types + static
@@ -767,7 +768,7 @@ export default function TrackingPage() {
                       title={`${a.description} — click to share`}
                       onClick={() => {
                         const text = `🏆 Just unlocked "${a.name}" on Protocol — ${a.description}`;
-                        const url = 'https://protocol-tawny.vercel.app';
+                        const url = SITE_URL;
                         const nav = typeof navigator !== 'undefined' ? navigator : null;
                         if (nav && typeof nav.share === 'function') {
                           nav.share({ title: 'Protocol achievement', text, url }).catch(() => {});

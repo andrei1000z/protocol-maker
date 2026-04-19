@@ -1,6 +1,5 @@
 import { MetadataRoute } from 'next';
-
-const BASE = 'https://protocol-tawny.vercel.app';
+import { SITE_URL as BASE } from '@/lib/config';
 
 export default function robots(): MetadataRoute.Robots {
   return {

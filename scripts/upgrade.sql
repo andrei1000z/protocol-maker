@@ -485,6 +485,17 @@ language sql stable as $$
   order by created_at desc limit 1;
 $$;
 
+-- Atomic increment of share_links.view_count — prevents read-then-update race.
+-- Returns the new view_count so callers can show the updated value without re-querying.
+create or replace function public.increment_share_view(p_slug text)
+returns integer language sql as $$
+  update public.share_links
+     set view_count = coalesce(view_count, 0) + 1
+   where slug = p_slug
+   returning view_count;
+$$;
+grant execute on function public.increment_share_view(text) to anon, authenticated;
+
 -- ┌──────────────────────────────────────────────────────────────────────────┐
 -- │ 13. REALTIME PUBLICATION                                                 │
 -- └──────────────────────────────────────────────────────────────────────────┘

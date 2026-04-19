@@ -3,12 +3,11 @@ import { Inter, JetBrains_Mono } from "next/font/google";
 import { Analytics } from "@vercel/analytics/react";
 import { SWRegister } from "@/components/layout/SWRegister";
 import { Providers } from "./providers";
+import { SITE_URL } from "@/lib/config";
 import "./globals.css";
 
 const inter = Inter({ variable: "--font-geist-sans", subsets: ["latin"] });
 const jetbrains = JetBrains_Mono({ variable: "--font-geist-mono", subsets: ["latin"] });
-
-const SITE_URL = "https://protocol-tawny.vercel.app";
 const TITLE = "Protocol — AI Longevity Engine";
 const DESCRIPTION = "Your blood work. AI analysis. A longevity protocol built for YOU — not Bryan Johnson. 37 biomarkers, 12 health patterns, 8 organ systems. Personalized in 60 seconds.";
 
