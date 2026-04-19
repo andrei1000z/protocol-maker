@@ -150,6 +150,10 @@ const COLUMN_LABELS: Record<string, string> = {
   steps: 'Steps', active_time_min: 'Active time', activity_calories: 'Calories burned', workout_minutes: 'Workout',
   energy_score: 'Body battery', stress_level: 'Stress', mood: 'Mood', energy: 'Energy',
   weight_kg: 'Weight', antioxidant_index: 'Antioxidants',
+  // Morning-fasted measurements
+  body_fat_pct: 'Body fat %', muscle_mass_kg: 'Muscle mass', visceral_fat: 'Visceral fat',
+  body_water_pct: 'Body water %', bone_mass_kg: 'Bone mass', bmr_kcal: 'BMR',
+  basal_body_temp_c: 'Basal body temp',
 };
 
 function DeviceRow({ icon, label, caption, columns, metrics, onOpenLog, tone = 'accent' }: {

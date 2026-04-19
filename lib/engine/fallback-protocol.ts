@@ -320,8 +320,16 @@ function buildFallbackDailySchedule(profile: UserProfile, supplements: Array<Rec
   const schedule: ScheduleEntry[] = [];
 
   // ── MORNING ────────────────────────────────────────────────────────────
-  schedule.push({ time: fmt(w.h, w.m), activity: 'Wake + 500ml water', category: 'wake', duration: '5 min', notes: 'No phone first 10 min. Hydration > caffeine before 9 AM.' });
-  schedule.push({ time: fmt(w.h, w.m + 5), activity: 'Morning sunlight walk', category: 'mindset', duration: '10 min', notes: 'Anchors circadian; improves night-time melatonin secretion.' });
+  schedule.push({ time: fmt(w.h, w.m), activity: 'Wake up', category: 'wake', duration: '0 min', notes: 'Stay off phone for 10 min. No caffeine yet.' });
+  schedule.push({
+    time: fmt(w.h, w.m + 2),
+    activity: 'FASTED measurements — before water + food',
+    category: 'tracking',
+    duration: '5 min',
+    notes: 'Weight + body fat + muscle + visceral fat + body water + basal body temp + antioxidants + morning BP + resting HR. All readings are most accurate fasted — water alone changes weight 0.5-1kg and BIA body-fat by 2-3%.',
+  });
+  schedule.push({ time: fmt(w.h, w.m + 8), activity: '500ml water (first hydration)', category: 'hydration', duration: '2 min', notes: 'Pinch of sea salt + lemon optional — replaces overnight sodium loss.' });
+  schedule.push({ time: fmt(w.h, w.m + 15), activity: 'Morning sunlight walk', category: 'mindset', duration: '10 min', notes: 'Anchors circadian; improves night-time melatonin secretion. No sunglasses for first 10 min.' });
   schedule.push({ time: fmt(w.h + 1), activity: 'Breakfast — protein-forward (≥30g)', category: 'meal', duration: '20 min', notes: 'Eat protein first — blunts glucose spike. 3 eggs + oats + berries is a strong default.' });
 
   // ── SUPPLEMENT BLOCKS — merge per-time ─────────────────────────────────

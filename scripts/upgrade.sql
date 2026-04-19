@@ -125,6 +125,16 @@ alter table public.daily_metrics add column if not exists activity_calories inte
 alter table public.daily_metrics add column if not exists antioxidant_index integer;      -- Galaxy Watch 0-100
 alter table public.daily_metrics add column if not exists ages_index real;                -- Advanced Glycation End products
 
+-- ── MORNING FASTED measurements (weight, body composition, basal temp) ──
+-- Do AFTER waking, BEFORE food/water — lowest-noise baseline.
+alter table public.daily_metrics add column if not exists body_fat_pct real;              -- smart scale BIA
+alter table public.daily_metrics add column if not exists muscle_mass_kg real;            -- smart scale
+alter table public.daily_metrics add column if not exists visceral_fat integer;           -- Tanita rating 1-60
+alter table public.daily_metrics add column if not exists body_water_pct real;            -- smart scale
+alter table public.daily_metrics add column if not exists bone_mass_kg real;              -- smart scale
+alter table public.daily_metrics add column if not exists bmr_kcal integer;               -- smart scale estimate
+alter table public.daily_metrics add column if not exists basal_body_temp_c real;         -- oral/forehead thermometer on waking
+
 -- Range constraints — silent skip if data violates (NOT VALID + VALIDATE pattern)
 do $$ begin
   if not exists (select 1 from pg_constraint where conname = 'dm_sleep_score_range') then

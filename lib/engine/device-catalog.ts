@@ -716,9 +716,11 @@ export const CAPABILITY_TO_COLUMNS: Record<MetricCapability, string[]> = {
 // A BP monitor unlocks BP columns even without a smartwatch. Union with wearables.
 export const EQUIPMENT_TO_COLUMNS: Record<string, string[]> = {
   bathroom_scale:              ['weight_kg'],
-  smart_scale:                 ['weight_kg'],
+  // Smart scales unlock the full morning-fasted composition suite
+  smart_scale:                 ['weight_kg', 'body_fat_pct', 'muscle_mass_kg', 'visceral_fat', 'body_water_pct', 'bone_mass_kg', 'bmr_kcal'],
   bp_monitor:                  ['bp_systolic_morning', 'bp_diastolic_morning', 'bp_systolic_evening', 'bp_diastolic_evening'],
-  body_thermometer:            ['skin_temp_deviation'],
+  // Body thermometer unlocks BOTH basal body temp AND skin temp deviation
+  body_thermometer:            ['basal_body_temp_c', 'skin_temp_deviation'],
   continuous_glucose_monitor:  [],
   glucose_meter:               [],
   pulse_oximeter:              ['blood_oxygen_avg_sleep'],
@@ -795,7 +797,7 @@ export function summarizeUserDevices(onboardingData: Record<string, unknown>): U
   }
 
   // Universal manual fallback — anyone can log these without a device
-  for (const col of ['weight_kg', 'mood', 'energy', 'stress_level', 'sleep_hours', 'sleep_quality', 'steps', 'workout_minutes', 'workout_done', 'notes']) {
+  for (const col of ['weight_kg', 'mood', 'energy', 'stress_level', 'sleep_hours', 'sleep_quality', 'steps', 'workout_minutes', 'workout_done', 'notes', 'basal_body_temp_c']) {
     if (!summary.columns.has(col)) addColumn(col, 'manual');
   }
 

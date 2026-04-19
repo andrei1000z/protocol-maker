@@ -43,6 +43,18 @@ export interface DailyMetrics {
   activity_calories?: number | null;
   antioxidant_index?: number | null;
   ages_index?: number | null;
+
+  // ── MORNING FASTED measurements — do AFTER waking, BEFORE food/water ──
+  // These are lowest-noise when fasted. Weight has zero food+water artifact;
+  // body-fat impedance readings are most accurate on dehydrated morning tissue;
+  // basal body temp is the cleanest metabolic/cycle signal pre-activity.
+  body_fat_pct?: number | null;           // smart scale
+  muscle_mass_kg?: number | null;         // smart scale
+  visceral_fat?: number | null;           // 1-60 Tanita scale rating
+  body_water_pct?: number | null;         // smart scale
+  bone_mass_kg?: number | null;           // smart scale
+  bmr_kcal?: number | null;               // smart scale (estimate)
+  basal_body_temp_c?: number | null;      // oral/forehead thermometer on waking
 }
 
 interface SingleResponse { metrics: DailyMetrics | null; }

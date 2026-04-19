@@ -34,9 +34,24 @@ interface FieldSpec {
 type GroupDef = { title: string; fields: FieldSpec[] };
 
 // Fields shown for each time bucket. Morning is the biggest since wearables
-// finalize their overnight analysis then.
+// finalize their overnight analysis then. The FASTED group is intentionally
+// first — these measurements are lowest-noise when done BEFORE food/water.
 const BUCKET_GROUPS: Record<TimeBucket, GroupDef[]> = {
   morning: [
+    { title: '⚖️ FASTED — do NOW, before food or water', fields: [
+      { key: 'weight_kg', label: 'Weight', unit: 'kg', min: 20, max: 400, step: 0.1, hint: 'Post-bathroom, no clothes' },
+      { key: 'body_fat_pct', label: 'Body fat', unit: '%', min: 3, max: 60, step: 0.1, hint: 'Smart scale — fasted = most accurate' },
+      { key: 'muscle_mass_kg', label: 'Muscle mass', unit: 'kg', min: 10, max: 100, step: 0.1 },
+      { key: 'visceral_fat', label: 'Visceral fat', unit: '', min: 1, max: 60, type: 'integer', hint: 'Tanita rating 1-60' },
+      { key: 'body_water_pct', label: 'Body water', unit: '%', min: 20, max: 80, step: 0.1 },
+      { key: 'bone_mass_kg', label: 'Bone mass', unit: 'kg', min: 1, max: 10, step: 0.1 },
+      { key: 'bmr_kcal', label: 'BMR (estimate)', unit: 'kcal', min: 800, max: 3500, type: 'integer' },
+      { key: 'basal_body_temp_c', label: 'Basal body temp', unit: '°C', min: 34, max: 39, step: 0.01, hint: 'Oral/forehead — cleanest metabolic signal' },
+      { key: 'antioxidant_index', label: 'Antioxidants (Veggie Meter)', unit: '/100', min: 0, max: 100, type: 'integer', hint: 'Skin carotenoids — before coffee' },
+      { key: 'resting_hr', label: 'Resting HR', unit: 'bpm', min: 20, max: 220, type: 'integer', hint: 'Right after waking, before standing' },
+      { key: 'bp_systolic_morning', label: 'BP systolic', unit: 'mmHg', min: 60, max: 250, type: 'integer' },
+      { key: 'bp_diastolic_morning', label: 'BP diastolic', unit: 'mmHg', min: 30, max: 160, type: 'integer' },
+    ]},
     { title: '😴 Last night — duration', fields: [
       { key: 'sleep_hours_planned', label: 'Hours planned', unit: 'h', min: 0, max: 15, step: 0.5 },
       { key: 'sleep_hours', label: 'Hours slept (real)', unit: 'h', min: 0, max: 15, step: 0.1 },
@@ -54,12 +69,6 @@ const BUCKET_GROUPS: Record<TimeBucket, GroupDef[]> = {
       { key: 'blood_oxygen_avg_sleep', label: 'Blood O₂ avg', unit: '%', min: 70, max: 100, step: 0.1 },
       { key: 'avg_respiratory_rate', label: 'Avg respiratory rate', unit: '/min', min: 5, max: 30, step: 0.1 },
       { key: 'skin_temp_deviation', label: 'Skin temp deviation', unit: '°C', min: -3, max: 3, step: 0.1, hint: 'vs your recent avg' },
-    ]},
-    { title: '🩺 Morning reading', fields: [
-      { key: 'resting_hr', label: 'Resting HR (morning)', unit: 'bpm', min: 20, max: 220, type: 'integer' },
-      { key: 'bp_systolic_morning', label: 'BP systolic', unit: 'mmHg', min: 60, max: 250, type: 'integer' },
-      { key: 'bp_diastolic_morning', label: 'BP diastolic', unit: 'mmHg', min: 30, max: 160, type: 'integer' },
-      { key: 'weight_kg', label: 'Weight (morning)', unit: 'kg', min: 20, max: 400, step: 0.1 },
     ]},
     { title: '🔋 How you feel', fields: [
       { key: 'energy_score', label: 'Energy score (watch)', unit: '/100', min: 0, max: 100, type: 'integer' },
