@@ -44,7 +44,7 @@ export default function LoginPage() {
     try {
       if (mode === 'forgot') {
         const { error: err } = await supabase.auth.resetPasswordForEmail(email, {
-          redirectTo: `${window.location.origin}/auth/callback?next=/settings`,
+          redirectTo: `${window.location.origin}/api/auth/callback?next=/settings`,
         });
         if (err) setError(err.message);
         else setMessage('Check your email for a reset link.');
@@ -55,7 +55,7 @@ export default function LoginPage() {
         const { error: err } = await supabase.auth.signUp({
           email,
           password,
-          options: { emailRedirectTo: `${window.location.origin}/auth/callback` },
+          options: { emailRedirectTo: `${window.location.origin}/api/auth/callback` },
         });
         if (err) setError(err.message);
         else setMessage('Check your email for confirmation.');
@@ -76,7 +76,7 @@ export default function LoginPage() {
     try {
       const { error: err } = await supabase.auth.signInWithOAuth({
         provider: 'google',
-        options: { redirectTo: `${window.location.origin}/auth/callback` },
+        options: { redirectTo: `${window.location.origin}/api/auth/callback` },
       });
       if (err) setError(err.message);
     } catch (e) {
