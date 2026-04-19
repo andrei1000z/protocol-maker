@@ -2,22 +2,37 @@
 
 import { useState, useMemo } from 'react';
 import clsx from 'clsx';
-import { X, Check, Clock } from 'lucide-react';
+import { X, Check, Clock, AlertCircle, Zap } from 'lucide-react';
 import type { DailyMetrics } from '@/lib/hooks/useDailyMetrics';
 
 // ============================================================================
-// Time-aware field groups — user sees only metrics relevant for RIGHT NOW.
-// Wearable metrics (sleep stages, overnight HRV) are in the morning group,
-// because that's when wearables finish processing the night and the user
-// can actually read them off.
+// Time-aware field groups — user sees only metrics relevant for RIGHT NOW,
+// or (in 'recap' mode) everything from wake through now that isn't yet logged.
 // ============================================================================
-type TimeBucket = 'morning' | 'midday' | 'evening' | 'night';
+export type TimeBucket = 'morning' | 'midday' | 'evening' | 'night';
+
+// Chronological order used by the recap mode. Night wraps to the next day,
+// but for single-day logging we treat it as the last slot before the user
+// goes to bed (not the early-AM hours).
+const BUCKET_ORDER: TimeBucket[] = ['morning', 'midday', 'evening', 'night'];
 
 function getTimeBucket(hour: number): TimeBucket {
   if (hour >= 5 && hour < 11) return 'morning';    // 05:00–10:59
   if (hour >= 11 && hour < 17) return 'midday';    // 11:00–16:59
   if (hour >= 17 && hour < 23) return 'evening';   // 17:00–22:59
   return 'night';                                   // 23:00–04:59
+}
+
+// Which buckets are "in scope" at the current time for catch-up logging.
+// Rule: if user opens at 14:32, we show morning + midday (everything they
+// should have measured by now), and SKIP evening + night (future).
+export function getEligibleBuckets(hour: number): TimeBucket[] {
+  const current = getTimeBucket(hour);
+  // Night bucket edge case: 23:00–04:59. If it's 02:00, we want to treat
+  // the whole previous day as eligible (morning + midday + evening + night).
+  if (current === 'night') return BUCKET_ORDER;
+  const idx = BUCKET_ORDER.indexOf(current);
+  return BUCKET_ORDER.slice(0, idx + 1);
 }
 
 interface FieldSpec {
@@ -133,46 +148,88 @@ const BUCKET_GROUPS: Record<TimeBucket, GroupDef[]> = {
   ],
 };
 
-const BUCKET_LABELS: Record<TimeBucket, { title: string; subtitle: string }> = {
-  morning: { title: 'Good morning', subtitle: "Your overnight numbers are in — log what your wearable reported plus how you feel." },
-  midday:  { title: 'Midday check-in', subtitle: "What's happened since you woke up — activity, HR ranges, and current state." },
-  evening: { title: 'Evening recap', subtitle: 'Close the day — full totals, evening BP, watch indices.' },
-  night:   { title: 'Before bed', subtitle: 'Quick recap before the next cycle starts.' },
+const BUCKET_LABELS: Record<TimeBucket, { title: string; subtitle: string; emoji: string }> = {
+  morning: { emoji: '🌅', title: 'Good morning', subtitle: "Your overnight numbers are in — log what your wearable reported plus how you feel." },
+  midday:  { emoji: '☀️', title: 'Midday check-in', subtitle: "What's happened since you woke up — activity, HR ranges, and current state." },
+  evening: { emoji: '🌆', title: 'Evening recap', subtitle: 'Close the day — full totals, evening BP, watch indices.' },
+  night:   { emoji: '🌙', title: 'Before bed', subtitle: 'Quick recap before the next cycle starts.' },
 };
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Utility — how many fields in a group are still blank for the current day?
+// Used by both the count badges in the tracking header and the group-level
+// "X pending" chip inside the sheet itself.
+// ─────────────────────────────────────────────────────────────────────────────
+function countPending(group: GroupDef, metrics: DailyMetrics, local: Partial<DailyMetrics>, deviceSources?: Record<string, string[]>): number {
+  return group.fields.filter(f => {
+    if (deviceSources && !(deviceSources[String(f.key)]?.length)) return false;
+    const localVal = local[f.key];
+    if (localVal !== null && localVal !== undefined && localVal !== '') return false;
+    const v = metrics[f.key];
+    return v === null || v === undefined || v === '';
+  }).length;
+}
+
+// Count pending fields across all groups in a bucket — for the tracking header
+// badge ("7 unlogged items from morning + midday"). Exported so the page can
+// compute the summary without re-instantiating the sheet.
+export function countBucketPending(bucket: TimeBucket, metrics: DailyMetrics, deviceSources?: Record<string, string[]>): number {
+  return BUCKET_GROUPS[bucket].reduce((sum, g) => sum + countPending(g, metrics, {}, deviceSources), 0);
+}
+
+export function countAllPendingUpToNow(hour: number, metrics: DailyMetrics, deviceSources?: Record<string, string[]>): number {
+  return getEligibleBuckets(hour).reduce((sum, b) => sum + countBucketPending(b, metrics, deviceSources), 0);
+}
 
 interface Props {
   open: boolean;
   onClose: () => void;
   metrics: DailyMetrics;
   onSave: (updates: Partial<DailyMetrics>) => Promise<void> | void;
-  // New: column → list of devices that can provide this value (e.g. "Oura Ring 4", "Dyson BP monitor", "manual").
-  // When present, fields get a source badge and fields the user can't measure (no sources) are hidden.
+  // Device source map — when present, fields with no source (device or manual) are hidden.
   deviceSources?: Record<string, string[]>;
+  // 'current'  → show only the current time bucket (quick one-liner check-in).
+  // 'recap'    → show every bucket from wake through current time, hiding
+  //              groups where every field is already filled. "Catch up" UX.
+  mode?: 'current' | 'recap';
 }
 
-export function SmartLogSheet({ open, onClose, metrics, onSave, deviceSources }: Props) {
+export function SmartLogSheet({ open, onClose, metrics, onSave, deviceSources, mode = 'current' }: Props) {
   const now = new Date();
-  const bucket = useMemo(() => getTimeBucket(now.getHours()), [now]);
-  const rawGroups = BUCKET_GROUPS[bucket];
-  const header = BUCKET_LABELS[bucket];
-
-  // Filter each group to only fields this user's devices (or manual logging) can fill.
-  // If deviceSources isn't provided, show everything (backward compat).
-  const groups = useMemo<GroupDef[]>(() => {
-    if (!deviceSources) return rawGroups;
-    return rawGroups.map(g => ({
-      title: g.title,
-      fields: g.fields.filter(f => {
-        const srcs = deviceSources[String(f.key)];
-        return srcs && srcs.length > 0;
-      }),
-    })).filter(g => g.fields.length > 0);
-  }, [rawGroups, deviceSources]);
+  const currentBucket = useMemo(() => getTimeBucket(now.getHours()), [now]);
+  const eligibleBuckets = useMemo(() => mode === 'recap' ? getEligibleBuckets(now.getHours()) : [currentBucket], [mode, now, currentBucket]);
 
   // Local editing buffer — only commit on save
   const [local, setLocal] = useState<Partial<DailyMetrics>>({});
   const [saving, setSaving] = useState(false);
   const [savedAt, setSavedAt] = useState<number | null>(null);
+
+  // Build the flattened list of buckets + their (capability-filtered) groups.
+  // In recap mode we ALSO drop groups where every field is already filled —
+  // this is the "catch up" flow; fields already logged shouldn't be noise.
+  const bucketSections = useMemo(() => {
+    return eligibleBuckets.map(b => {
+      const rawGroups = BUCKET_GROUPS[b];
+      const filteredGroups: GroupDef[] = rawGroups.map(g => ({
+        title: g.title,
+        fields: g.fields.filter(f => {
+          if (!deviceSources) return true;
+          return deviceSources[String(f.key)]?.length > 0;
+        }),
+      })).filter(g => g.fields.length > 0);
+
+      // In recap mode, also drop groups where every field is already logged
+      // (show only what's still pending, so the user sees a focused worklist).
+      const displayGroups = mode === 'recap'
+        ? filteredGroups.filter(g => countPending(g, metrics, local, deviceSources) > 0)
+        : filteredGroups;
+
+      const pending = displayGroups.reduce((s, g) => s + countPending(g, metrics, local, deviceSources), 0);
+      return { bucket: b, groups: displayGroups, pending };
+    }).filter(s => s.groups.length > 0);
+  }, [eligibleBuckets, deviceSources, mode, metrics, local]);
+
+  const header = BUCKET_LABELS[currentBucket];
 
   if (!open) return null;
 
@@ -196,6 +253,7 @@ export function SmartLogSheet({ open, onClose, metrics, onSave, deviceSources }:
   };
 
   const filledCount = Object.values(local).filter(v => v !== null && v !== undefined && v !== '').length;
+  const totalPending = bucketSections.reduce((s, b) => s + b.pending, 0);
 
   const handleSave = async () => {
     if (filledCount === 0) { onClose(); return; }
@@ -207,6 +265,7 @@ export function SmartLogSheet({ open, onClose, metrics, onSave, deviceSources }:
   };
 
   const timeLabel = now.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: false });
+  const isRecap = mode === 'recap';
 
   return (
     <div className="fixed inset-0 z-50 flex items-end md:items-center justify-center animate-fade-in" onClick={onClose}>
@@ -217,74 +276,145 @@ export function SmartLogSheet({ open, onClose, metrics, onSave, deviceSources }:
       >
         {/* Header */}
         <div className="flex items-start justify-between p-6 border-b border-card-border shrink-0">
-          <div>
-            <div className="flex items-center gap-2 mb-1">
+          <div className="flex-1 min-w-0">
+            <div className="flex items-center gap-2 mb-1 flex-wrap">
               <Clock className="w-3.5 h-3.5 text-accent" />
               <span className="text-[10px] uppercase tracking-widest text-muted font-mono">{timeLabel}</span>
+              {isRecap && (
+                <span className="inline-flex items-center gap-1 text-[9px] uppercase tracking-widest px-2 py-0.5 rounded-full bg-accent/10 text-accent border border-accent/25 font-semibold">
+                  <Zap className="w-2.5 h-2.5" /> Recap mode
+                </span>
+              )}
             </div>
-            <h2 className="text-xl font-semibold tracking-tight">{header.title}</h2>
-            <p className="text-xs text-muted-foreground mt-1.5 max-w-md leading-relaxed">{header.subtitle}</p>
+            <h2 className="text-xl font-semibold tracking-tight">
+              {isRecap ? 'Catch up — log everything since wake' : header.title}
+            </h2>
+            <p className="text-xs text-muted-foreground mt-1.5 max-w-md leading-relaxed">
+              {isRecap
+                ? totalPending > 0
+                  ? `${totalPending} measurement${totalPending === 1 ? '' : 's'} still pending across ${bucketSections.length} window${bucketSections.length === 1 ? '' : 's'}. Fill what you have; leave the rest blank.`
+                  : 'You\'re fully caught up for today — nice work. Close this sheet and come back later.'
+                : header.subtitle}
+            </p>
           </div>
-          <button onClick={onClose} className="p-2 rounded-xl hover:bg-surface-3 text-muted-foreground hover:text-foreground transition-colors">
+          <button onClick={onClose} className="p-2 rounded-xl hover:bg-surface-3 text-muted-foreground hover:text-foreground transition-colors shrink-0">
             <X className="w-5 h-5" />
           </button>
         </div>
 
         {/* Scrollable body */}
-        <div className="overflow-y-auto flex-1 p-6 space-y-6">
-          {groups.map((group) => (
-            <div key={group.title}>
-              <p className="text-[10px] uppercase tracking-widest text-accent mb-3 font-mono">{group.title}</p>
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                {group.fields.map(spec => {
-                  const value = getValue(spec.key);
-                  const sources = deviceSources?.[String(spec.key)] || [];
-                  // Primary source badge: first non-manual source if any, else "manual"
-                  const deviceSource = sources.find(s => s !== 'manual');
-                  return (
-                    <div key={String(spec.key)} className="space-y-1.5">
-                      <label className="block text-xs text-muted-foreground">
-                        <span className="flex items-center gap-1.5 flex-wrap">
-                          <span>{spec.label}</span>
-                          {deviceSource && (
-                            <span className="inline-flex items-center gap-0.5 text-[9px] px-1.5 py-0.5 rounded bg-accent/10 border border-accent/20 text-accent font-medium uppercase tracking-wider">
-                              ⌚ {deviceSource}
-                            </span>
-                          )}
-                          {!deviceSource && sources.includes('manual') && (
-                            <span className="inline-flex items-center gap-0.5 text-[9px] px-1.5 py-0.5 rounded bg-surface-3 text-muted uppercase tracking-wider">manual</span>
-                          )}
-                        </span>
-                        {spec.hint && <span className="block text-[10px] text-muted mt-0.5">{spec.hint}</span>}
-                      </label>
-                      <div className="relative">
-                        <input
-                          type="number"
-                          inputMode="decimal"
-                          value={value}
-                          onChange={e => setField(spec.key, e.target.value, spec)}
-                          min={spec.min}
-                          max={spec.max}
-                          step={spec.step || (spec.type === 'integer' ? 1 : 'any')}
-                          placeholder="—"
-                          className="w-full rounded-xl bg-surface-2 border border-card-border px-3.5 py-2.5 text-sm font-mono tabular-nums outline-none focus:border-accent transition-colors placeholder:text-muted/50"
-                        />
-                        {spec.unit && (
-                          <span className="absolute right-3.5 top-1/2 -translate-y-1/2 text-[10px] text-muted pointer-events-none">{spec.unit}</span>
-                        )}
-                      </div>
-                    </div>
-                  );
-                })}
+        <div className="overflow-y-auto flex-1 p-6 space-y-8">
+          {bucketSections.length === 0 && (
+            <div className="flex flex-col items-center justify-center py-12 text-center">
+              <div className="w-12 h-12 rounded-2xl bg-accent/10 border border-accent/25 flex items-center justify-center mb-3">
+                <Check className="w-5 h-5 text-accent" />
               </div>
+              <p className="text-sm font-semibold">All caught up</p>
+              <p className="text-[11px] text-muted-foreground mt-1 max-w-xs">
+                Every measurable metric for today is logged. Come back after dinner for the evening window.
+              </p>
             </div>
-          ))}
+          )}
 
-          <div className="rounded-xl p-3 border border-dashed border-card-border bg-surface-2/50">
-            <p className="text-[11px] text-muted-foreground leading-relaxed">
-              Leave any field blank if you don&apos;t have it. Next check-in will show different fields based on the time.
-            </p>
-          </div>
+          {bucketSections.map(section => {
+            const meta = BUCKET_LABELS[section.bucket];
+            const isCurrentBucket = section.bucket === currentBucket;
+            return (
+              <div key={section.bucket} className="space-y-4">
+                {/* Bucket header — only shown in recap mode (current mode has its own header up top) */}
+                {isRecap && (
+                  <div className={clsx('flex items-center gap-2 pb-1 border-b',
+                    isCurrentBucket ? 'border-accent/30' : 'border-card-border')}>
+                    <span className="text-base">{meta.emoji}</span>
+                    <span className={clsx('text-xs font-semibold tracking-tight',
+                      isCurrentBucket ? 'text-accent' : 'text-foreground/90')}>
+                      {meta.title}
+                    </span>
+                    {isCurrentBucket && (
+                      <span className="text-[9px] uppercase tracking-widest text-accent/80 font-mono">now</span>
+                    )}
+                    {!isCurrentBucket && (
+                      <span className="inline-flex items-center gap-1 text-[9px] uppercase tracking-widest px-1.5 py-0.5 rounded bg-amber-500/10 text-amber-400 border border-amber-500/25 font-medium">
+                        <AlertCircle className="w-2.5 h-2.5" /> earlier — catch up
+                      </span>
+                    )}
+                    <span className="ml-auto text-[10px] text-muted font-mono tabular-nums">
+                      {section.pending} pending
+                    </span>
+                  </div>
+                )}
+
+                {section.groups.map((group) => (
+                  <div key={`${section.bucket}-${group.title}`}>
+                    <div className="flex items-center justify-between gap-2 mb-3">
+                      <p className="text-[10px] uppercase tracking-widest text-accent font-mono">{group.title}</p>
+                      {(() => {
+                        const pending = countPending(group, metrics, local, deviceSources);
+                        if (pending === 0) return <span className="text-[9px] text-accent">✓ complete</span>;
+                        return <span className="text-[9px] text-muted font-mono">{pending} blank</span>;
+                      })()}
+                    </div>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                      {group.fields.map(spec => {
+                        const value = getValue(spec.key);
+                        const sources = deviceSources?.[String(spec.key)] || [];
+                        const deviceSource = sources.find(s => s !== 'manual');
+                        const isFilled = value !== '' && value !== '0';  // 0 is valid; only truly-empty is "unfilled"
+                        return (
+                          <div key={String(spec.key)} className="space-y-1.5">
+                            <label className="block text-xs text-muted-foreground">
+                              <span className="flex items-center gap-1.5 flex-wrap">
+                                <span>{spec.label}</span>
+                                {deviceSource && (
+                                  <span className="inline-flex items-center gap-0.5 text-[9px] px-1.5 py-0.5 rounded bg-accent/10 border border-accent/20 text-accent font-medium uppercase tracking-wider">
+                                    ⌚ {deviceSource}
+                                  </span>
+                                )}
+                                {!deviceSource && sources.includes('manual') && (
+                                  <span className="inline-flex items-center gap-0.5 text-[9px] px-1.5 py-0.5 rounded bg-surface-3 text-muted uppercase tracking-wider">manual</span>
+                                )}
+                                {isFilled && <Check className="w-3 h-3 text-accent shrink-0" />}
+                              </span>
+                              {spec.hint && <span className="block text-[10px] text-muted mt-0.5">{spec.hint}</span>}
+                            </label>
+                            <div className="relative">
+                              <input
+                                type="number"
+                                inputMode="decimal"
+                                value={value}
+                                onChange={e => setField(spec.key, e.target.value, spec)}
+                                min={spec.min}
+                                max={spec.max}
+                                step={spec.step || (spec.type === 'integer' ? 1 : 'any')}
+                                placeholder="—"
+                                className={clsx(
+                                  'w-full rounded-xl bg-surface-2 border px-3.5 py-2.5 text-sm font-mono tabular-nums outline-none focus:border-accent transition-colors placeholder:text-muted/50',
+                                  isFilled ? 'border-accent/30' : 'border-card-border',
+                                )}
+                              />
+                              {spec.unit && (
+                                <span className="absolute right-3.5 top-1/2 -translate-y-1/2 text-[10px] text-muted pointer-events-none">{spec.unit}</span>
+                              )}
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            );
+          })}
+
+          {bucketSections.length > 0 && (
+            <div className="rounded-xl p-3 border border-dashed border-card-border bg-surface-2/50">
+              <p className="text-[11px] text-muted-foreground leading-relaxed">
+                {isRecap
+                  ? 'Leave any field blank if you genuinely don\'t have it. Partial logs still help — the AI uses every signal.'
+                  : 'Leave any field blank if you don\'t have it. Next check-in will show different fields based on the time.'}
+              </p>
+            </div>
+          )}
         </div>
 
         {/* Save bar */}
@@ -295,7 +425,9 @@ export function SmartLogSheet({ open, onClose, metrics, onSave, deviceSources }:
                 ? <span className="text-accent flex items-center gap-1.5"><Check className="w-3.5 h-3.5" /> Saved</span>
                 : filledCount > 0
                   ? `${filledCount} field${filledCount === 1 ? '' : 's'} ready`
-                  : 'Fill at least one'}
+                  : isRecap && totalPending === 0
+                    ? 'Nothing to log'
+                    : 'Fill at least one'}
             </span>
             <div className="flex gap-2">
               <button onClick={onClose} className="px-4 py-2.5 rounded-xl bg-surface-3 text-muted-foreground hover:text-foreground text-sm transition-colors">

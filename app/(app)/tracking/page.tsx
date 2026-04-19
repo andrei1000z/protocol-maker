@@ -14,7 +14,7 @@ import {
   ComplianceEntry,
 } from '@/lib/utils/streak';
 import { HabitsTab } from '@/components/tracking/HabitsTab';
-import { SmartLogSheet } from '@/components/tracking/SmartLogSheet';
+import { SmartLogSheet, countBucketPending, countAllPendingUpToNow, getEligibleBuckets as getEligibleBucketsFor, type TimeBucket } from '@/components/tracking/SmartLogSheet';
 import { useDailyMetrics, useDailyMetricsRange, DailyMetrics } from '@/lib/hooks/useDailyMetrics';
 import { buildInsights, currentWorkoutStreak, loggedDaysInLastN, Insight } from '@/lib/engine/tracking-insights';
 import { SectionCard as Section, StatTile as Stat, ProgressRing } from '@/components/ui/SectionCard';
@@ -370,6 +370,16 @@ export default function TrackingPage() {
   const [activeTab, setActiveTab] = useState<TabId>('today');
   const [items, setItems] = useState<ComplianceItem[]>([]);
   const [smartLogOpen, setSmartLogOpen] = useState(false);
+  // Separate mode state — 'current' fires from the main CTA, 'recap' from the new catch-up button.
+  const [smartLogMode, setSmartLogMode] = useState<'current' | 'recap'>('current');
+
+  // Live clock — ticks every 60s so the hero CTA's time + bucket badge stay
+  // in sync if the user leaves the tab open across a bucket transition.
+  const [nowTick, setNowTick] = useState(() => Date.now());
+  useEffect(() => {
+    const t = setInterval(() => setNowTick(Date.now()), 60_000);
+    return () => clearInterval(t);
+  }, []);
 
   // Build last-7-days option list for the date picker (labels + ISO dates)
   const recentDates = useMemo(() => {
@@ -420,12 +430,16 @@ export default function TrackingPage() {
 
   // Current hour-based label + subtitle for the smart log CTA
   const bucketInfo = useMemo(() => {
-    const h = new Date().getHours();
-    if (h >= 5 && h < 11)  return { label: 'Log morning metrics',  sub: 'Last night\'s sleep, HRV, morning BP, wake-up vitals' };
-    if (h >= 11 && h < 17) return { label: 'Log midday check-in',  sub: 'Activity so far, HR ranges, current mood/energy' };
-    if (h >= 17 && h < 23) return { label: 'Log evening recap',    sub: 'Full-day totals, evening BP, antioxidant & AGEs indices' };
-    return { label: 'Log before bed', sub: 'Quick wind-down — tomorrow\'s sleep intention' };
-  }, []);
+    const h = new Date(nowTick).getHours();
+    if (h >= 5 && h < 11)  return { label: 'Log morning metrics',  sub: 'Last night\'s sleep, HRV, morning BP, wake-up vitals', bucket: 'morning' as TimeBucket };
+    if (h >= 11 && h < 17) return { label: 'Log midday check-in',  sub: 'Activity so far, HR ranges, current mood/energy', bucket: 'midday' as TimeBucket };
+    if (h >= 17 && h < 23) return { label: 'Log evening recap',    sub: 'Full-day totals, evening BP, antioxidant & AGEs indices', bucket: 'evening' as TimeBucket };
+    return { label: 'Log before bed', sub: 'Quick wind-down — tomorrow\'s sleep intention', bucket: 'night' as TimeBucket };
+  }, [nowTick]);
+
+  // Current clock string for the header chip (HH:MM, 24h format). Romanian
+  // users expect 24h — switch to en-GB locale to avoid en-US's AM/PM.
+  const clockLabel = useMemo(() => new Date(nowTick).toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' }), [nowTick]);
 
   const { metrics: todayMetrics, save: saveMetrics } = useDailyMetrics(date);
   const { metrics: rangeMetrics } = useDailyMetricsRange(thirtyDaysAgoStr, date);
@@ -516,6 +530,15 @@ export default function TrackingPage() {
   const metricsArr = (rangeMetrics || []) as DailyMetrics[];
   const workoutStreak = currentWorkoutStreak(metricsArr);
   const daysLogged7 = loggedDaysInLastN(metricsArr, 7);
+
+  // Per-bucket pending counts — power the header overdue badge + recap CTA.
+  // Cheap to recompute every render; all data is already in memory.
+  const nowHour = new Date(nowTick).getHours();
+  const currentBucketKey = bucketInfo.bucket;
+  const metricsForToday = (todayMetrics as DailyMetrics);
+  const pendingNow = countBucketPending(currentBucketKey, metricsForToday, deviceSources);
+  const pendingTotal = countAllPendingUpToNow(nowHour, metricsForToday, deviceSources);
+  const pendingOverdue = Math.max(0, pendingTotal - pendingNow);  // pending in EARLIER buckets you missed
   const insights = buildInsights(metricsArr, [], {
     agingPace,
     longevityScore,
@@ -577,16 +600,24 @@ export default function TrackingPage() {
 
       {/* ═══════════ HERO: SMART LOG + TODAY'S PROGRESS ═══════════ */}
       <div className="grid grid-cols-1 md:grid-cols-5 gap-3">
-        {/* Smart log CTA */}
+        {/* Smart log CTA — current time bucket quick entry */}
         <button
-          onClick={() => setSmartLogOpen(true)}
+          onClick={() => { setSmartLogMode('current'); setSmartLogOpen(true); }}
           className="md:col-span-3 hero-card rounded-2xl p-5 sm:p-6 flex items-center gap-4 hover:border-accent/40 transition-all group animate-fade-in-up text-left relative overflow-hidden"
         >
           <div className="w-12 h-12 rounded-xl bg-accent/15 border border-accent/25 flex items-center justify-center shrink-0 group-hover:bg-accent/25 group-hover:scale-105 transition-all">
             <Sparkles className="w-5 h-5 text-accent" />
           </div>
           <div className="text-left flex-1 min-w-0">
-            <p className="text-sm sm:text-base font-semibold tracking-tight">{bucketInfo.label}</p>
+            <div className="flex items-center gap-2 flex-wrap">
+              <p className="text-sm sm:text-base font-semibold tracking-tight">{bucketInfo.label}</p>
+              <span className="text-[10px] font-mono text-muted tabular-nums">{clockLabel}</span>
+              {pendingNow > 0 && (
+                <span className="inline-flex items-center gap-1 text-[9px] font-mono uppercase tracking-widest px-1.5 py-0.5 rounded-full bg-accent/15 text-accent border border-accent/25">
+                  {pendingNow} pending
+                </span>
+              )}
+            </div>
             <p className="text-[11px] sm:text-xs text-muted-foreground mt-1 leading-relaxed">{bucketInfo.sub}</p>
           </div>
           <div className="text-accent text-lg shrink-0 group-hover:translate-x-1 transition-transform">→</div>
@@ -607,6 +638,83 @@ export default function TrackingPage() {
           </div>
         </div>
       </div>
+
+      {/* Catch-up CTA — only shown if the user has unlogged measurements from
+          EARLIER time windows today. Opens the sheet in recap mode so they
+          can sweep through all overdue metrics in one session. Hidden when
+          everything is logged or the current bucket is the only pending one. */}
+      {pendingOverdue > 0 && !isRetroactive && (
+        <button
+          onClick={() => { setSmartLogMode('recap'); setSmartLogOpen(true); }}
+          className="w-full rounded-2xl bg-amber-500/[0.06] border border-amber-500/25 p-4 flex items-center gap-3 hover:bg-amber-500/[0.10] hover:border-amber-500/40 transition-all group animate-fade-in-up text-left"
+        >
+          <div className="w-10 h-10 rounded-xl bg-amber-500/15 border border-amber-500/30 flex items-center justify-center shrink-0">
+            <AlertCircle className="w-4 h-4 text-warning" />
+          </div>
+          <div className="flex-1 min-w-0">
+            <p className="text-sm font-semibold">
+              Catch up — <span className="text-warning">{pendingOverdue}</span> measurement{pendingOverdue === 1 ? '' : 's'} missed earlier today
+            </p>
+            <p className="text-[11px] text-muted-foreground mt-0.5">
+              Log recap reads the clock ({clockLabel}) and walks you through everything from wake through now. Skip anything you don't have.
+            </p>
+          </div>
+          <div className="shrink-0 text-xs font-semibold px-3 py-1.5 rounded-lg bg-accent text-black group-hover:bg-accent-bright transition-colors">
+            Log recap →
+          </div>
+        </button>
+      )}
+
+      {/* ═══════════ TODAY'S 4 WINDOWS — per-bucket progress strip ═══════════ */}
+      {!isRetroactive && (() => {
+        // For each time bucket, compute filled vs total fields the user's devices can log.
+        // Visual "dots" for each window let the user see at a glance: morning green,
+        // midday pending (5 left), evening locked (still upcoming), night locked.
+        const WINDOWS: { key: TimeBucket; label: string; emoji: string; range: string }[] = [
+          { key: 'morning', label: 'Morning', emoji: '🌅', range: '05–11' },
+          { key: 'midday',  label: 'Midday',  emoji: '☀️', range: '11–17' },
+          { key: 'evening', label: 'Evening', emoji: '🌆', range: '17–23' },
+          { key: 'night',   label: 'Night',   emoji: '🌙', range: '23–05' },
+        ];
+        const eligible = new Set(getEligibleBucketsFor(nowHour));
+        return (
+          <div className="glass-card rounded-2xl p-4 animate-fade-in-up">
+            <div className="flex items-center justify-between gap-3 mb-3">
+              <p className="text-[10px] uppercase tracking-widest text-muted">Today's logging windows</p>
+              <p className="text-[10px] font-mono text-muted">{clockLabel} · {WINDOWS.find(w => w.key === currentBucketKey)?.label.toLowerCase()}</p>
+            </div>
+            <div className="grid grid-cols-4 gap-2">
+              {WINDOWS.map(w => {
+                const pending = countBucketPending(w.key, metricsForToday, deviceSources);
+                const isCurrent = w.key === currentBucketKey;
+                const isLocked = !eligible.has(w.key);
+                const isComplete = !isLocked && pending === 0;
+                return (
+                  <div
+                    key={w.key}
+                    className={clsx('rounded-xl border p-2.5 text-center transition-colors',
+                      isLocked   ? 'bg-surface-2 border-card-border opacity-50' :
+                      isComplete ? 'bg-accent/[0.06] border-accent/25' :
+                      isCurrent  ? 'bg-accent/[0.04] border-accent/35 ring-1 ring-accent/20' :
+                                   'bg-amber-500/[0.04] border-amber-500/20')}
+                  >
+                    <div className="text-base leading-none">{w.emoji}</div>
+                    <p className={clsx('text-[10px] font-semibold mt-1 tracking-tight',
+                      isLocked ? 'text-muted' : isComplete ? 'text-accent' : isCurrent ? 'text-accent' : 'text-warning')}>
+                      {w.label}
+                    </p>
+                    <p className="text-[9px] text-muted font-mono mt-0.5">{w.range}</p>
+                    <p className={clsx('text-[10px] font-mono mt-1',
+                      isLocked ? 'text-muted' : isComplete ? 'text-accent' : 'text-foreground/80')}>
+                      {isLocked ? 'later' : isComplete ? '✓ done' : `${pending} to log`}
+                    </p>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        );
+      })()}
 
       {/* ═══════════ QUICK PULSE — 4 STAT TILES ═══════════ */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-3 animate-fade-in-up">
@@ -816,6 +924,7 @@ export default function TrackingPage() {
         metrics={todayMetrics as DailyMetrics}
         onSave={(updates) => saveMetrics(updates)}
         deviceSources={deviceSources}
+        mode={smartLogMode}
       />
 
       <p className="text-[11px] text-center text-muted pt-2">
