@@ -444,6 +444,26 @@ export default function TrackingPage() {
   const { metrics: todayMetrics, save: saveMetrics } = useDailyMetrics(date);
   const { metrics: rangeMetrics } = useDailyMetricsRange(thirtyDaysAgoStr, date);
 
+  // User's personalized wake time for the FASTED group hint. Prefer the
+  // onboarding-stated "ideal" wake time (what they WANT to do), fall back to
+  // their average actual wake time if that's the only thing they filled.
+  const wakeTime = useMemo(() => {
+    const od = (myData?.profile?.onboarding_data || {}) as Record<string, unknown>;
+    const ideal = typeof od.idealWakeTime === 'string' ? od.idealWakeTime : '';
+    const actual = typeof od.wakeTime === 'string' ? od.wakeTime : '';
+    return ideal || actual || '';
+  }, [myData?.profile?.onboarding_data]);
+
+  // Human-readable label for the selected date. Used in Smart Log header when
+  // logging a past day ("Yesterday (Apr 18)" is more informative than "2026-04-18").
+  const dateLabelForSheet = useMemo(() => {
+    if (date === todayIso) return '';
+    const d = new Date(date + 'T12:00:00');
+    const isYesterday = date === new Date(Date.now() - 864e5).toISOString().slice(0, 10);
+    const pretty = d.toLocaleDateString('en-US', { weekday: 'long', month: 'short', day: 'numeric' });
+    return isYesterday ? `yesterday (${d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })})` : pretty;
+  }, [date, todayIso]);
+
   // Build compliance checklist whenever protocol or today's logs change
   useEffect(() => {
     const protocol = myData?.protocol?.protocol_json as Record<string, unknown> | undefined;
@@ -535,9 +555,12 @@ export default function TrackingPage() {
   // Cheap to recompute every render; all data is already in memory.
   const nowHour = new Date(nowTick).getHours();
   const currentBucketKey = bucketInfo.bucket;
-  const metricsForToday = (todayMetrics as DailyMetrics);
-  const pendingNow = countBucketPending(currentBucketKey, metricsForToday, deviceSources);
-  const pendingTotal = countAllPendingUpToNow(nowHour, metricsForToday, deviceSources);
+  // NB: todayMetrics here is a misnomer — the hook returns metrics for the
+  // SELECTED date (which can be today or any of the last 7 days in retro mode).
+  // Rename locally to `metricsForDate` so downstream usage is clear.
+  const metricsForDate = (todayMetrics as DailyMetrics);
+  const pendingNow = countBucketPending(currentBucketKey, metricsForDate, deviceSources);
+  const pendingTotal = countAllPendingUpToNow(nowHour, metricsForDate, deviceSources);
   const pendingOverdue = Math.max(0, pendingTotal - pendingNow);  // pending in EARLIER buckets you missed
   const insights = buildInsights(metricsArr, [], {
     agingPace,
@@ -600,7 +623,7 @@ export default function TrackingPage() {
 
       {/* ═══════════ HERO: SMART LOG + TODAY'S PROGRESS ═══════════ */}
       <div className="grid grid-cols-1 md:grid-cols-5 gap-3">
-        {/* Smart log CTA — current time bucket quick entry */}
+        {/* Smart log CTA — current time bucket OR full-day retro fill */}
         <button
           onClick={() => { setSmartLogMode('current'); setSmartLogOpen(true); }}
           className="md:col-span-3 hero-card rounded-2xl p-5 sm:p-6 flex items-center gap-4 hover:border-accent/40 transition-all group animate-fade-in-up text-left relative overflow-hidden"
@@ -610,15 +633,28 @@ export default function TrackingPage() {
           </div>
           <div className="text-left flex-1 min-w-0">
             <div className="flex items-center gap-2 flex-wrap">
-              <p className="text-sm sm:text-base font-semibold tracking-tight">{bucketInfo.label}</p>
-              <span className="text-[10px] font-mono text-muted tabular-nums">{clockLabel}</span>
-              {pendingNow > 0 && (
+              <p className="text-sm sm:text-base font-semibold tracking-tight">
+                {isRetroactive ? `Log ${dateLabelForSheet}` : bucketInfo.label}
+              </p>
+              <span className="text-[10px] font-mono text-muted tabular-nums">
+                {isRetroactive ? 'all windows' : clockLabel}
+              </span>
+              {!isRetroactive && pendingNow > 0 && (
                 <span className="inline-flex items-center gap-1 text-[9px] font-mono uppercase tracking-widest px-1.5 py-0.5 rounded-full bg-accent/15 text-accent border border-accent/25">
                   {pendingNow} pending
                 </span>
               )}
+              {isRetroactive && pendingTotal > 0 && (
+                <span className="inline-flex items-center gap-1 text-[9px] font-mono uppercase tracking-widest px-1.5 py-0.5 rounded-full bg-amber-500/15 text-warning border border-amber-500/30">
+                  {pendingTotal} blank
+                </span>
+              )}
             </div>
-            <p className="text-[11px] sm:text-xs text-muted-foreground mt-1 leading-relaxed">{bucketInfo.sub}</p>
+            <p className="text-[11px] sm:text-xs text-muted-foreground mt-1 leading-relaxed">
+              {isRetroactive
+                ? `Fill anything you remember from that day — morning, midday, evening, night. Skip what you don't.`
+                : bucketInfo.sub}
+            </p>
           </div>
           <div className="text-accent text-lg shrink-0 group-hover:translate-x-1 transition-transform">→</div>
         </button>
@@ -665,38 +701,53 @@ export default function TrackingPage() {
         </button>
       )}
 
-      {/* ═══════════ TODAY'S 4 WINDOWS — per-bucket progress strip ═══════════ */}
-      {!isRetroactive && (() => {
-        // For each time bucket, compute filled vs total fields the user's devices can log.
-        // Visual "dots" for each window let the user see at a glance: morning green,
-        // midday pending (5 left), evening locked (still upcoming), night locked.
+      {/* ═══════════ 4-WINDOW PROGRESS STRIP ═══════════
+          Today: current-bucket gets a ring; later buckets are locked.
+          Retro: all windows unlocked (day is over) — just shows what's pending. */}
+      {(() => {
         const WINDOWS: { key: TimeBucket; label: string; emoji: string; range: string }[] = [
           { key: 'morning', label: 'Morning', emoji: '🌅', range: '05–11' },
           { key: 'midday',  label: 'Midday',  emoji: '☀️', range: '11–17' },
           { key: 'evening', label: 'Evening', emoji: '🌆', range: '17–23' },
           { key: 'night',   label: 'Night',   emoji: '🌙', range: '23–05' },
         ];
-        const eligible = new Set(getEligibleBucketsFor(nowHour));
+        const eligible = isRetroactive
+          ? new Set<TimeBucket>(WINDOWS.map(w => w.key))   // past day — everything is reachable
+          : new Set(getEligibleBucketsFor(nowHour));
         return (
           <div className="glass-card rounded-2xl p-4 animate-fade-in-up">
             <div className="flex items-center justify-between gap-3 mb-3">
-              <p className="text-[10px] uppercase tracking-widest text-muted">Today's logging windows</p>
-              <p className="text-[10px] font-mono text-muted">{clockLabel} · {WINDOWS.find(w => w.key === currentBucketKey)?.label.toLowerCase()}</p>
+              <p className="text-[10px] uppercase tracking-widest text-muted">
+                {isRetroactive ? `${dateLabelForSheet} — all windows` : "Today's logging windows"}
+              </p>
+              <p className="text-[10px] font-mono text-muted">
+                {isRetroactive ? 'past day' : `${clockLabel} · ${WINDOWS.find(w => w.key === currentBucketKey)?.label.toLowerCase()}`}
+              </p>
             </div>
             <div className="grid grid-cols-4 gap-2">
               {WINDOWS.map(w => {
-                const pending = countBucketPending(w.key, metricsForToday, deviceSources);
-                const isCurrent = w.key === currentBucketKey;
+                const pending = countBucketPending(w.key, metricsForDate, deviceSources);
+                const isCurrent = !isRetroactive && w.key === currentBucketKey;
                 const isLocked = !eligible.has(w.key);
                 const isComplete = !isLocked && pending === 0;
                 return (
-                  <div
+                  <button
                     key={w.key}
-                    className={clsx('rounded-xl border p-2.5 text-center transition-colors',
-                      isLocked   ? 'bg-surface-2 border-card-border opacity-50' :
-                      isComplete ? 'bg-accent/[0.06] border-accent/25' :
-                      isCurrent  ? 'bg-accent/[0.04] border-accent/35 ring-1 ring-accent/20' :
-                                   'bg-amber-500/[0.04] border-amber-500/20')}
+                    onClick={() => {
+                      // Tapping a window opens Smart Log in recap mode so the user
+                      // sees every bucket (not just the one they tapped). For retro
+                      // dates, the forFullDay prop on SmartLogSheet takes over and
+                      // shows all 4 buckets regardless of mode.
+                      if (isLocked) return;
+                      setSmartLogMode('recap');
+                      setSmartLogOpen(true);
+                    }}
+                    disabled={isLocked}
+                    className={clsx('rounded-xl border p-2.5 text-center transition-all',
+                      isLocked   ? 'bg-surface-2 border-card-border opacity-50 cursor-not-allowed' :
+                      isComplete ? 'bg-accent/[0.06] border-accent/25 hover:border-accent/40' :
+                      isCurrent  ? 'bg-accent/[0.04] border-accent/35 ring-1 ring-accent/20 hover:border-accent/50' :
+                                   'bg-amber-500/[0.04] border-amber-500/20 hover:border-amber-500/40')}
                   >
                     <div className="text-base leading-none">{w.emoji}</div>
                     <p className={clsx('text-[10px] font-semibold mt-1 tracking-tight',
@@ -708,7 +759,7 @@ export default function TrackingPage() {
                       isLocked ? 'text-muted' : isComplete ? 'text-accent' : 'text-foreground/80')}>
                       {isLocked ? 'later' : isComplete ? '✓ done' : `${pending} to log`}
                     </p>
-                  </div>
+                  </button>
                 );
               })}
             </div>
@@ -925,6 +976,9 @@ export default function TrackingPage() {
         onSave={(updates) => saveMetrics(updates)}
         deviceSources={deviceSources}
         mode={smartLogMode}
+        forFullDay={isRetroactive}
+        wakeTime={wakeTime}
+        dateLabel={dateLabelForSheet}
       />
 
       <p className="text-[11px] text-center text-muted pt-2">

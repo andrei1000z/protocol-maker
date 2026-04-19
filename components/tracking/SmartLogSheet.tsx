@@ -192,17 +192,44 @@ interface Props {
   // 'recap'    → show every bucket from wake through current time, hiding
   //              groups where every field is already filled. "Catch up" UX.
   mode?: 'current' | 'recap';
+  // When true, show EVERY bucket (morning + midday + evening + night) regardless
+  // of the current clock. Used when logging for a past date — the day is over,
+  // so there's no "future windows" concept. Overrides mode.
+  forFullDay?: boolean;
+  // User's ideal wake time (HH:MM) from onboarding. When set, the FASTED group
+  // title reads "at 06:10 (your wake + 10 min)" instead of a generic "NOW".
+  // Makes the most important group feel personalized instead of one-size-fits.
+  wakeTime?: string;
+  // For the header subtitle — e.g. "yesterday (Apr 18)" when forFullDay is true.
+  dateLabel?: string;
 }
 
-export function SmartLogSheet({ open, onClose, metrics, onSave, deviceSources, mode = 'current' }: Props) {
+// Adds 10 minutes to a HH:MM string. Returns the fasted-measurement slot.
+// Handles wrap-around at midnight, not that it should ever matter here.
+function addMinutesToHHMM(hhmm: string, minutes: number): string {
+  const [h, m] = hhmm.split(':').map(Number);
+  if (!Number.isFinite(h) || !Number.isFinite(m)) return hhmm;
+  const total = (h * 60 + m + minutes + 24 * 60) % (24 * 60);
+  return `${String(Math.floor(total / 60)).padStart(2, '0')}:${String(total % 60).padStart(2, '0')}`;
+}
+
+export function SmartLogSheet({ open, onClose, metrics, onSave, deviceSources, mode = 'current', forFullDay = false, wakeTime, dateLabel }: Props) {
   const now = new Date();
   const currentBucket = useMemo(() => getTimeBucket(now.getHours()), [now]);
-  const eligibleBuckets = useMemo(() => mode === 'recap' ? getEligibleBuckets(now.getHours()) : [currentBucket], [mode, now, currentBucket]);
+  const eligibleBuckets = useMemo(() => {
+    if (forFullDay) return BUCKET_ORDER;           // past date — show everything
+    if (mode === 'recap') return getEligibleBuckets(now.getHours());
+    return [currentBucket];
+  }, [forFullDay, mode, now, currentBucket]);
 
   // Local editing buffer — only commit on save
   const [local, setLocal] = useState<Partial<DailyMetrics>>({});
   const [saving, setSaving] = useState(false);
   const [savedAt, setSavedAt] = useState<number | null>(null);
+
+  // Personalized FASTED slot — wake time + 10 min by default. If the user hasn't
+  // filled a wake time yet, fall back to the generic "do NOW" hint.
+  const fastedSlot = wakeTime ? addMinutesToHHMM(wakeTime, 10) : null;
 
   // Build the flattened list of buckets + their (capability-filtered) groups.
   // In recap mode we ALSO drop groups where every field is already filled —
@@ -210,24 +237,33 @@ export function SmartLogSheet({ open, onClose, metrics, onSave, deviceSources, m
   const bucketSections = useMemo(() => {
     return eligibleBuckets.map(b => {
       const rawGroups = BUCKET_GROUPS[b];
-      const filteredGroups: GroupDef[] = rawGroups.map(g => ({
-        title: g.title,
-        fields: g.fields.filter(f => {
-          if (!deviceSources) return true;
-          return deviceSources[String(f.key)]?.length > 0;
-        }),
-      })).filter(g => g.fields.length > 0);
+      const filteredGroups: GroupDef[] = rawGroups.map(g => {
+        // Personalize the FASTED group title with the user's wake time when we have it.
+        // The group has a stable leading "⚖️ FASTED" so we match on that, not the full string.
+        const isFastedGroup = g.title.startsWith('⚖️ FASTED');
+        const title = isFastedGroup && fastedSlot
+          ? `⚖️ FASTED — at ${fastedSlot} (wake + 10 min), before food or water`
+          : g.title;
+        return {
+          title,
+          fields: g.fields.filter(f => {
+            if (!deviceSources) return true;
+            return deviceSources[String(f.key)]?.length > 0;
+          }),
+        };
+      }).filter(g => g.fields.length > 0);
 
-      // In recap mode, also drop groups where every field is already logged
-      // (show only what's still pending, so the user sees a focused worklist).
-      const displayGroups = mode === 'recap'
+      // In recap + full-day modes, also drop groups where every field is already
+      // logged (focused worklist). Current-mode keeps everything visible so the
+      // user can correct a mistyped value.
+      const displayGroups = (mode === 'recap' || forFullDay)
         ? filteredGroups.filter(g => countPending(g, metrics, local, deviceSources) > 0)
         : filteredGroups;
 
       const pending = displayGroups.reduce((s, g) => s + countPending(g, metrics, local, deviceSources), 0);
       return { bucket: b, groups: displayGroups, pending };
     }).filter(s => s.groups.length > 0);
-  }, [eligibleBuckets, deviceSources, mode, metrics, local]);
+  }, [eligibleBuckets, deviceSources, mode, forFullDay, metrics, local, fastedSlot]);
 
   const header = BUCKET_LABELS[currentBucket];
 
@@ -264,8 +300,9 @@ export function SmartLogSheet({ open, onClose, metrics, onSave, deviceSources, m
     setTimeout(() => { setLocal({}); onClose(); }, 700);
   };
 
-  const timeLabel = now.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: false });
+  const timeLabel = now.toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' });
   const isRecap = mode === 'recap';
+  const isFullDay = forFullDay;
 
   return (
     <div className="fixed inset-0 z-50 flex items-end md:items-center justify-center animate-fade-in" onClick={onClose}>
@@ -279,22 +316,37 @@ export function SmartLogSheet({ open, onClose, metrics, onSave, deviceSources, m
           <div className="flex-1 min-w-0">
             <div className="flex items-center gap-2 mb-1 flex-wrap">
               <Clock className="w-3.5 h-3.5 text-accent" />
-              <span className="text-[10px] uppercase tracking-widest text-muted font-mono">{timeLabel}</span>
-              {isRecap && (
+              <span className="text-[10px] uppercase tracking-widest text-muted font-mono">
+                {isFullDay ? (dateLabel || 'past day') : timeLabel}
+              </span>
+              {isFullDay && (
+                <span className="inline-flex items-center gap-1 text-[9px] uppercase tracking-widest px-2 py-0.5 rounded-full bg-amber-500/10 text-amber-400 border border-amber-500/25 font-semibold">
+                  <AlertCircle className="w-2.5 h-2.5" /> Past day
+                </span>
+              )}
+              {isRecap && !isFullDay && (
                 <span className="inline-flex items-center gap-1 text-[9px] uppercase tracking-widest px-2 py-0.5 rounded-full bg-accent/10 text-accent border border-accent/25 font-semibold">
                   <Zap className="w-2.5 h-2.5" /> Recap mode
                 </span>
               )}
             </div>
             <h2 className="text-xl font-semibold tracking-tight">
-              {isRecap ? 'Catch up — log everything since wake' : header.title}
+              {isFullDay
+                ? `Log for ${dateLabel || 'this past day'}`
+                : isRecap
+                  ? 'Catch up — log everything since wake'
+                  : header.title}
             </h2>
             <p className="text-xs text-muted-foreground mt-1.5 max-w-md leading-relaxed">
-              {isRecap
+              {isFullDay
                 ? totalPending > 0
-                  ? `${totalPending} measurement${totalPending === 1 ? '' : 's'} still pending across ${bucketSections.length} window${bucketSections.length === 1 ? '' : 's'}. Fill what you have; leave the rest blank.`
-                  : 'You\'re fully caught up for today — nice work. Close this sheet and come back later.'
-                : header.subtitle}
+                  ? `${totalPending} measurement${totalPending === 1 ? '' : 's'} still blank for that day. Fill what you remember; leave the rest.`
+                  : 'Every measurable field for that day is already logged.'
+                : isRecap
+                  ? totalPending > 0
+                    ? `${totalPending} measurement${totalPending === 1 ? '' : 's'} still pending across ${bucketSections.length} window${bucketSections.length === 1 ? '' : 's'}. Fill what you have; leave the rest blank.`
+                    : 'You\'re fully caught up for today — nice work. Close this sheet and come back later.'
+                  : header.subtitle}
             </p>
           </div>
           <button onClick={onClose} className="p-2 rounded-xl hover:bg-surface-3 text-muted-foreground hover:text-foreground transition-colors shrink-0">
@@ -321,19 +373,20 @@ export function SmartLogSheet({ open, onClose, metrics, onSave, deviceSources, m
             const isCurrentBucket = section.bucket === currentBucket;
             return (
               <div key={section.bucket} className="space-y-4">
-                {/* Bucket header — only shown in recap mode (current mode has its own header up top) */}
-                {isRecap && (
+                {/* Bucket header — shown in recap AND full-day modes (multi-bucket).
+                    Current-mode has only one bucket so its header lives up top. */}
+                {(isRecap || isFullDay) && (
                   <div className={clsx('flex items-center gap-2 pb-1 border-b',
-                    isCurrentBucket ? 'border-accent/30' : 'border-card-border')}>
+                    isCurrentBucket && !isFullDay ? 'border-accent/30' : 'border-card-border')}>
                     <span className="text-base">{meta.emoji}</span>
                     <span className={clsx('text-xs font-semibold tracking-tight',
-                      isCurrentBucket ? 'text-accent' : 'text-foreground/90')}>
+                      isCurrentBucket && !isFullDay ? 'text-accent' : 'text-foreground/90')}>
                       {meta.title}
                     </span>
-                    {isCurrentBucket && (
+                    {isCurrentBucket && !isFullDay && (
                       <span className="text-[9px] uppercase tracking-widest text-accent/80 font-mono">now</span>
                     )}
-                    {!isCurrentBucket && (
+                    {!isCurrentBucket && !isFullDay && (
                       <span className="inline-flex items-center gap-1 text-[9px] uppercase tracking-widest px-1.5 py-0.5 rounded bg-amber-500/10 text-amber-400 border border-amber-500/25 font-medium">
                         <AlertCircle className="w-2.5 h-2.5" /> earlier — catch up
                       </span>
