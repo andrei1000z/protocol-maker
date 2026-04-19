@@ -1,8 +1,9 @@
 'use client';
 
-import { useState, useRef, useEffect } from 'react';
+import { useState, useRef, useEffect, useMemo } from 'react';
 import { BIOMARKER_DB, BIG_11_CODES, BIOMARKER_CATEGORIES, CATEGORY_LABELS } from '@/lib/engine/biomarkers';
 import { classifyBiomarker } from '@/lib/engine/classifier';
+import { SMARTWATCH_BRANDS, SMART_RING_BRANDS, HOME_EQUIPMENT, type DeviceBrand } from '@/lib/engine/device-catalog';
 import { GeneratingScreen } from '@/components/protocol/GeneratingScreen';
 import { Upload, FileText, ChevronDown, ChevronUp, Plus, X } from 'lucide-react';
 import clsx from 'clsx';
@@ -12,6 +13,179 @@ const FAMILY_CONDITIONS = ['Diabetes', 'Heart disease', 'Cancer', "Alzheimer's",
 const GOALS = ['Longevity / Healthspan', 'Body Composition', 'Cognitive Performance', 'Skin / Hair', 'Energy / Mood', 'Athletic Performance', 'Fertility', 'Fitness Recovery', 'Sleep', 'Mental Health'];
 const SLEEP_ISSUES = ['Trouble falling asleep', 'Waking in the night', 'Wake up unrested', 'Snoring', 'Restless legs', 'None'];
 const STEPS = ['Basics', 'Blood Work', 'Lifestyle', 'Day-to-Day', 'Goals'];
+
+// ─────────────────────────────────────────────────────────────────────────────
+// DevicePicker — "None / Brand A / Brand B / ... / Other"; clicking a brand
+// reveals a searchable model dropdown. "Other" reveals a free-text input.
+// ─────────────────────────────────────────────────────────────────────────────
+function DevicePicker({
+  label, icon, brands, brand, model, other,
+  onBrandChange, onModelChange, onOtherChange,
+}: {
+  label: string;
+  icon: string;
+  brands: DeviceBrand[];
+  brand: string;
+  model: string;
+  other: string;
+  onBrandChange: (v: string) => void;
+  onModelChange: (v: string) => void;
+  onOtherChange: (v: string) => void;
+}) {
+  const [search, setSearch] = useState('');
+  const currentBrand = brands.find(b => b.name === brand);
+  const filteredModels = useMemo(() => {
+    if (!currentBrand) return [];
+    const q = search.toLowerCase().trim();
+    if (!q) return currentBrand.models;
+    return currentBrand.models.filter(m => m.name.toLowerCase().includes(q));
+  }, [currentBrand, search]);
+
+  return (
+    <div className="rounded-2xl bg-card border border-card-border p-3 space-y-3">
+      <div className="flex items-center gap-2">
+        <span className="text-base">{icon}</span>
+        <label className="text-xs font-medium">{label}</label>
+      </div>
+      <div className="grid grid-cols-2 sm:grid-cols-3 gap-1.5">
+        <button
+          onClick={() => { onBrandChange('none'); onModelChange(''); onOtherChange(''); }}
+          className={clsx('py-2 rounded-xl text-[11px] font-medium transition-all',
+            brand === 'none' ? 'bg-accent text-black' : 'bg-background border border-card-border text-muted-foreground hover:border-accent/40')}
+        >
+          I don&apos;t have one
+        </button>
+        {brands.map(b => (
+          <button
+            key={b.name}
+            onClick={() => { onBrandChange(b.name); onModelChange(''); onOtherChange(''); setSearch(''); }}
+            className={clsx('py-2 rounded-xl text-[11px] font-medium transition-all whitespace-nowrap',
+              brand === b.name ? 'bg-accent text-black' : 'bg-background border border-card-border text-muted-foreground hover:border-accent/40')}
+          >
+            {b.name}
+          </button>
+        ))}
+        <button
+          onClick={() => { onBrandChange('Other'); onModelChange(''); }}
+          className={clsx('py-2 rounded-xl text-[11px] font-medium transition-all',
+            brand === 'Other' ? 'bg-accent text-black' : 'bg-background border border-card-border text-muted-foreground hover:border-accent/40')}
+        >
+          Other
+        </button>
+      </div>
+
+      {/* Model picker for selected brand */}
+      {currentBrand && (
+        <div className="space-y-2">
+          <input
+            type="text"
+            value={search}
+            onChange={e => setSearch(e.target.value)}
+            placeholder={`Search ${currentBrand.name} models…`}
+            className="w-full rounded-xl bg-background border border-card-border px-3 py-2 text-xs outline-none focus:border-accent"
+          />
+          <div className="max-h-40 overflow-y-auto space-y-1 scrollbar-thin">
+            {filteredModels.length === 0 ? (
+              <p className="text-[11px] text-muted-foreground px-2 py-1.5">No match — pick &ldquo;Other&rdquo; and type your model.</p>
+            ) : filteredModels.map(m => (
+              <button
+                key={m.name}
+                onClick={() => onModelChange(m.name)}
+                className={clsx('w-full text-left px-3 py-2 rounded-lg text-[12px] transition-colors',
+                  model === m.name ? 'bg-accent/15 text-accent border border-accent/30' : 'bg-background border border-card-border text-foreground/80 hover:border-accent/30')}
+              >
+                {m.name}
+                {model === m.name && <span className="ml-2 text-[10px] text-accent">✓ selected</span>}
+              </button>
+            ))}
+          </div>
+          {model && (
+            <p className="text-[10px] text-accent">
+              ✓ {currentBrand.name} {model} — AI will use its capabilities in your tracking setup.
+            </p>
+          )}
+        </div>
+      )}
+
+      {/* Free-form "Other" input */}
+      {brand === 'Other' && (
+        <div className="space-y-2">
+          <label className="text-[11px] text-muted-foreground">Tell us brand + model:</label>
+          <input
+            type="text"
+            value={other}
+            onChange={e => onOtherChange(e.target.value)}
+            placeholder="e.g. Coros Pace 3 · Suunto Ocean · custom build"
+            className="w-full rounded-xl bg-background border border-card-border px-3 py-2 text-sm outline-none focus:border-accent"
+          />
+          <p className="text-[10px] text-muted-foreground">The AI will infer what it measures from the model name.</p>
+        </div>
+      )}
+    </div>
+  );
+}
+
+// Equipment row — Yes / No / Will buy tri-state with optional notes field
+function EquipmentRow({
+  item, status, note, onStatus, onNote,
+}: {
+  item: (typeof HOME_EQUIPMENT)[number];
+  status: 'yes' | 'no' | 'will_buy' | undefined;
+  note: string;
+  onStatus: (s: 'yes' | 'no' | 'will_buy') => void;
+  onNote: (s: string) => void;
+}) {
+  return (
+    <div className="p-3 rounded-xl bg-card border border-card-border space-y-2.5">
+      <div className="flex items-start gap-3">
+        <span className="text-lg shrink-0 mt-0.5">{item.icon}</span>
+        <div className="flex-1 min-w-0">
+          <p className="text-sm font-medium">{item.label}</p>
+          <p className="text-[10px] text-muted-foreground leading-snug mt-0.5">{item.whyItMatters}</p>
+        </div>
+      </div>
+      <div className="grid grid-cols-3 gap-1.5">
+        {([
+          { v: 'yes',       l: 'Yes, I have' },
+          { v: 'no',        l: 'No' },
+          { v: 'will_buy',  l: 'Will buy' },
+        ] as const).map(opt => (
+          <button
+            key={opt.v}
+            onClick={() => onStatus(opt.v)}
+            className={clsx('py-1.5 rounded-lg text-[11px] font-medium transition-all',
+              status === opt.v
+                ? opt.v === 'yes' ? 'bg-accent text-black'
+                  : opt.v === 'will_buy' ? 'bg-amber-500/20 text-amber-400 border border-amber-500/40'
+                  : 'bg-surface-3 text-foreground border border-card-border'
+                : 'bg-background border border-card-border text-muted-foreground hover:border-accent/30')}
+          >
+            {opt.l}
+          </button>
+        ))}
+      </div>
+      {status === 'yes' && (
+        <input
+          type="text"
+          value={note}
+          onChange={e => onNote(e.target.value)}
+          placeholder="Optional: brand, model, how many, where (e.g. 'Dyson Pure Cool — 2 units, bedroom + living room')"
+          className="w-full rounded-lg bg-background border border-card-border px-3 py-1.5 text-[11px] outline-none focus:border-accent"
+        />
+      )}
+      {status === 'will_buy' && item.buyQuery && (
+        <a
+          href={`https://www.emag.ro/search/${encodeURIComponent(item.buyQuery)}`}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="block text-[11px] text-accent hover:underline"
+        >
+          🛒 Search on eMAG {item.priceHintRon ? `(~${item.priceHintRon} RON)` : ''} ↗
+        </a>
+      )}
+    </div>
+  );
+}
 
 interface Medication { name: string; dose: string; frequency: string; }
 
@@ -63,8 +237,20 @@ export default function OnboardingPage() {
   const [sitReachCm, setSitReachCm] = useState('');
   const [balanceSec, setBalanceSec] = useState('');
 
-  // Step 1 — Smartwatch / ring
-  const [wearable, setWearable] = useState('none');
+  // Step 1 — Smartwatch / ring (separate questions, each with brand + model + optional "other" free text)
+  const [wearable, setWearable] = useState('none'); // legacy field, keeps existing prompt wiring working
+  const [smartwatchBrand, setSmartwatchBrand] = useState('none'); // 'none' | brand name | 'Other'
+  const [smartwatchModel, setSmartwatchModel] = useState('');
+  const [smartwatchOther, setSmartwatchOther] = useState('');
+  const [smartRingBrand, setSmartRingBrand] = useState('none');
+  const [smartRingModel, setSmartRingModel] = useState('');
+  const [smartRingOther, setSmartRingOther] = useState('');
+
+  // Step 1 — Home equipment ownership (per item: 'yes' | 'no' | 'will_buy' | undefined)
+  type OwnershipStatus = 'yes' | 'no' | 'will_buy';
+  const [equipmentOwnership, setEquipmentOwnership] = useState<Record<string, OwnershipStatus>>({});
+  // Free-text details per item (e.g. "2 purifiers, bedroom + living room")
+  const [equipmentNotes, setEquipmentNotes] = useState<Record<string, string>>({});
 
   // Step 1 — Weight history
   const [weightOneYearAgo, setWeightOneYearAgo] = useState('');
@@ -285,6 +471,14 @@ export default function OnboardingPage() {
         setStr(od.maxSquats, setMaxSquats); setStr(od.sitReachCm, setSitReachCm);
         setStr(od.balanceSec, setBalanceSec);
         setStr(od.wearable, setWearable);
+        setStr(od.smartwatchBrand, setSmartwatchBrand);
+        setStr(od.smartwatchModel, setSmartwatchModel);
+        setStr(od.smartwatchOther, setSmartwatchOther);
+        setStr(od.smartRingBrand, setSmartRingBrand);
+        setStr(od.smartRingModel, setSmartRingModel);
+        setStr(od.smartRingOther, setSmartRingOther);
+        if (od.equipmentOwnership && typeof od.equipmentOwnership === 'object') setEquipmentOwnership(od.equipmentOwnership as Record<string, OwnershipStatus>);
+        if (od.equipmentNotes && typeof od.equipmentNotes === 'object') setEquipmentNotes(od.equipmentNotes as Record<string, string>);
         setStr(od.weightOneYearAgo, setWeightOneYearAgo);
         setStr(od.weightMinAdult, setWeightMinAdult); setStr(od.weightMaxAdult, setWeightMaxAdult);
 
@@ -498,6 +692,11 @@ export default function OnboardingPage() {
     bloodPressureSys, bloodPressureDia, hrv, vo2Max, gripStrength,
     cooperTest, maxPushups, plankSec, maxSquats, sitReachCm, balanceSec,
     wearable,
+    // New structured wearable fields (AI reads these for capability-aware tracking)
+    smartwatchBrand, smartwatchModel, smartwatchOther,
+    smartRingBrand, smartRingModel, smartRingOther,
+    // Home equipment ownership + notes (keys map to HOME_EQUIPMENT)
+    equipmentOwnership, equipmentNotes,
     weightOneYearAgo, weightMinAdult, weightMaxAdult,
     // Family history
     parentsAlive, familyCardio, familyCancer, familyDiabetes, familyAlzheimers,
@@ -700,6 +899,56 @@ export default function OnboardingPage() {
               <div className="flex justify-between text-[9px] text-muted mt-1">{activityLabels.map(l => <span key={l}>{l}</span>)}</div>
             </div>
 
+            {/* ═══════════ WEARABLES — separate smartwatch + smart ring questions ═══════════ */}
+            <div className="space-y-3">
+              <div className="flex items-center gap-2">
+                <h3 className="text-sm font-semibold">⌚ Wearables</h3>
+                <p className="text-[10px] text-muted-foreground">The AI uses device capabilities to know what metrics you can track daily.</p>
+              </div>
+              <DevicePicker
+                label="Smartwatch"
+                icon="⌚"
+                brands={SMARTWATCH_BRANDS}
+                brand={smartwatchBrand}
+                model={smartwatchModel}
+                other={smartwatchOther}
+                onBrandChange={v => { setSmartwatchBrand(v); if (v !== 'none') setWearable(v); else if (smartRingBrand === 'none') setWearable('none'); }}
+                onModelChange={setSmartwatchModel}
+                onOtherChange={setSmartwatchOther}
+              />
+              <DevicePicker
+                label="Smart ring"
+                icon="💍"
+                brands={SMART_RING_BRANDS}
+                brand={smartRingBrand}
+                model={smartRingModel}
+                other={smartRingOther}
+                onBrandChange={v => { setSmartRingBrand(v); if (v !== 'none' && smartwatchBrand === 'none') setWearable(v); }}
+                onModelChange={setSmartRingModel}
+                onOtherChange={setSmartRingOther}
+              />
+            </div>
+
+            {/* ═══════════ HOME EQUIPMENT — Yes / No / Will buy per item ═══════════ */}
+            <div className="space-y-3">
+              <div className="flex items-center gap-2">
+                <h3 className="text-sm font-semibold">🏠 Home equipment</h3>
+                <p className="text-[10px] text-muted-foreground">What can you measure at home? Drives tracking suggestions.</p>
+              </div>
+              <div className="space-y-2">
+                {HOME_EQUIPMENT.map(item => (
+                  <EquipmentRow
+                    key={item.key}
+                    item={item}
+                    status={equipmentOwnership[item.key]}
+                    note={equipmentNotes[item.key] || ''}
+                    onStatus={s => setEquipmentOwnership(p => ({ ...p, [item.key]: s }))}
+                    onNote={n => setEquipmentNotes(p => ({ ...p, [item.key]: n }))}
+                  />
+                ))}
+              </div>
+            </div>
+
             <div>
               <label className="text-xs text-muted-foreground mb-2 block">Do you have recent blood work?</label>
               <div className="flex gap-3">
@@ -819,14 +1068,6 @@ export default function OnboardingPage() {
               <div>
                 <label className="text-xs text-muted-foreground">Resting HR (if known, morning bpm)</label>
                 <input type="number" value={restingHR} onChange={e => setRestingHR(e.target.value)} placeholder="65" className="w-full mt-1 rounded-xl bg-card border border-card-border px-3 py-2.5 text-sm outline-none focus:border-accent font-mono" />
-              </div>
-              <div>
-                <label className="text-xs text-muted-foreground mb-2 block">Smartwatch / smart ring (for accurate sleep, HRV, steps)</label>
-                <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
-                  {['none', 'Galaxy Watch', 'Apple Watch', 'Oura Ring', 'WHOOP', 'Garmin', 'Fitbit', 'Other'].map(w => (
-                    <button key={w} onClick={() => setWearable(w)} className={clsx('py-2 rounded-xl text-xs font-medium transition-all', wearable === w ? 'bg-accent text-black' : 'bg-card border border-card-border text-muted-foreground')}>{w}</button>
-                  ))}
-                </div>
               </div>
             </CollapseSection>
 

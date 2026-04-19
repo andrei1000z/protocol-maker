@@ -419,6 +419,16 @@ export function buildMasterPromptV2(
   const mealsPerDay = pick<number>('mealsPerDay');
   const hydrationGlasses = pick<number>('hydrationGlasses');
 
+  // Wearables + home equipment — drive tracking + protocol recommendations
+  const smartwatchBrand = pick<string>('smartwatchBrand');
+  const smartwatchModel = pick<string>('smartwatchModel');
+  const smartwatchOther = pick<string>('smartwatchOther');
+  const smartRingBrand = pick<string>('smartRingBrand');
+  const smartRingModel = pick<string>('smartRingModel');
+  const smartRingOther = pick<string>('smartRingOther');
+  const equipmentOwnership = pick<Record<string, string>>('equipmentOwnership', {}) || {};
+  const equipmentNotes = pick<Record<string, string>>('equipmentNotes', {}) || {};
+
   // Derive target bedtime (8.5h before wake time)
   let derivedBedtime: string | undefined;
   if (wakeTime) {
@@ -484,6 +494,53 @@ ${gymAccess === 'full_gym' ? '- FULL GYM (barbells, racks, machines) → prescri
   gymAccess === 'none' ? '- NO EQUIPMENT — bodyweight only. Use squats, push-ups, lunges, plank, walking. NO barbell/dumbbell exercises.' :
   '- Gym access: not specified'}
 - Set exercise.gymAccess in the JSON to: ${gymAccess === 'full_gym' ? '"gym"' : gymAccess === 'home_gym' || gymAccess === 'minimal' ? '"home"' : gymAccess === 'none' ? '"none"' : '(infer)'}
+
+⌚ WEARABLES
+${(() => {
+  const lines: string[] = [];
+  const smartwatch = smartwatchBrand && smartwatchBrand !== 'none'
+    ? (smartwatchBrand === 'Other'
+        ? (smartwatchOther ? `${smartwatchOther} (user-typed — infer capabilities)` : null)
+        : `${smartwatchBrand}${smartwatchModel ? ` ${smartwatchModel}` : ''}`)
+    : null;
+  const smartRing = smartRingBrand && smartRingBrand !== 'none'
+    ? (smartRingBrand === 'Other'
+        ? (smartRingOther ? `${smartRingOther} (user-typed)` : null)
+        : `${smartRingBrand}${smartRingModel ? ` ${smartRingModel}` : ''}`)
+    : null;
+  if (smartwatch) lines.push(`- Smartwatch: ${smartwatch} — surface metrics their watch can actually measure (sleep stages, HRV, SpO2, etc.). Don't ask them to track things the device can't see.`);
+  if (smartRing) lines.push(`- Smart ring: ${smartRing} — rings excel at night-time HRV + skin temp + sleep staging. Prioritize these in their tracking plan.`);
+  if (!smartwatch && !smartRing) lines.push('- No wearables reported — tracking plan should rely on manual logs (sleep hours, mood, steps via phone) or suggest a $40-80 starter (Mi Band 9, Amazfit Active Edge).');
+  return lines.join('\n');
+})()}
+
+🏠 HOME EQUIPMENT OWNERSHIP
+${(() => {
+  const owned: string[] = [];
+  const willBuy: string[] = [];
+  const missing: string[] = [];
+  const equipLabels: Record<string, string> = {
+    bathroom_scale: 'bathroom scale', smart_scale: 'smart scale (body fat)', bp_monitor: 'BP monitor',
+    body_thermometer: 'body thermometer', continuous_glucose_monitor: 'CGM',
+    pulse_oximeter: 'pulse oximeter', antioxidant_scanner: 'antioxidant scanner',
+    air_purifier: 'HEPA air purifier', water_filter: 'water filter', red_light_panel: 'red light panel',
+    sauna: 'sauna', cold_plunge: 'cold plunge', home_gym: 'home gym', resistance_bands: 'resistance bands',
+  };
+  for (const [k, status] of Object.entries(equipmentOwnership || {})) {
+    const label = equipLabels[k] || k;
+    const note = (equipmentNotes || {})[k];
+    const tag = note ? `${label} (${note})` : label;
+    if (status === 'yes') owned.push(tag);
+    else if (status === 'will_buy') willBuy.push(tag);
+    else if (status === 'no') missing.push(tag);
+  }
+  const parts: string[] = [];
+  if (owned.length > 0) parts.push(`- OWNS: ${owned.join('; ')} → leverage these in tracking + weekly targets (e.g. morning weigh-in if bathroom scale, morning BP if monitor).`);
+  if (willBuy.length > 0) parts.push(`- PLANS TO BUY: ${willBuy.join('; ')} → mention each in the first protocol revision, don't make the plan depend on them yet.`);
+  if (missing.length > 0 && missing.length <= 3) parts.push(`- NOT PLANNING: ${missing.join('; ')} → design around not having these. Don't prescribe interventions that require them.`);
+  if (parts.length === 0) parts.push('- Ownership not reported — avoid assuming any device-dependent intervention.');
+  return parts.join('\n');
+})()}
 
 😴 SLEEP
 ${bedtime && wakeTime ? `- Current: ${bedtime} → ${wakeTime}` : ''}
