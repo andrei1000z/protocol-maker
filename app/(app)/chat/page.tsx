@@ -1,13 +1,47 @@
 'use client';
 
 import { useState, useRef, useEffect, useCallback } from 'react';
-import { useMyData, useStatistics } from '@/lib/hooks/useApiData';
-import { Send, Sparkles, Trash2, Brain } from 'lucide-react';
+import { useMyData, useStatistics, invalidate } from '@/lib/hooks/useApiData';
+import { Send, Sparkles, Trash2, Brain, Check, X, Activity, FileEdit, ClipboardList } from 'lucide-react';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import clsx from 'clsx';
 
 interface Message { role: 'user' | 'assistant'; content: string; }
+
+// Inline AI-emitted action — chip the user can apply or skip.
+// Format in stream: [[ACTION:type {json}]] on its own line.
+interface ChatAction {
+  id: string;
+  type: 'update_profile' | 'log_metric' | 'adjust_protocol';
+  payload: Record<string, unknown>;
+  status: 'pending' | 'applying' | 'applied' | 'skipped' | 'error';
+  error?: string;
+}
+
+const ACTION_REGEX = /\[\[ACTION:(update_profile|log_metric|adjust_protocol)\s+(\{[\s\S]*?\})\]\]/g;
+
+// Pull actions out of an assistant message; return clean text + parsed actions.
+// Stable IDs keep React state in sync across re-parses while streaming.
+function parseActions(raw: string, msgIndex: number): { clean: string; actions: ChatAction[] } {
+  const actions: ChatAction[] = [];
+  let actionIdx = 0;
+  const clean = raw.replace(ACTION_REGEX, (_, type, json) => {
+    try {
+      const payload = JSON.parse(json);
+      actions.push({
+        id: `${msgIndex}-${actionIdx++}`,
+        type: type as ChatAction['type'],
+        payload,
+        status: 'pending',
+      });
+    } catch {
+      // Malformed JSON — skip silently, keep the marker hidden in clean text
+    }
+    return '';
+  }).replace(/\n{3,}/g, '\n\n').trim();
+  return { clean, actions };
+}
 
 interface UserContext {
   hasProtocol: boolean;
@@ -37,6 +71,101 @@ function buildSuggestions(ctx: UserContext | null): string[] {
   prompts.push('How do I improve my HRV?');
   prompts.push('What\'s the #1 thing holding back my bio age?');
   return prompts.slice(0, 6);
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Action chip — one tap-to-apply card per AI-suggested action.
+// ─────────────────────────────────────────────────────────────────────────────
+function ActionChip({ action, onApply, onSkip }: {
+  action: ChatAction;
+  onApply: (a: ChatAction) => void;
+  onSkip: (a: ChatAction) => void;
+}) {
+  const meta = action.type === 'update_profile'
+    ? { icon: FileEdit, label: 'Update profile', color: 'text-accent' }
+    : action.type === 'log_metric'
+    ? { icon: Activity, label: 'Log metric', color: 'text-blue-400' }
+    : { icon: ClipboardList, label: 'Adjust protocol', color: 'text-amber-400' };
+  const Icon = meta.icon;
+
+  // Pretty payload preview — keep it readable, not raw JSON
+  const preview = (() => {
+    if (action.type === 'log_metric') {
+      const { date, ...rest } = action.payload as Record<string, unknown>;
+      const fields = Object.entries(rest).map(([k, v]) => `${k}: ${v}`).join(' · ');
+      return `${date} → ${fields}`;
+    }
+    if (action.type === 'adjust_protocol') {
+      return `${action.payload.path} = ${JSON.stringify(action.payload.value)}`;
+    }
+    if (action.payload.onboarding_data_patch) {
+      const op = action.payload.onboarding_data_patch as Record<string, unknown>;
+      return Object.entries(op).map(([k, v]) => `${k}: ${v}`).join(' · ');
+    }
+    return Object.entries(action.payload).map(([k, v]) => `${k}: ${v}`).join(' · ');
+  })();
+
+  if (action.status === 'applied') {
+    return (
+      <div className="flex items-center gap-2 p-2.5 rounded-xl bg-accent/[0.06] border border-accent/20">
+        <Check className="w-3.5 h-3.5 text-accent shrink-0" />
+        <span className="text-[11px] text-accent font-medium">{meta.label} applied</span>
+        <span className="text-[11px] text-muted truncate flex-1">— {preview}</span>
+      </div>
+    );
+  }
+  if (action.status === 'skipped') {
+    return (
+      <div className="flex items-center gap-2 p-2.5 rounded-xl bg-surface-2 border border-card-border opacity-50">
+        <X className="w-3.5 h-3.5 text-muted shrink-0" />
+        <span className="text-[11px] text-muted">Skipped: {meta.label.toLowerCase()}</span>
+      </div>
+    );
+  }
+  if (action.status === 'error') {
+    return (
+      <div className="flex items-center gap-2 p-2.5 rounded-xl bg-red-500/[0.06] border border-red-500/20">
+        <X className="w-3.5 h-3.5 text-danger shrink-0" />
+        <span className="text-[11px] text-danger">Error: {action.error}</span>
+        <button onClick={() => onApply(action)} className="text-[11px] text-accent hover:underline ml-auto">Retry</button>
+      </div>
+    );
+  }
+  return (
+    <div className="rounded-xl bg-accent/[0.04] border border-accent/20 p-3 space-y-2">
+      <div className="flex items-center gap-2">
+        <Icon className={clsx('w-3.5 h-3.5 shrink-0', meta.color)} />
+        <span className={clsx('text-[10px] font-semibold uppercase tracking-widest', meta.color)}>{meta.label}</span>
+      </div>
+      <p className="text-[12px] text-foreground/90 leading-snug font-mono break-all">{preview}</p>
+      <div className="flex gap-2">
+        <button
+          onClick={() => onApply(action)}
+          disabled={action.status === 'applying'}
+          className="flex-1 inline-flex items-center justify-center gap-1.5 px-3 py-1.5 rounded-lg bg-accent text-black text-[11px] font-semibold hover:bg-accent-bright disabled:opacity-50 transition-all"
+        >
+          {action.status === 'applying' ? (
+            <>
+              <span className="w-3 h-3 border-2 border-black/40 border-t-black rounded-full animate-spin" />
+              Applying…
+            </>
+          ) : (
+            <>
+              <Check className="w-3 h-3" />
+              Apply
+            </>
+          )}
+        </button>
+        <button
+          onClick={() => onSkip(action)}
+          disabled={action.status === 'applying'}
+          className="px-3 py-1.5 rounded-lg bg-surface-2 border border-card-border text-[11px] font-medium text-muted-foreground hover:text-foreground transition-colors disabled:opacity-50"
+        >
+          Skip
+        </button>
+      </div>
+    </div>
+  );
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -91,8 +220,51 @@ export default function ChatPage() {
   const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState('');
   const [streaming, setStreaming] = useState(false);
+  // Map of msgIndex -> array of action states. Decoupled from message text so
+  // user-action statuses (applied/skipped/error) survive re-renders + scrolls.
+  const [actionStates, setActionStates] = useState<Record<number, ChatAction[]>>({});
   const scrollRef = useRef<HTMLDivElement>(null);
   const textareaRef = useAutoResize(input);
+
+  // Apply / skip handlers — POST to /api/chat-action, then mutate SWR caches
+  const applyAction = useCallback(async (msgIdx: number, actionId: string) => {
+    setActionStates(s => ({
+      ...s,
+      [msgIdx]: (s[msgIdx] || []).map(a => a.id === actionId ? { ...a, status: 'applying' as const, error: undefined } : a),
+    }));
+    const action = (actionStates[msgIdx] || []).find(a => a.id === actionId);
+    if (!action) return;
+    try {
+      const res = await fetch('/api/chat-action', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ type: action.type, payload: action.payload }),
+      });
+      if (!res.ok) {
+        const j = await res.json().catch(() => ({}));
+        throw new Error(j.error || `Failed (${res.status})`);
+      }
+      setActionStates(s => ({
+        ...s,
+        [msgIdx]: (s[msgIdx] || []).map(a => a.id === actionId ? { ...a, status: 'applied' as const } : a),
+      }));
+      // Refresh whichever data store the action touched
+      if (action.type === 'update_profile' || action.type === 'adjust_protocol') invalidate.myData();
+      if (action.type === 'log_metric') { invalidate.statistics(); invalidate.dailyMetrics(); }
+    } catch (err) {
+      setActionStates(s => ({
+        ...s,
+        [msgIdx]: (s[msgIdx] || []).map(a => a.id === actionId ? { ...a, status: 'error' as const, error: err instanceof Error ? err.message : 'Failed' } : a),
+      }));
+    }
+  }, [actionStates]);
+
+  const skipAction = useCallback((msgIdx: number, actionId: string) => {
+    setActionStates(s => ({
+      ...s,
+      [msgIdx]: (s[msgIdx] || []).map(a => a.id === actionId ? { ...a, status: 'skipped' as const } : a),
+    }));
+  }, []);
 
   // SWR-cached context — shared with every other page, no extra fetch on navigation
   const { data: myData } = useMyData();
@@ -283,36 +455,68 @@ export default function ChatPage() {
           </div>
         )}
 
-        {messages.map((m, i) => (
-          <div key={i} className={clsx('flex animate-fade-in-up', m.role === 'user' ? 'justify-end' : 'justify-start')}>
-            {m.role === 'user' ? (
-              <div className="max-w-[85%] sm:max-w-[75%] px-4 py-2.5 rounded-2xl rounded-br-md bg-accent text-black text-sm whitespace-pre-wrap break-words font-medium shadow-sm">
-                {m.content}
-              </div>
-            ) : (
-              <div className="max-w-[92%] sm:max-w-[85%] w-full">
-                <div className="flex items-center gap-2 mb-1.5 pl-1">
-                  <div className="w-5 h-5 rounded-md bg-accent/10 border border-accent/20 flex items-center justify-center">
-                    <Brain className="w-3 h-3 text-accent" />
-                  </div>
-                  <span className="text-[10px] text-muted font-medium uppercase tracking-widest">Protocol AI</span>
+        {messages.map((m, i) => {
+          // For assistant messages, strip action markers from text + parse actions on the fly.
+          // We persist the parsed actions into state on first parse so user statuses survive.
+          let cleanText = m.content;
+          let derivedActions: ChatAction[] = [];
+          if (m.role === 'assistant' && m.content) {
+            const { clean, actions: parsed } = parseActions(m.content, i);
+            cleanText = clean;
+            // Merge: keep statuses/errors from existing state when IDs match
+            const existing = actionStates[i] || [];
+            derivedActions = parsed.map(p => existing.find(e => e.id === p.id) ?? p);
+          }
+          // Lazy-init action state for this message once it's stable (no longer streaming)
+          if (m.role === 'assistant' && !streaming && derivedActions.length > 0 && !actionStates[i]) {
+            // Defer to next tick to avoid setState during render
+            setTimeout(() => setActionStates(s => s[i] ? s : ({ ...s, [i]: derivedActions })), 0);
+          }
+          return (
+            <div key={i} className={clsx('flex animate-fade-in-up', m.role === 'user' ? 'justify-end' : 'justify-start')}>
+              {m.role === 'user' ? (
+                <div className="max-w-[85%] sm:max-w-[75%] px-4 py-2.5 rounded-2xl rounded-br-md bg-accent text-black text-sm whitespace-pre-wrap break-words font-medium shadow-sm">
+                  {m.content}
                 </div>
-                <div className={clsx('glass-card rounded-2xl rounded-tl-md px-4 py-3',
-                  m.content === '' && streaming && 'animate-pulse')}>
-                  {m.content ? (
-                    <AssistantContent text={m.content} />
-                  ) : (
-                    <div className="flex gap-1.5 py-2">
-                      <div className="w-2 h-2 bg-accent rounded-full animate-bounce" style={{ animationDelay: '0ms' }} />
-                      <div className="w-2 h-2 bg-accent rounded-full animate-bounce" style={{ animationDelay: '150ms' }} />
-                      <div className="w-2 h-2 bg-accent rounded-full animate-bounce" style={{ animationDelay: '300ms' }} />
+              ) : (
+                <div className="max-w-[92%] sm:max-w-[85%] w-full space-y-2">
+                  <div className="flex items-center gap-2 mb-1.5 pl-1">
+                    <div className="w-5 h-5 rounded-md bg-accent/10 border border-accent/20 flex items-center justify-center">
+                      <Brain className="w-3 h-3 text-accent" />
+                    </div>
+                    <span className="text-[10px] text-muted font-medium uppercase tracking-widest">Protocol AI</span>
+                  </div>
+                  <div className={clsx('glass-card rounded-2xl rounded-tl-md px-4 py-3',
+                    m.content === '' && streaming && 'animate-pulse')}>
+                    {m.content ? (
+                      <AssistantContent text={cleanText} />
+                    ) : (
+                      <div className="flex gap-1.5 py-2">
+                        <div className="w-2 h-2 bg-accent rounded-full animate-bounce" style={{ animationDelay: '0ms' }} />
+                        <div className="w-2 h-2 bg-accent rounded-full animate-bounce" style={{ animationDelay: '150ms' }} />
+                        <div className="w-2 h-2 bg-accent rounded-full animate-bounce" style={{ animationDelay: '300ms' }} />
+                      </div>
+                    )}
+                  </div>
+                  {/* Action chips — appear AFTER streaming finishes for this message */}
+                  {!streaming && derivedActions.length > 0 && (
+                    <div className="space-y-1.5 pl-1">
+                      <p className="text-[10px] text-muted uppercase tracking-widest">Tap to apply</p>
+                      {derivedActions.map(a => (
+                        <ActionChip
+                          key={a.id}
+                          action={a}
+                          onApply={() => applyAction(i, a.id)}
+                          onSkip={() => skipAction(i, a.id)}
+                        />
+                      ))}
                     </div>
                   )}
                 </div>
-              </div>
-            )}
-          </div>
-        ))}
+              )}
+            </div>
+          );
+        })}
       </div>
 
       {/* Input */}

@@ -237,25 +237,5 @@ export const SAMPLE_PROTOCOL: ProtocolOutput = {
     { scenario: 'Travel days', strategy: 'Pre-pack water + protein bar + electrolytes. Walk every 1-2h on flights. 10 min sunlight on landing. Supplements in pill organizer.' },
     { scenario: 'High-stress work week', strategy: 'Sleep 7.5+ h, protein each meal, 20 min walk even if no gym. Drop HIIT — Zone 2 only. Extra magnesium. Box breathing 5 min every 2h.' },
   ],
-  weekByWeekPlan: [],
-  doctorQuestions: [
-    'Can we order an Lp(a) test? It\'s a one-time genetic marker, not in my current panel.',
-    'My ApoB is 105 — at what threshold would you discuss a low-dose statin given my hsCRP is also borderline?',
-    'I\'d like to add a coronary calcium score for my next physical — what age would you recommend?',
-  ],
-  roadmap: [
-    { week: 'Weeks 1-4', title: 'Foundation', actions: ['Add omega-3 2.5g/day', 'Add 30 min Z2 cardio Tue/Thu', 'Hourly walking break alarm', 'Track hsCRP at 12 weeks'] },
-    { week: 'Weeks 5-8', title: 'Build', actions: ['Add curcumin 1g/day with dinner', 'Berberine 500mg with 2 largest meals', 'Bump strength to 3x/week', 'Sleep tracking baseline'] },
-    { week: 'Weeks 9-12', title: 'Retest + adjust', actions: ['Full lipid panel + hsCRP + Omega-3 Index', 'Adjust supplement doses based on results', 'If ApoB still >90, statin discussion'] },
-  ],
-  shoppingList: [
-    { category: 'Supplements (monthly)', items: [
-      { name: 'Omega-3 EPA/DHA 2g', estimatedCostRon: 70, where: 'eMAG', emagQuery: 'Omega 3 EPA DHA triglyceride', priority: 'buy now' },
-      { name: 'Magnesium Glycinate 400mg', estimatedCostRon: 30, where: 'eMAG', emagQuery: 'Magnesium glycinate 400mg', priority: 'buy now' },
-      { name: 'Curcumin + piperine', estimatedCostRon: 45, where: 'eMAG', emagQuery: 'Curcumin piperine 1000mg', priority: 'buy now' },
-      { name: 'Vitamin D3 + K2', estimatedCostRon: 40, where: 'eMAG', emagQuery: 'Vitamin D3 K2 4000 IU', priority: 'buy now' },
-      { name: 'Creatine monohydrate', estimatedCostRon: 25, where: 'eMAG', emagQuery: 'Creatine micronized', priority: 'buy now' },
-    ]},
-  ],
   costBreakdown: { monthlySupplements: 210, monthlyFood: 800, oneTimeEquipment: 0, quarterlyTesting: 350, totalMonthlyOngoing: 1010, currency: 'RON' },
 };

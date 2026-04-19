@@ -672,14 +672,46 @@ Return ONLY valid JSON matching this EXACT structure. No markdown, no backticks,
     "topWins": ["<3 specific things already optimal, referencing biomarker values>"],
     "topRisks": ["<3 specific risks needing attention, referencing biomarker values>"],
     "organSystemScores": {
-      "cardiovascular": <0-100>,
-      "metabolic": <0-100>,
-      "hormonal": <0-100>,
-      "inflammatory": <0-100>,
-      "hepatic": <0-100>,
-      "renal": <0-100>,
-      "nutritional": <0-100>,
-      "musculoskeletal": <0-100>
+      "cardiovascular": <0-100 — justify with specific markers>,
+      "metabolic":      <0-100>,
+      "hormonal":       <0-100>,
+      "inflammatory":   <0-100>,
+      "hepatic":        <0-100>,
+      "renal":          <0-100>,
+      "nutritional":    <0-100>,
+      "musculoskeletal":<0-100>
+    },
+    "organSystemsDetail": [
+      {
+        "system": "<cardiovascular | metabolic | hormonal | inflammatory | hepatic | renal | nutritional | musculoskeletal>",
+        "score": <0-100>,
+        "verdict": "<1 sentence summary: 'solid', 'on the edge', 'your weakest system', etc.>",
+        "drivers": ["<2-3 bullets: what's pulling the score UP — reference specific values>"],
+        "dragAnchors": ["<2-3 bullets: what's pulling it DOWN — reference specific values>"],
+        "topLever": "<single highest-ROI action for THIS system, with expected score gain after 12 weeks>"
+      }
+    ],
+    "lifeJourney": {
+      "birthplaceContext": "<1-2 sentence inference about this person's birthplace / upbringing based on ${profile.age} years old, their birth country/city if provided, typical lifestyle of that cohort. e.g. 'Born in 1990 in Bucharest — grew up during the post-communist transition, likely exposed to heavy industrial pollution in early childhood, diet heavy in bread/potato/pork.' — honest and grounded, not romantic.>",
+      "likelyDecadeByDecade": [
+        {"decade": "0-10y",  "estimate": "<what life likely looked like: diet, activity, stressors, environment>"},
+        {"decade": "10-20y", "estimate": "<similar estimate>"},
+        {"decade": "20-30y", "estimate": "<...>"},
+        {"decade": "30+y",   "estimate": "<only if relevant to their current age>"}
+      ],
+      "formativeLifestyleBets": ["<3-5 inferences about decisions that SHAPED current biology — e.g. 'switched to desk job at 25 → explains sitting-hours + BMI drift', 'parents both smoked → elevated inflammation baseline', 'stopped team sports after 18 → musculoskeletal drift'. Be careful: these are HYPOTHESES marked as such.>"],
+      "cumulativeExposures": ["<honest list of things this person's body has accumulated: pollution (from birth city), sun exposure (from latitude), dietary patterns, sleep debt decade, stress decade, etc. Each item: what + rough dose + current biomarker impact.>"],
+      "geneticHeadwinds": ["<IF family history provided: 1-2 inferred polygenic risks — e.g. 'family diabetes + current HbA1c 5.6 → you're carrying metabolic pressure before symptoms'. Otherwise skip.>"],
+      "geneticTailwinds": ["<If any protective factors show up in their data (e.g. great HDL at age 50 suggests favorable lipid genetics), name them.>"]
+    },
+    "evidenceCitations": [
+      "<4-6 short citations tying THIS patient's situation to published studies. Format: 'Levine 2018 PhenoAge — your 9-marker score places you in the X percentile for age.' or 'Arem 2015 (NHANES) — users with your step count have a 27% lower all-cause mortality vs <4k.' — real studies, real numbers, tailored to THIS user. Do not invent sources.>"
+    ],
+    "percentilePositioning": {
+      "vsPeersOfSameAgeAndSex": "<1 sentence — e.g. 'Among 34-year-old men in Eastern Europe, your metabolic profile is top 25% but your sleep quality is bottom 40%.'>",
+      "vsLongevityOptimalPopulation": "<1 sentence — e.g. 'Compared to the top-5% longevity phenotype (Bryan Johnson, Peter Attia's patient cohort), you're ~8.3 years behind on biological age.'>",
+      "trajectoryIfNothingChanges": "<1 sentence projection for 10 years if current habits persist — honest, specific.>",
+      "trajectoryWithProtocol": "<1 sentence with realistic expected gains from following the protocol for 12 months.>"
     }
   },
   "bryanComparison": [
@@ -688,7 +720,10 @@ Return ONLY valid JSON matching this EXACT structure. No markdown, no backticks,
       "yourValue": <number>,
       "bryanValue": <number>,
       "gap": <absolute difference>,
-      "verdict": "<'Ahead of Bryan' | 'Close to Bryan' | 'Work needed' | 'Priority gap'>"
+      "gapDirection": "<'ahead' | 'behind' | 'equal'>",
+      "verdict": "<'Ahead of Bryan' | 'Close to Bryan' | 'Work needed' | 'Priority gap'>",
+      "whyTheGapExistsForYou": "<1 short sentence with a concrete hypothesis for THIS user, e.g. 'Your LDL is 40 mg/dL higher than Bryan — dietary saturated fat + genetic ApoE risk + no statin.'>",
+      "closeTheGapAction": "<1 specific intervention that would close this gap — with realistic timeline>"
     }
   ],
   "nutrition": {
@@ -840,32 +875,6 @@ Return ONLY valid JSON matching this EXACT structure. No markdown, no backticks,
     "advancedTesting": ["<test name + where + cost estimate>"],
     "clinics": ["<clinic name + location + what they offer>"]
   },` : ''}
-  "roadmap": [
-    {"week": "Week 1", "title": "<theme>", "actions": ["<specific actions to start>"]},
-    {"week": "Week 2-3", "title": "<theme>", "actions": ["<what to layer in>"]},
-    {"week": "Week 4", "title": "First Checkpoint", "actions": ["<what to measure + adjust>"]},
-    {"week": "Week 5-7", "title": "<theme>", "actions": ["<optimization>"]},
-    {"week": "Week 8", "title": "Mid-Point Review", "actions": ["<what to reassess>"]},
-    {"week": "Week 9-11", "title": "<theme>", "actions": ["<advanced additions>"]},
-    {"week": "Week 12", "title": "Full Re-Panel", "actions": ["<complete blood work retest, compare results>"]},
-    {"week": "Month 4-6", "title": "Long-Term", "actions": ["<ongoing protocol>"]},
-    {"week": "Month 6-12", "title": "Annual Plan", "actions": ["<yearly targets>"]}
-  ],
-  "shoppingList": [
-    {
-      "category": "<Supplements | Supermarket | Equipment | Testing>",
-      "items": [
-        {
-          "name": "<specific product>",
-          "estimatedCostRon": <number>,
-          "where": "<eMAG / Farmacia Tei / Catena / Kaufland / etc>",
-          "emagQuery": "<search query>",
-          "priority": "<buy now | add in week 4 | nice to have>",
-          "oneTimeOrMonthly": "<one-time | monthly>"
-        }
-      ]
-    }
-  ],
   "costBreakdown": {
     "monthlySupplements": <RON>,
     "monthlyFood": <RON estimate>,
@@ -895,19 +904,7 @@ Return ONLY valid JSON matching this EXACT structure. No markdown, no backticks,
   "dailyBriefing": {
     "morningPriorities": ["<top 3 things to focus on TODAY, written as energizing one-liners>"],
     "eveningReview": ["<3 reflection questions to ask at end of day>"]
-  },
-  "weekByWeekPlan": [
-    { "week": 1, "focus": "<theme>",
-      "mondayActions": ["<specific action>"],
-      "wednesdayActions": ["<specific action>"],
-      "fridayActions": ["<specific action>"],
-      "weekendActions": ["<specific action>"],
-      "endOfWeekCheck": ["<what to review>"]
-    }
-  ],
-  "doctorQuestions": [
-    "<specific question to ask their doctor at next appointment, ranked by priority>"
-  ]
+  }
 }
 
 FINAL REMINDERS:
@@ -917,7 +914,6 @@ FINAL REMINDERS:
 - Adapt nutrition to ${profile.dietType} diet — do NOT force veganism
 - bryanComparison MUST have at least 5 entries if the user uploaded biomarkers (pull from their actual values)
 - dailyBriefing.morningPriorities and eveningReview MUST be populated (3 each) — these power the home screen
-- weekByWeekPlan MUST cover at least 4 weeks with concrete actions per day block
 ${painPoints ? '- painPointSolutions MUST be populated with ALL pain points from the patient' : ''}
 ${nonNegotiables ? '- flexRules MUST be populated with ALL non-negotiables — NEVER tell them to eliminate these' : ''}
 ${chronotype === 'night' ? '- Chronotype: night owl. Do NOT demand instant 10 PM bedtime. Shift gradually over 2-4 weeks using morning light + caffeine cutoff.' : ''}

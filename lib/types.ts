@@ -151,6 +151,31 @@ export interface ProtocolOutput {
       expectedClassification: 'likely_optimal' | 'likely_borderline' | 'likely_off';
       rationale: string;
     }[];
+    // New AI-generated life-journey + evidence-citations + percentile positioning.
+    // All fields optional so old protocols still render.
+    organSystemsDetail?: {
+      system: string;
+      score: number;
+      verdict: string;
+      drivers: string[];
+      dragAnchors: string[];
+      topLever: string;
+    }[];
+    lifeJourney?: {
+      birthplaceContext?: string;
+      likelyDecadeByDecade?: { decade: string; estimate: string }[];
+      formativeLifestyleBets?: string[];
+      cumulativeExposures?: string[];
+      geneticHeadwinds?: string[];
+      geneticTailwinds?: string[];
+    };
+    evidenceCitations?: string[];
+    percentilePositioning?: {
+      vsPeersOfSameAgeAndSex?: string;
+      vsLongevityOptimalPopulation?: string;
+      trajectoryIfNothingChanges?: string;
+      trajectoryWithProtocol?: string;
+    };
   };
   biomarkerReadout: {
     code: string;
@@ -171,6 +196,9 @@ export interface ProtocolOutput {
     bryanValue: number;
     gap: number;
     verdict: string;
+    gapDirection?: 'ahead' | 'behind' | 'equal';
+    whyTheGapExistsForYou?: string;
+    closeTheGapAction?: string;
   }[];
   nutrition: {
     dailyCalories: number;
@@ -274,15 +302,6 @@ export interface ProtocolOutput {
     advancedTesting: string[];
     clinics: string[];
   };
-  roadmap: {
-    week: string;
-    title?: string;
-    actions: string[];
-  }[];
-  shoppingList: {
-    category: string;
-    items: { name: string; estimatedCostRon: number; where: string; emagQuery?: string; priority: string; oneTimeOrMonthly?: string }[];
-  }[];
   costBreakdown?: {
     monthlySupplements: number;
     monthlyFood: number;
@@ -303,16 +322,6 @@ export interface ProtocolOutput {
     scenario: string;
     strategy: string;
   }[];
-  weekByWeekPlan?: {
-    week: number;
-    focus: string;
-    mondayActions?: string[];
-    wednesdayActions?: string[];
-    fridayActions?: string[];
-    weekendActions?: string[];
-    endOfWeekCheck?: string[];
-  }[];
-  doctorQuestions?: string[];
   dailyBriefing?: {
     morningPriorities: string[];
     eveningReview: string[];

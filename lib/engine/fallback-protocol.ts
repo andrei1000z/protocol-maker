@@ -199,21 +199,6 @@ export function buildFallbackProtocol(
       }) : [],
       testsToOrder: classified.length === 0 ? ['Full blood panel: CBC, CMP, lipids, HbA1c, TSH, Vitamin D'] : [],
     },
-    roadmap: [
-      { week: 'Week 1', title: 'Foundation', actions: ['Start Vitamin D3 + Omega-3 + Magnesium', 'Track sleep and steps', 'Set bedtime schedule'] },
-      { week: 'Week 2-3', title: 'Build habits', actions: ['Add strength training 3x/week', 'Hit 8000 steps daily', 'Morning sunlight 10 min'] },
-      { week: 'Week 4', title: 'First checkpoint', actions: ['Measure weight/waist', 'Review compliance', 'Adjust if needed'] },
-      { week: 'Week 8', title: 'Mid-point', actions: ['Add HIIT 1x/week', 'Review supplement tolerance'] },
-      { week: 'Week 12', title: 'Full re-panel', actions: ['Complete blood work retest', 'Compare to baseline', 'Update protocol'] },
-    ],
-    shoppingList: [
-      { category: 'Supplements', items: [
-        { name: 'Vitamin D3 + K2', estimatedCostRon: 40, where: 'eMAG', priority: 'buy now' },
-        { name: 'Omega-3 EPA/DHA 2g', estimatedCostRon: 60, where: 'eMAG', priority: 'buy now' },
-        { name: 'Magnesium Glycinate', estimatedCostRon: 30, where: 'eMAG', priority: 'buy now' },
-        { name: 'Creatine Monohydrate', estimatedCostRon: 25, where: 'eMAG', priority: 'buy now' },
-      ]},
-    ],
     costBreakdown: {
       monthlySupplements: 155,
       monthlyFood: 800,
@@ -259,45 +244,6 @@ export function buildFallbackProtocol(
     },
     painPointSolutions: buildPainPoints(profile),
     flexRules: buildFlexRules(profile),
-    weekByWeekPlan: [
-      { week: 1, focus: 'Foundation',
-        mondayActions: ['Start Vitamin D3 + Omega-3 + Magnesium with breakfast'],
-        wednesdayActions: ['First strength session (30 min upper body)'],
-        fridayActions: ['Track sleep with phone or app'],
-        weekendActions: ['Prep meals for next week', 'Morning sunlight walk 15 min'],
-        endOfWeekCheck: ['Did I hit 5 days of supplements?', 'Any side effects?'],
-      },
-      { week: 2, focus: 'Build habits',
-        mondayActions: ['Add walk after lunch (10 min)'],
-        wednesdayActions: ['Strength session (lower body)'],
-        fridayActions: ['Zone 2 cardio 30 min'],
-        weekendActions: ['Long walk or hike 45+ min'],
-        endOfWeekCheck: ['Are habits feeling automatic?'],
-      },
-      { week: 3, focus: 'Layer intensity',
-        mondayActions: ['Add 1 HIIT session this week'],
-        wednesdayActions: ['Full strength session 45 min'],
-        fridayActions: ['Zone 2 + strength combo'],
-        weekendActions: ['Track a full day of food'],
-        endOfWeekCheck: ['Am I recovering between workouts?'],
-      },
-      { week: 4, focus: 'First checkpoint',
-        mondayActions: ['Measure weight + waist'],
-        wednesdayActions: ['Review supplement adherence — any missed doses?'],
-        fridayActions: ['Check sleep data — avg hours + quality trend'],
-        weekendActions: ['Plan weeks 5-8 based on progress'],
-        endOfWeekCheck: ['Book retest for hsCRP if elevated'],
-      },
-    ],
-    doctorQuestions: [
-      ...(classified.filter(b => b.classification === 'CRITICAL').map(b => {
-        const ref = BIOMARKER_DB.find(r => r.code === b.code);
-        return `My ${ref?.shortName || b.code} is ${b.value} ${b.unit} — is this concerning and what should we do?`;
-      })),
-      'Based on my biomarkers, what annual screenings do you recommend?',
-      'Are there any drug-supplement interactions I should know about?',
-      'Given my family history, when should I start preventive testing (coronary calcium, colonoscopy, etc.)?',
-    ].slice(0, 5),
   };
 }
 

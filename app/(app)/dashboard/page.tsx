@@ -27,10 +27,6 @@ const TOC_ITEMS = [
   { id: 'tracking', label: 'What to Track', icon: '📊' },
   { id: 'painpoints', label: 'Pain Points', icon: '🎯' },
   { id: 'flex', label: 'Flex Rules', icon: '🧘' },
-  { id: 'weekplan', label: 'Next 4 Weeks', icon: '📅' },
-  { id: 'doctor', label: 'Doctor', icon: '👨‍⚕️' },
-  { id: 'roadmap', label: '12-Week Roadmap', icon: '🗺️' },
-  { id: 'shopping', label: 'Shopping List', icon: '🛒' },
 ];
 
 function Section({ id, title, icon, subtitle, action, children, className }: { id?: string; title: string; icon: string; subtitle?: string; action?: React.ReactNode; children: React.ReactNode; className?: string }) {
@@ -115,6 +111,7 @@ export default function DashboardPage() {
   const { data: diffData } = useProtocolDiff();
   const [expandedBiomarker, setExpandedBiomarker] = useState<string | null>(null);
   const [demoMode, setDemoMode] = useState(false);
+  const [showEstimatedBiomarkers, setShowEstimatedBiomarkers] = useState(false);
 
   // Detect ?demo=1 — render sample data instead of fetching the user's protocol.
   // Powers the landing-page "Try with sample data" CTA without forcing signup.
@@ -349,10 +346,137 @@ export default function DashboardPage() {
             </ul>
           </div>
         </div>
+
+        {/* ═══ Percentile positioning — 2x2 grid of where you stand + trajectory ═══ */}
+        {diag?.percentilePositioning && (diag.percentilePositioning.vsPeersOfSameAgeAndSex || diag.percentilePositioning.trajectoryIfNothingChanges) && (
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-3 mt-4">
+            {diag.percentilePositioning.vsPeersOfSameAgeAndSex && (
+              <div className="p-4 rounded-2xl bg-surface-2 border border-card-border">
+                <p className="text-[10px] uppercase tracking-widest text-muted mb-2">vs peers of your age</p>
+                <p className="text-sm leading-relaxed">{diag.percentilePositioning.vsPeersOfSameAgeAndSex}</p>
+              </div>
+            )}
+            {diag.percentilePositioning.vsLongevityOptimalPopulation && (
+              <div className="p-4 rounded-2xl bg-surface-2 border border-card-border">
+                <p className="text-[10px] uppercase tracking-widest text-muted mb-2">vs longevity-optimal cohort</p>
+                <p className="text-sm leading-relaxed">{diag.percentilePositioning.vsLongevityOptimalPopulation}</p>
+              </div>
+            )}
+            {diag.percentilePositioning.trajectoryIfNothingChanges && (
+              <div className="p-4 rounded-2xl bg-red-500/[0.04] border border-red-500/15">
+                <p className="text-[10px] uppercase tracking-widest text-danger mb-2">If nothing changes (10y)</p>
+                <p className="text-sm leading-relaxed text-foreground/90">{diag.percentilePositioning.trajectoryIfNothingChanges}</p>
+              </div>
+            )}
+            {diag.percentilePositioning.trajectoryWithProtocol && (
+              <div className="p-4 rounded-2xl bg-accent/[0.06] border border-accent/20">
+                <p className="text-[10px] uppercase tracking-widest text-accent mb-2">If you follow this protocol (12mo)</p>
+                <p className="text-sm leading-relaxed text-foreground/90">{diag.percentilePositioning.trajectoryWithProtocol}</p>
+              </div>
+            )}
+          </div>
+        )}
       </div>
 
+      {/* ═══════════════ LIFE JOURNEY — how you got here ═══════════════ */}
+      {(() => {
+        const lj = diag?.lifeJourney;
+        if (!lj) return null;
+        const decades = lj.likelyDecadeByDecade || [];
+        const bets = lj.formativeLifestyleBets || [];
+        const exposures = lj.cumulativeExposures || [];
+        const headwinds = lj.geneticHeadwinds || [];
+        const tailwinds = lj.geneticTailwinds || [];
+        const citations = diag?.evidenceCitations || [];
+        if (!lj.birthplaceContext && decades.length === 0 && bets.length === 0 && exposures.length === 0 && headwinds.length === 0 && tailwinds.length === 0 && citations.length === 0) return null;
+        return (
+          <Section id="life-journey" title="Your Life Journey" icon="🧬" subtitle="An honest reconstruction of how your biology got here — from birth, through the decades, to this lab result.">
+            {lj.birthplaceContext && (
+              <div className="p-4 rounded-2xl bg-surface-2 border border-card-border">
+                <p className="text-[10px] uppercase tracking-widest text-accent mb-2">Birthplace & upbringing</p>
+                <p className="text-sm leading-relaxed text-foreground/90">{lj.birthplaceContext}</p>
+              </div>
+            )}
+            {decades.length > 0 && (
+              <div className="space-y-2">
+                <p className="text-[10px] uppercase tracking-widest text-muted">Decade by decade</p>
+                {decades.map((d, i) => (
+                  <div key={i} className="flex gap-3 p-3.5 rounded-xl bg-background border border-card-border">
+                    <span className="text-[10px] font-mono text-accent shrink-0 mt-0.5 w-14">{d.decade}</span>
+                    <p className="text-[13px] leading-relaxed text-foreground/90">{d.estimate}</p>
+                  </div>
+                ))}
+              </div>
+            )}
+            {bets.length > 0 && (
+              <div>
+                <p className="text-[10px] uppercase tracking-widest text-muted mb-2">Formative lifestyle bets <span className="text-muted/70 normal-case">(hypotheses)</span></p>
+                <ul className="space-y-1.5">
+                  {bets.map((b, i) => (
+                    <li key={i} className="text-sm text-foreground/85 leading-relaxed flex gap-2">
+                      <span className="text-accent shrink-0 mt-0.5">→</span>
+                      <span>{b}</span>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            )}
+            {exposures.length > 0 && (
+              <div>
+                <p className="text-[10px] uppercase tracking-widest text-muted mb-2">What your body has accumulated</p>
+                <ul className="space-y-1.5">
+                  {exposures.map((e, i) => (
+                    <li key={i} className="text-sm text-foreground/85 leading-relaxed flex gap-2">
+                      <span className="text-amber-400/70 shrink-0 mt-0.5">•</span>
+                      <span>{e}</span>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            )}
+            {(headwinds.length > 0 || tailwinds.length > 0) && (
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                {headwinds.length > 0 && (
+                  <div className="p-4 rounded-xl bg-red-500/[0.04] border border-red-500/15">
+                    <p className="text-[10px] uppercase tracking-widest text-danger mb-2">Genetic headwinds</p>
+                    <ul className="space-y-1.5">
+                      {headwinds.map((g, i) => (
+                        <li key={i} className="text-[13px] leading-relaxed">{g}</li>
+                      ))}
+                    </ul>
+                  </div>
+                )}
+                {tailwinds.length > 0 && (
+                  <div className="p-4 rounded-xl bg-accent/[0.04] border border-accent/15">
+                    <p className="text-[10px] uppercase tracking-widest text-accent mb-2">Genetic tailwinds</p>
+                    <ul className="space-y-1.5">
+                      {tailwinds.map((g, i) => (
+                        <li key={i} className="text-[13px] leading-relaxed">{g}</li>
+                      ))}
+                    </ul>
+                  </div>
+                )}
+              </div>
+            )}
+            {citations.length > 0 && (
+              <div className="pt-3 border-t border-card-border">
+                <p className="text-[10px] uppercase tracking-widest text-muted mb-2">Evidence anchors</p>
+                <ul className="space-y-1.5">
+                  {citations.map((c, i) => (
+                    <li key={i} className="text-[11px] leading-relaxed text-muted-foreground flex gap-2">
+                      <span className="text-accent/60 shrink-0">◊</span>
+                      <span>{c}</span>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            )}
+          </Section>
+        );
+      })()}
+
       {/* ═══════════════ ORGAN SYSTEMS ═══════════════ */}
-      <Section id="organs" title="Organ Systems" icon="🫀" subtitle="Eight body systems scored independently. Each score is a blend of your lifestyle inputs plus any matching biomarkers — so you see strengths, gaps, and the two highest-leverage moves per system.">
+      <Section id="organs" title="Organ Systems" icon="🫀" subtitle="Eight body systems scored independently. Each score blends your lifestyle inputs with matching biomarkers, then the AI surfaces what's pulling each system up + down + the highest-ROI lever.">
         {/* Radar overview */}
         {radarData.length > 0 && (
           <div className="rounded-2xl bg-surface-2 border border-card-border p-4 -mx-1">
@@ -366,8 +490,62 @@ export default function DashboardPage() {
           </div>
         )}
 
-        {/* Per-system detail cards */}
-        {organsDetailed.length > 0 && (
+        {/* Per-system detail cards — prefer AI's richer organSystemsDetail when present, fall back to engine-derived organsDetailed */}
+        {(diag?.organSystemsDetail && diag.organSystemsDetail.length > 0) ? (
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+            {diag.organSystemsDetail.map((sys, idx) => {
+              const scoreColor = sys.score >= 80 ? 'text-accent' : sys.score >= 60 ? 'text-foreground' : sys.score >= 40 ? 'text-warning' : 'text-danger';
+              const barColor = sys.score >= 80 ? 'bg-accent' : sys.score >= 60 ? 'bg-accent/70' : sys.score >= 40 ? 'bg-warning' : 'bg-danger';
+              return (
+                <div key={`${sys.system}-${idx}`} className="p-4 rounded-xl bg-surface-2 border border-card-border hover:border-card-border-hover transition-colors space-y-3">
+                  <div>
+                    <div className="flex items-baseline justify-between gap-3 mb-1.5">
+                      <p className="text-sm font-semibold capitalize">{sys.system}</p>
+                      <span className={clsx('text-2xl font-bold font-mono tabular-nums', scoreColor)}>{sys.score}</span>
+                    </div>
+                    <div className="h-1 rounded-full bg-surface-3 overflow-hidden mb-2">
+                      <div className={clsx('h-full rounded-full transition-all duration-1000', barColor)} style={{ width: `${sys.score}%` }} />
+                    </div>
+                    {sys.verdict && <p className="text-[11px] text-foreground/85 leading-relaxed">{sys.verdict}</p>}
+                  </div>
+
+                  {(sys.drivers || []).length > 0 && (
+                    <div>
+                      <p className="text-[9px] uppercase tracking-widest text-accent mb-1">Pulling it UP</p>
+                      <ul className="space-y-1">
+                        {sys.drivers.slice(0, 3).map((d, i) => (
+                          <li key={i} className="text-[11px] text-foreground/80 leading-snug flex gap-1.5">
+                            <span className="text-accent shrink-0">↑</span><span>{d}</span>
+                          </li>
+                        ))}
+                      </ul>
+                    </div>
+                  )}
+
+                  {(sys.dragAnchors || []).length > 0 && (
+                    <div>
+                      <p className="text-[9px] uppercase tracking-widest text-amber-400 mb-1">Dragging it DOWN</p>
+                      <ul className="space-y-1">
+                        {sys.dragAnchors.slice(0, 3).map((d, i) => (
+                          <li key={i} className="text-[11px] text-foreground/80 leading-snug flex gap-1.5">
+                            <span className="text-amber-400 shrink-0">↓</span><span>{d}</span>
+                          </li>
+                        ))}
+                      </ul>
+                    </div>
+                  )}
+
+                  {sys.topLever && (
+                    <div className="pt-2 border-t border-card-border">
+                      <p className="text-[9px] uppercase tracking-widest text-accent mb-1">Highest-ROI move (12wk)</p>
+                      <p className="text-[12px] text-foreground/95 leading-snug">{sys.topLever}</p>
+                    </div>
+                  )}
+                </div>
+              );
+            })}
+          </div>
+        ) : organsDetailed.length > 0 ? (
           <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
             {organsDetailed.map((sys) => {
               const scoreColor = sys.score >= 80 ? 'text-accent' : sys.score >= 60 ? 'text-foreground' : sys.score >= 40 ? 'text-warning' : 'text-danger';
@@ -404,8 +582,9 @@ export default function DashboardPage() {
               );
             })}
           </div>
+        ) : (
+          <EmptyState message="Organ scores will populate after protocol generation." />
         )}
-        {organsDetailed.length === 0 && radarData.length === 0 && <EmptyState message="Organ scores will populate after protocol generation." />}
       </Section>
 
       {/* ═══════════════ YOU VS BRYAN ═══════════════ */}
@@ -528,26 +707,53 @@ export default function DashboardPage() {
           </div>
         )}
 
-        {/* Per-biomarker gap list */}
+        {/* Per-biomarker gap list — richer cards with why-the-gap + close-the-gap action */}
         {p.bryanComparison && p.bryanComparison.length > 0 ? (
-          <div className="space-y-1.5">
+          <div className="space-y-2">
             <p className="text-[10px] uppercase tracking-widest text-muted mb-2">Biomarker gaps</p>
-            {p.bryanComparison.map((c, i) => (
-              <div key={i} className="flex items-center justify-between p-3 rounded-xl bg-surface-2 border border-card-border hover:border-card-border-hover transition-colors">
-                <span className="text-sm font-medium flex-1 truncate">{c.marker}</span>
-                <div className="flex items-center gap-3 text-xs font-mono shrink-0">
-                  <span className="text-foreground">{c.yourValue}</span>
-                  <span className="text-muted">→</span>
-                  <span className="text-amber-400">{c.bryanValue}</span>
+            {p.bryanComparison.map((c, i) => {
+              const dir = c.gapDirection || (c.verdict.toLowerCase().includes('ahead') ? 'ahead' : 'behind');
+              const isAhead = dir === 'ahead';
+              const verdictTone =
+                c.verdict.includes('Ahead') ? 'pill-optimal' :
+                c.verdict.includes('Close') ? 'bg-blue-500/15 text-blue-400 border border-blue-500/20' :
+                c.verdict.includes('Priority') ? 'pill-critical' :
+                'pill-suboptimal';
+              return (
+                <div key={i} className="rounded-xl bg-surface-2 border border-card-border hover:border-card-border-hover transition-colors p-4">
+                  <div className="flex items-start justify-between gap-3">
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center gap-2 flex-wrap">
+                        <span className="text-sm font-semibold">{c.marker}</span>
+                        <span className={clsx('text-[10px] px-2 py-0.5 rounded-full font-medium', verdictTone)}>{c.verdict}</span>
+                      </div>
+                      <div className="flex items-center gap-2.5 mt-2 text-sm font-mono">
+                        <span className="text-foreground">{c.yourValue}</span>
+                        <span className={clsx('text-[10px]', isAhead ? 'text-accent' : 'text-amber-400/80')}>{isAhead ? '◀' : '▶'}</span>
+                        <span className="text-amber-400">{c.bryanValue}</span>
+                        <span className="text-[10px] text-muted ml-1">gap {Math.abs(c.gap).toFixed(1)}</span>
+                      </div>
+                    </div>
+                  </div>
+                  {(c.whyTheGapExistsForYou || c.closeTheGapAction) && (
+                    <div className="mt-3 pt-3 border-t border-card-border space-y-2">
+                      {c.whyTheGapExistsForYou && (
+                        <div>
+                          <p className="text-[9px] uppercase tracking-widest text-muted mb-1">Why this gap exists for YOU</p>
+                          <p className="text-[12px] text-foreground/85 leading-relaxed">{c.whyTheGapExistsForYou}</p>
+                        </div>
+                      )}
+                      {c.closeTheGapAction && (
+                        <div>
+                          <p className="text-[9px] uppercase tracking-widest text-accent mb-1">Close the gap</p>
+                          <p className="text-[12px] text-foreground/90 leading-relaxed">{c.closeTheGapAction}</p>
+                        </div>
+                      )}
+                    </div>
+                  )}
                 </div>
-                <span className={clsx('ml-3 text-[10px] px-2.5 py-1 rounded-full font-medium shrink-0',
-                  c.verdict.includes('Ahead') ? 'pill-optimal' :
-                  c.verdict.includes('Close') ? 'bg-blue-500/15 text-blue-400 border border-blue-500/20' :
-                  c.verdict.includes('Priority') ? 'pill-critical' :
-                  'pill-suboptimal'
-                )}>{c.verdict}</span>
-              </div>
-            ))}
+              );
+            })}
           </div>
         ) : (
           <div className="p-4 rounded-xl bg-surface-2 border border-dashed border-card-border text-center">
@@ -590,38 +796,72 @@ export default function DashboardPage() {
             ))}
           </div>
         ) : estimatedBiomarkers.length > 0 ? (
-          <div className="space-y-1.5">
-            {estimatedBiomarkers.map((e) => {
-              const color = e.expectedClassification === 'likely_optimal' ? 'text-accent' : e.expectedClassification === 'likely_borderline' ? 'text-warning' : 'text-danger';
-              const pillClass = e.expectedClassification === 'likely_optimal' ? 'pill-optimal' : e.expectedClassification === 'likely_borderline' ? 'pill-suboptimal' : 'pill-critical';
-              return (
-                <div key={e.code} className="p-4 rounded-xl bg-surface-2 border border-card-border">
-                  <div className="flex items-center justify-between gap-3">
-                    <div className="flex items-center gap-2.5 flex-1 min-w-0">
-                      <p className="text-sm font-semibold truncate">{e.shortName}</p>
-                      <span className={clsx('text-[9px] font-medium px-2 py-0.5 rounded-full', pillClass)}>
-                        {e.expectedClassification.replace('likely_', '~ ').toUpperCase()}
-                      </span>
+          showEstimatedBiomarkers ? (
+            <div className="space-y-1.5">
+              <button
+                onClick={() => setShowEstimatedBiomarkers(false)}
+                className="text-xs text-muted-foreground hover:text-accent transition-colors flex items-center gap-1.5"
+              >
+                ← Hide estimates
+              </button>
+              {estimatedBiomarkers.map((e) => {
+                const color = e.expectedClassification === 'likely_optimal' ? 'text-accent' : e.expectedClassification === 'likely_borderline' ? 'text-warning' : 'text-danger';
+                const pillClass = e.expectedClassification === 'likely_optimal' ? 'pill-optimal' : e.expectedClassification === 'likely_borderline' ? 'pill-suboptimal' : 'pill-critical';
+                return (
+                  <div key={e.code} className="p-4 rounded-xl bg-surface-2 border border-card-border">
+                    <div className="flex items-center justify-between gap-3">
+                      <div className="flex items-center gap-2.5 flex-1 min-w-0">
+                        <p className="text-sm font-semibold truncate">{e.shortName}</p>
+                        <span className={clsx('text-[9px] font-medium px-2 py-0.5 rounded-full', pillClass)}>
+                          {e.expectedClassification.replace('likely_', '~ ').toUpperCase()}
+                        </span>
+                      </div>
+                      <div className="flex items-baseline gap-1.5 shrink-0">
+                        <span className={clsx('text-lg font-bold font-mono tabular-nums', color)}>
+                          ~{e.estimatedLow}–{e.estimatedHigh}
+                        </span>
+                        <span className="text-[10px] text-muted">{e.unit}</span>
+                      </div>
                     </div>
-                    <div className="flex items-baseline gap-1.5 shrink-0">
-                      <span className={clsx('text-lg font-bold font-mono tabular-nums', color)}>
-                        ~{e.estimatedLow}–{e.estimatedHigh}
-                      </span>
-                      <span className="text-[10px] text-muted">{e.unit}</span>
-                    </div>
+                    <p className="text-[11px] text-muted-foreground mt-2 leading-relaxed">
+                      <span className="text-muted">Basis: </span>{e.rationale}
+                    </p>
                   </div>
-                  <p className="text-[11px] text-muted-foreground mt-2 leading-relaxed">
-                    <span className="text-muted">Basis: </span>{e.rationale}
-                  </p>
-                </div>
-              );
-            })}
-            <div className="mt-3 p-3 rounded-xl bg-amber-500/[0.04] border border-amber-500/15">
-              <p className="text-[11px] text-amber-400/90 leading-relaxed">
-                ⓘ These are model-based estimates. For actual values, order a lab panel (Synevo, Regina Maria, MedLife, LabCorp) and upload the PDF — the protocol will auto-update.
-              </p>
+                );
+              })}
+              <div className="mt-3 p-3 rounded-xl bg-amber-500/[0.04] border border-amber-500/15">
+                <p className="text-[11px] text-amber-400/90 leading-relaxed">
+                  ⓘ These are model-based estimates, not measurements. For actual values, order a lab panel (Synevo, Regina Maria, MedLife) and upload the PDF — the protocol will auto-update.
+                </p>
+              </div>
             </div>
-          </div>
+          ) : (
+            <div className="p-8 rounded-2xl bg-gradient-to-br from-accent/[0.04] to-transparent border border-accent/15 text-center space-y-4">
+              <div className="w-14 h-14 rounded-2xl bg-accent/10 border border-accent/25 mx-auto flex items-center justify-center">
+                <span className="text-2xl">🧪</span>
+              </div>
+              <div>
+                <p className="text-sm font-semibold">No bloodwork uploaded yet</p>
+                <p className="text-xs text-muted-foreground mt-1.5 max-w-sm mx-auto leading-relaxed">
+                  Upload a recent lab PDF (Synevo, Regina Maria, MedLife, LabCorp) to see your measured biomarkers and personalized analysis.
+                </p>
+              </div>
+              <div className="flex items-center justify-center gap-2 flex-wrap">
+                <a
+                  href="/onboarding"
+                  className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl bg-accent text-black text-xs font-semibold hover:bg-accent-bright transition-colors"
+                >
+                  📥 Upload bloodwork
+                </a>
+                <button
+                  onClick={() => setShowEstimatedBiomarkers(true)}
+                  className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl bg-surface-2 border border-card-border text-xs font-medium text-muted-foreground hover:text-accent hover:border-accent/40 transition-colors"
+                >
+                  Show estimated biomarkers (~) instead
+                </button>
+              </div>
+            </div>
+          )
         ) : (
           <EmptyState message="Biomarker data will appear once you upload bloodwork or complete onboarding." />
         )}
@@ -1291,58 +1531,6 @@ export default function DashboardPage() {
         )}
       </Section>
 
-      {/* Week-by-Week Plan */}
-      <Section id="weekplan" title="Next 4 Weeks — Concrete" icon="📅">
-        {(!p.weekByWeekPlan || p.weekByWeekPlan.length === 0) ? <EmptyState message="4-week actionable plan will be generated with your protocol." /> : (
-          <div className="space-y-3">
-            {p.weekByWeekPlan.slice(0, 4).map((w, i) => (
-              <div key={i} className="p-3 rounded-xl bg-background border border-card-border space-y-2">
-                <div className="flex items-center gap-2">
-                  <span className="text-xs font-mono text-accent font-bold">Week {w.week}</span>
-                  <span className="text-xs text-muted-foreground">{w.focus}</span>
-                </div>
-                {w.mondayActions && w.mondayActions.length > 0 && <div><p className="text-[10px] text-accent uppercase tracking-wider">Monday</p>{w.mondayActions.map((a, j) => <p key={j} className="text-xs text-muted-foreground">• {a}</p>)}</div>}
-                {w.wednesdayActions && w.wednesdayActions.length > 0 && <div><p className="text-[10px] text-accent uppercase tracking-wider">Wednesday</p>{w.wednesdayActions.map((a, j) => <p key={j} className="text-xs text-muted-foreground">• {a}</p>)}</div>}
-                {w.fridayActions && w.fridayActions.length > 0 && <div><p className="text-[10px] text-accent uppercase tracking-wider">Friday</p>{w.fridayActions.map((a, j) => <p key={j} className="text-xs text-muted-foreground">• {a}</p>)}</div>}
-                {w.weekendActions && w.weekendActions.length > 0 && <div><p className="text-[10px] text-accent uppercase tracking-wider">Weekend</p>{w.weekendActions.map((a, j) => <p key={j} className="text-xs text-muted-foreground">• {a}</p>)}</div>}
-                {w.endOfWeekCheck && w.endOfWeekCheck.length > 0 && <div><p className="text-[10px] text-amber-400 uppercase tracking-wider">End-of-week check</p>{w.endOfWeekCheck.map((a, j) => <p key={j} className="text-xs text-muted-foreground">• {a}</p>)}</div>}
-              </div>
-            ))}
-          </div>
-        )}
-      </Section>
-
-      {/* Doctor Questions */}
-      <Section
-        id="doctor-questions"
-        title="Questions for Your Doctor"
-        icon="📋"
-        subtitle="Print this and take it to your next appointment — specific, ordered, ready to ask."
-        action={
-          p.doctorQuestions && p.doctorQuestions.length > 0 ? (
-            <button
-              onClick={() => window.print()}
-              className="no-print text-xs px-3 py-1.5 rounded-lg bg-surface-2 border border-card-border hover:border-accent/40 text-muted-foreground hover:text-accent transition-all"
-            >
-              📄 Print
-            </button>
-          ) : undefined
-        }
-      >
-        {(!p.doctorQuestions || p.doctorQuestions.length === 0) ? <EmptyState message="Printable questions for your next doctor visit will appear here." /> : (
-          <ol className="space-y-2 counter-reset-questions list-none">
-            {p.doctorQuestions.map((q, i) => (
-              <li key={i} className="flex gap-3 p-4 rounded-xl bg-surface-2 border border-card-border hover:border-accent/25 transition-colors">
-                <div className="flex items-center justify-center w-7 h-7 rounded-lg bg-accent/10 border border-accent/25 shrink-0">
-                  <span className="text-xs font-mono font-semibold text-accent tabular-nums">{i + 1}</span>
-                </div>
-                <p className="text-sm leading-relaxed flex-1 pt-0.5">{q}</p>
-              </li>
-            ))}
-          </ol>
-        )}
-      </Section>
-
       {/* Doctor Discussion */}
       <Section id="doctor" title="Doctor Discussion" icon="👨‍⚕️" subtitle="Red flags from your data, Rx to consider, specialists worth visiting, and tests to order. This doesn't replace medical consultation.">
         {!p.doctorDiscussion || (!p.doctorDiscussion.redFlags?.length && !p.doctorDiscussion.rxSuggestions?.length && !p.doctorDiscussion.specialistReferrals?.length && !p.doctorDiscussion.testsToOrder?.length) ? (
@@ -1458,64 +1646,6 @@ export default function DashboardPage() {
             )}
           </div>
         )}
-      </Section>
-
-      {/* Roadmap */}
-      <Section id="roadmap" title="12-Week Roadmap" icon="🗺️">
-        {(!p.roadmap || p.roadmap.length === 0) ? <EmptyState message="12-week roadmap will appear after protocol generation." /> : (
-          <>{p.roadmap.map((r, i) => (
-            <div key={i} className="flex gap-3">
-              <div className="flex flex-col items-center">
-                <div className={clsx('w-3 h-3 rounded-full shrink-0', i === 0 ? 'bg-accent' : 'bg-card-border')} />
-                {i < p.roadmap.length - 1 && <div className="w-0.5 flex-1 bg-card-border" />}
-              </div>
-              <div className="pb-4">
-                <p className="text-sm font-medium text-accent">{r.week}{r.title ? ` — ${r.title}` : ''}</p>
-                {r.actions.map((a, j) => <p key={j} className="text-xs text-muted-foreground mt-0.5">• {a}</p>)}
-              </div>
-            </div>
-          ))}</>
-        )}
-      </Section>
-
-      {/* Shopping List */}
-      <Section id="shopping" title="Shopping List" icon="🛒">
-        {(!p.shoppingList || p.shoppingList.length === 0) ? <EmptyState message="Shopping list with eMAG links will generate with your protocol." /> : (<>
-          {p.costBreakdown && (
-            <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 text-center mb-3">
-              <div className="p-2 rounded-xl bg-background border border-card-border">
-                <p className="text-sm font-bold font-mono">{p.costBreakdown.monthlySupplements}</p>
-                <p className="text-[9px] text-muted">Supplements</p>
-              </div>
-              <div className="p-2 rounded-xl bg-background border border-card-border">
-                <p className="text-sm font-bold font-mono">{p.costBreakdown.monthlyFood}</p>
-                <p className="text-[9px] text-muted">Food</p>
-              </div>
-              <div className="p-2 rounded-xl bg-background border border-card-border">
-                <p className="text-sm font-bold font-mono">{p.costBreakdown.oneTimeEquipment}</p>
-                <p className="text-[9px] text-muted">Equipment</p>
-              </div>
-              <div className="p-2 rounded-xl bg-background border border-accent/30">
-                <p className="text-sm font-bold font-mono text-accent">{p.costBreakdown.totalMonthlyOngoing}</p>
-                <p className="text-[9px] text-accent">Total/mo</p>
-              </div>
-            </div>
-          )}
-          {p.shoppingList.map((cat, i) => (
-            <div key={i}>
-              <p className="text-xs text-accent font-medium mb-1">{cat.category}</p>
-              {cat.items?.map((item, j) => (
-                <div key={j} className="flex items-center justify-between py-1.5 text-xs border-b border-card-border last:border-0">
-                  <a href={`https://www.emag.ro/search/${encodeURIComponent(item.emagQuery || item.name)}`} target="_blank" rel="noopener noreferrer" className="hover:text-accent transition-colors">{item.name} ↗</a>
-                  <div className="flex items-center gap-2 shrink-0 ml-2">
-                    {item.priority && <span className={clsx('text-[9px] px-1.5 py-0.5 rounded', item.priority === 'buy now' ? 'bg-accent/20 text-accent' : 'bg-card-border text-muted')}>{item.priority}</span>}
-                    <span className="text-muted font-mono">{item.estimatedCostRon} RON</span>
-                  </div>
-                </div>
-              ))}
-            </div>
-          ))}
-        </>)}
       </Section>
 
       {/* Footer */}
