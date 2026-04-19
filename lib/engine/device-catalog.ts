@@ -678,3 +678,126 @@ export const HOME_EQUIPMENT: HomeEquipmentItem[] = [
     buyQuery: 'Aparat canotaj rowing machine',
   },
 ];
+
+// ─────────────────────────────────────────────────────────────────────────────
+// MetricCapability → daily_metrics column mapping
+// One capability can feed multiple columns (e.g. sleep_stages → 4 stage columns).
+// Used to:
+//   1. Badge SmartLogSheet fields with which device auto-captures them
+//   2. Surface top device-reported metrics on the tracking page
+//   3. Let the AI know which columns are device-synced vs manual-only
+// ─────────────────────────────────────────────────────────────────────────────
+export const CAPABILITY_TO_COLUMNS: Record<MetricCapability, string[]> = {
+  heart_rate:       ['avg_heart_rate', 'min_heart_rate', 'max_heart_rate'],
+  resting_hr:       ['resting_hr'],
+  hrv:              ['hrv', 'hrv_sleep_avg'],
+  sleep_stages:     ['deep_sleep_min', 'light_sleep_min', 'rem_sleep_min', 'awake_min'],
+  sleep_score:      ['sleep_score', 'sleep_hours'],
+  blood_oxygen:     ['blood_oxygen_avg_sleep'],
+  skin_temp:        ['skin_temp_deviation'],
+  steps:            ['steps'],
+  active_time:      ['active_time_min'],
+  vo2max:           [],
+  stress:           ['stress_level'],
+  ecg:              [],
+  body_battery:     ['energy_score'],
+  respiration_rate: ['avg_respiratory_rate'],
+  cycle_tracking:   [],
+  calories_burned:  ['activity_calories'],
+  floors_climbed:   [],
+  gps_workouts:     ['workout_minutes'],
+  blood_pressure:   ['bp_systolic_morning', 'bp_diastolic_morning', 'bp_systolic_evening', 'bp_diastolic_evening'],
+  afib_detection:   [],
+  fall_detection:   [],
+  glucose_trends:   [],
+};
+
+// Equipment key → daily_metrics columns unlocked by ownership.
+// A BP monitor unlocks BP columns even without a smartwatch. Union with wearables.
+export const EQUIPMENT_TO_COLUMNS: Record<string, string[]> = {
+  bathroom_scale:              ['weight_kg'],
+  smart_scale:                 ['weight_kg'],
+  bp_monitor:                  ['bp_systolic_morning', 'bp_diastolic_morning', 'bp_systolic_evening', 'bp_diastolic_evening'],
+  body_thermometer:            ['skin_temp_deviation'],
+  continuous_glucose_monitor:  [],
+  glucose_meter:               [],
+  pulse_oximeter:              ['blood_oxygen_avg_sleep'],
+  hrv_chest_strap:             ['hrv', 'hrv_sleep_avg'],
+  spirometer:                  [],
+  antioxidant_scanner:         ['antioxidant_index'],
+  sleep_mat:                   ['sleep_hours', 'sleep_score', 'deep_sleep_min', 'light_sleep_min', 'rem_sleep_min', 'awake_min', 'avg_respiratory_rate'],
+};
+
+export interface UserDeviceSummary {
+  smartwatch?: { brand: string; model: string; label: string; capabilities: MetricCapability[] };
+  smartRing?:  { brand: string; model: string; label: string; capabilities: MetricCapability[] };
+  equipment:   { key: string; label: string; icon: string }[];
+  columns:     Set<string>;              // all daily_metrics columns the user CAN log
+  sources:     Record<string, string[]>; // column → human-readable sources ("Oura Ring 4", "BP monitor", "manual")
+}
+
+function findCapabilities(brands: DeviceBrand[], brand: string, model: string): MetricCapability[] {
+  const b = brands.find(x => x.name === brand);
+  if (!b) return [];
+  const m = b.models.find(x => x.name === model);
+  return m?.capabilities || [];
+}
+
+// Build a UserDeviceSummary from onboarding_data. Handles missing fields gracefully.
+// Universal manual fallback at the end — everyone can log weight/mood/sleep even
+// if they own nothing, so those columns always end up in the summary.
+export function summarizeUserDevices(onboardingData: Record<string, unknown>): UserDeviceSummary {
+  const swBrand  = typeof onboardingData.smartwatchBrand === 'string' ? onboardingData.smartwatchBrand : '';
+  const swModel  = typeof onboardingData.smartwatchModel === 'string' ? onboardingData.smartwatchModel : '';
+  const swOther  = typeof onboardingData.smartwatchOther === 'string' ? onboardingData.smartwatchOther : '';
+  const srBrand  = typeof onboardingData.smartRingBrand === 'string' ? onboardingData.smartRingBrand : '';
+  const srModel  = typeof onboardingData.smartRingModel === 'string' ? onboardingData.smartRingModel : '';
+  const srOther  = typeof onboardingData.smartRingOther === 'string' ? onboardingData.smartRingOther : '';
+  const ownership = (onboardingData.equipmentOwnership || {}) as Record<string, string>;
+
+  const summary: UserDeviceSummary = {
+    equipment: [],
+    columns: new Set<string>(),
+    sources: {},
+  };
+
+  const addColumn = (col: string, source: string) => {
+    summary.columns.add(col);
+    if (!summary.sources[col]) summary.sources[col] = [];
+    if (!summary.sources[col].includes(source)) summary.sources[col].push(source);
+  };
+
+  // Smartwatch — catalog lookup, fallback to MID capabilities for "Other" / unknown model
+  if (swBrand && swBrand !== 'none') {
+    const label = swBrand === 'Other' ? (swOther || 'Other smartwatch') : `${swBrand}${swModel ? ` ${swModel}` : ''}`;
+    let caps = findCapabilities(SMARTWATCH_BRANDS, swBrand, swModel);
+    if (caps.length === 0 && swBrand !== 'none') caps = ['heart_rate', 'resting_hr', 'sleep_stages', 'sleep_score', 'steps', 'active_time', 'calories_burned', 'hrv'];
+    summary.smartwatch = { brand: swBrand, model: swModel, label, capabilities: caps };
+    for (const cap of caps) for (const col of CAPABILITY_TO_COLUMNS[cap] || []) addColumn(col, label);
+  }
+
+  // Smart ring
+  if (srBrand && srBrand !== 'none') {
+    const label = srBrand === 'Other' ? (srOther || 'Other smart ring') : `${srBrand}${srModel ? ` ${srModel}` : ''}`;
+    let caps = findCapabilities(SMART_RING_BRANDS, srBrand, srModel);
+    if (caps.length === 0 && srBrand !== 'none') caps = ['heart_rate', 'resting_hr', 'hrv', 'sleep_stages', 'sleep_score', 'skin_temp', 'respiration_rate'];
+    summary.smartRing = { brand: srBrand, model: srModel, label, capabilities: caps };
+    for (const cap of caps) for (const col of CAPABILITY_TO_COLUMNS[cap] || []) addColumn(col, label);
+  }
+
+  // Home equipment — only "yes" counts (not "will_buy" or "no")
+  for (const [key, status] of Object.entries(ownership)) {
+    if (status !== 'yes') continue;
+    const item = HOME_EQUIPMENT.find(e => e.key === key);
+    summary.equipment.push({ key, label: item?.label || key, icon: item?.icon || '🔧' });
+    const label = item ? item.label : key;
+    for (const col of EQUIPMENT_TO_COLUMNS[key] || []) addColumn(col, label);
+  }
+
+  // Universal manual fallback — anyone can log these without a device
+  for (const col of ['weight_kg', 'mood', 'energy', 'stress_level', 'sleep_hours', 'sleep_quality', 'steps', 'workout_minutes', 'workout_done', 'notes']) {
+    if (!summary.columns.has(col)) addColumn(col, 'manual');
+  }
+
+  return summary;
+}

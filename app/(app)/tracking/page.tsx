@@ -5,7 +5,7 @@ import { useMyData, useComplianceToday, useComplianceHistory, invalidate } from 
 import clsx from 'clsx';
 import {
   Check, Pill, Dumbbell, Moon, Apple, Flame, Sparkles, ClipboardCheck, Trophy,
-  TrendingUp, AlertCircle, Lightbulb,
+  TrendingUp, AlertCircle, Lightbulb, Watch,
 } from 'lucide-react';
 import { ACHIEVEMENTS, checkAchievements } from '@/lib/engine/achievements';
 import {
@@ -18,6 +18,7 @@ import { SmartLogSheet } from '@/components/tracking/SmartLogSheet';
 import { useDailyMetrics, useDailyMetricsRange, DailyMetrics } from '@/lib/hooks/useDailyMetrics';
 import { buildInsights, currentWorkoutStreak, loggedDaysInLastN, Insight } from '@/lib/engine/tracking-insights';
 import { SectionCard as Section, StatTile as Stat, ProgressRing } from '@/components/ui/SectionCard';
+import { summarizeUserDevices, type UserDeviceSummary, CAPABILITY_TO_COLUMNS, EQUIPMENT_TO_COLUMNS } from '@/lib/engine/device-catalog';
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Types + static
@@ -128,6 +129,144 @@ function InsightRow({ insight }: { insight: Insight }) {
         <p className="text-sm font-medium leading-snug">{insight.title}</p>
         {insight.detail && <p className="text-[11px] text-muted-foreground leading-relaxed mt-1">{insight.detail}</p>}
       </div>
+    </div>
+  );
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+// DevicesBlock — shows the user's wearables + home equipment from onboarding,
+// each as a row with the metrics that device can track. Clicking opens Smart Log.
+// ═══════════════════════════════════════════════════════════════════════════
+
+// Human-readable label for a daily_metrics column (used in device rows)
+const COLUMN_LABELS: Record<string, string> = {
+  sleep_hours: 'Sleep hours', sleep_score: 'Sleep score', sleep_quality: 'Sleep quality',
+  deep_sleep_min: 'Deep sleep', light_sleep_min: 'Light sleep', rem_sleep_min: 'REM sleep', awake_min: 'Awake time',
+  hrv: 'HRV', hrv_sleep_avg: 'HRV overnight',
+  resting_hr: 'Resting HR', avg_heart_rate: 'Avg HR', min_heart_rate: 'Min HR', max_heart_rate: 'Max HR',
+  blood_oxygen_avg_sleep: 'Blood O₂', skin_temp_deviation: 'Skin temp', avg_respiratory_rate: 'Respiration',
+  bp_systolic_morning: 'Morning BP syst', bp_diastolic_morning: 'Morning BP dias',
+  bp_systolic_evening: 'Evening BP syst', bp_diastolic_evening: 'Evening BP dias',
+  steps: 'Steps', active_time_min: 'Active time', activity_calories: 'Calories burned', workout_minutes: 'Workout',
+  energy_score: 'Body battery', stress_level: 'Stress', mood: 'Mood', energy: 'Energy',
+  weight_kg: 'Weight', antioxidant_index: 'Antioxidants',
+};
+
+function DeviceRow({ icon, label, caption, columns, metrics, onOpenLog, tone = 'accent' }: {
+  icon: string;
+  label: string;
+  caption: string;
+  columns: string[];
+  metrics: DailyMetrics;
+  onOpenLog: () => void;
+  tone?: 'accent' | 'blue' | 'amber' | 'muted';
+}) {
+  const shown = columns.map(c => COLUMN_LABELS[c] || c).slice(0, 6);
+  const filled = columns.filter(c => {
+    const v = metrics[c as keyof DailyMetrics];
+    return v !== null && v !== undefined && v !== '';
+  }).length;
+  const border =
+    tone === 'accent' ? 'border-accent/25 bg-accent/[0.04]' :
+    tone === 'blue'   ? 'border-blue-500/25 bg-blue-500/[0.04]' :
+    tone === 'amber'  ? 'border-amber-500/25 bg-amber-500/[0.04]' :
+                        'border-card-border bg-surface-2';
+  return (
+    <button
+      onClick={onOpenLog}
+      className={clsx('w-full p-4 rounded-xl border text-left space-y-2 hover:border-accent/40 active:scale-[0.995] transition-all', border)}
+    >
+      <div className="flex items-start justify-between gap-3">
+        <div className="flex items-start gap-2.5 min-w-0">
+          <span className="text-xl shrink-0">{icon}</span>
+          <div className="min-w-0 flex-1">
+            <p className="text-sm font-semibold truncate">{label}</p>
+            <p className="text-[11px] text-muted-foreground leading-snug">{caption}</p>
+          </div>
+        </div>
+        <div className="text-right shrink-0">
+          <p className="text-[10px] text-muted uppercase tracking-widest">logged</p>
+          <p className="text-base font-bold font-mono tabular-nums text-accent">{filled}<span className="text-xs text-muted">/{columns.length}</span></p>
+        </div>
+      </div>
+      <div className="flex flex-wrap gap-1">
+        {shown.map(s => (
+          <span key={s} className="text-[9px] px-1.5 py-0.5 rounded bg-surface-3 text-muted-foreground">{s}</span>
+        ))}
+        {columns.length > 6 && (
+          <span className="text-[9px] px-1.5 py-0.5 rounded bg-surface-3 text-muted-foreground">+{columns.length - 6} more</span>
+        )}
+      </div>
+    </button>
+  );
+}
+
+function DevicesBlock({ summary, metrics, onOpenLog }: {
+  summary: UserDeviceSummary;
+  metrics: DailyMetrics;
+  onOpenLog: () => void;
+}) {
+  // Columns a wearable/ring actually covers = its own capabilities' columns
+  const swColumns = summary.smartwatch
+    ? Array.from(new Set(summary.smartwatch.capabilities.flatMap(c => CAPABILITY_TO_COLUMNS[c] || [])))
+    : [];
+  const srColumns = summary.smartRing
+    ? Array.from(new Set(summary.smartRing.capabilities.flatMap(c => CAPABILITY_TO_COLUMNS[c] || [])))
+    : [];
+
+  const nothing = !summary.smartwatch && !summary.smartRing && summary.equipment.length === 0;
+  if (nothing) {
+    return (
+      <div className="p-5 rounded-xl bg-surface-2 border border-dashed border-card-border text-center">
+        <p className="text-sm font-medium">No devices yet</p>
+        <p className="text-[11px] text-muted-foreground mt-1 max-w-sm mx-auto leading-relaxed">
+          Add your smartwatch, smart ring, BP monitor, or scale in onboarding and they&apos;ll appear here with what they can track.
+        </p>
+        <a href="/onboarding" className="inline-block mt-3 text-xs text-accent hover:underline">Add devices →</a>
+      </div>
+    );
+  }
+
+  return (
+    <div className="space-y-2">
+      {summary.smartwatch && (
+        <DeviceRow
+          icon="⌚"
+          label={summary.smartwatch.label}
+          caption={`${summary.smartwatch.capabilities.length} metrics supported`}
+          columns={swColumns}
+          metrics={metrics}
+          onOpenLog={onOpenLog}
+          tone="accent"
+        />
+      )}
+      {summary.smartRing && (
+        <DeviceRow
+          icon="💍"
+          label={summary.smartRing.label}
+          caption={`${summary.smartRing.capabilities.length} metrics supported`}
+          columns={srColumns}
+          metrics={metrics}
+          onOpenLog={onOpenLog}
+          tone="blue"
+        />
+      )}
+      {summary.equipment.map(eq => {
+        const equipCols = EQUIPMENT_TO_COLUMNS[eq.key] || [];
+        if (equipCols.length === 0) return null;
+        return (
+          <DeviceRow
+            key={eq.key}
+            icon={eq.icon}
+            label={eq.label}
+            caption={`${equipCols.length} metric${equipCols.length === 1 ? '' : 's'} unlocked`}
+            columns={equipCols}
+            metrics={metrics}
+            onOpenLog={onOpenLog}
+            tone="amber"
+          />
+        );
+      })}
     </div>
   );
 }
@@ -247,6 +386,21 @@ export default function TrackingPage() {
 
   // SWR data sources — all deduped + cached across routes
   const { data: myData, isLoading: loadingMy } = useMyData();
+
+  // Device summary — drives source badges in SmartLogSheet + new DeviceQuickLog block.
+  // Memoized against onboarding_data so we don't rebuild on unrelated re-renders.
+  const deviceSummary: UserDeviceSummary = useMemo(() => {
+    const od = (myData?.profile?.onboarding_data || {}) as Record<string, unknown>;
+    return summarizeUserDevices(od);
+  }, [myData?.profile?.onboarding_data]);
+  const deviceSources = useMemo(() => {
+    // Convert Set keys → plain Record for passing into the Sheet
+    const obj: Record<string, string[]> = {};
+    for (const col of Array.from(deviceSummary.columns)) {
+      obj[col] = deviceSummary.sources[col] || [];
+    }
+    return obj;
+  }, [deviceSummary]);
   const { data: compToday } = useComplianceToday(date);
   const thirtyDaysAgoStr = useMemo(() => { const d = new Date(); d.setDate(d.getDate() - 30); return d.toISOString().split('T')[0]; }, []);
   const { data: compHistoryData } = useComplianceHistory(thirtyDaysAgoStr, date);
@@ -477,6 +631,11 @@ export default function TrackingPage() {
         />
       </div>
 
+      {/* ═══════════ YOUR DEVICES — everything you can measure ═══════════ */}
+      <Section icon={Watch} title="Your devices" subtitle="Each device shows the metrics it can track. Tap a row to log them.">
+        <DevicesBlock summary={deviceSummary} metrics={todayMetrics as DailyMetrics} onOpenLog={() => setSmartLogOpen(true)} />
+      </Section>
+
       {/* ═══════════ QUICK LOG BAR ═══════════ */}
       <Section icon={TrendingUp} title="Quick log" subtitle="One-tap entry for your most-logged metrics">
         <QuickLogBar metrics={todayMetrics as DailyMetrics} onChange={saveMetrics} />
@@ -651,6 +810,7 @@ export default function TrackingPage() {
         onClose={() => setSmartLogOpen(false)}
         metrics={todayMetrics as DailyMetrics}
         onSave={(updates) => saveMetrics(updates)}
+        deviceSources={deviceSources}
       />
 
       <p className="text-[11px] text-center text-muted pt-2">

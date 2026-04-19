@@ -136,13 +136,29 @@ interface Props {
   onClose: () => void;
   metrics: DailyMetrics;
   onSave: (updates: Partial<DailyMetrics>) => Promise<void> | void;
+  // New: column → list of devices that can provide this value (e.g. "Oura Ring 4", "Dyson BP monitor", "manual").
+  // When present, fields get a source badge and fields the user can't measure (no sources) are hidden.
+  deviceSources?: Record<string, string[]>;
 }
 
-export function SmartLogSheet({ open, onClose, metrics, onSave }: Props) {
+export function SmartLogSheet({ open, onClose, metrics, onSave, deviceSources }: Props) {
   const now = new Date();
   const bucket = useMemo(() => getTimeBucket(now.getHours()), [now]);
-  const groups = BUCKET_GROUPS[bucket];
+  const rawGroups = BUCKET_GROUPS[bucket];
   const header = BUCKET_LABELS[bucket];
+
+  // Filter each group to only fields this user's devices (or manual logging) can fill.
+  // If deviceSources isn't provided, show everything (backward compat).
+  const groups = useMemo<GroupDef[]>(() => {
+    if (!deviceSources) return rawGroups;
+    return rawGroups.map(g => ({
+      title: g.title,
+      fields: g.fields.filter(f => {
+        const srcs = deviceSources[String(f.key)];
+        return srcs && srcs.length > 0;
+      }),
+    })).filter(g => g.fields.length > 0);
+  }, [rawGroups, deviceSources]);
 
   // Local editing buffer — only commit on save
   const [local, setLocal] = useState<Partial<DailyMetrics>>({});
@@ -213,11 +229,24 @@ export function SmartLogSheet({ open, onClose, metrics, onSave }: Props) {
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 {group.fields.map(spec => {
                   const value = getValue(spec.key);
+                  const sources = deviceSources?.[String(spec.key)] || [];
+                  // Primary source badge: first non-manual source if any, else "manual"
+                  const deviceSource = sources.find(s => s !== 'manual');
                   return (
                     <div key={String(spec.key)} className="space-y-1.5">
                       <label className="block text-xs text-muted-foreground">
-                        {spec.label}
-                        {spec.hint && <span className="text-[10px] text-muted ml-1.5">· {spec.hint}</span>}
+                        <span className="flex items-center gap-1.5 flex-wrap">
+                          <span>{spec.label}</span>
+                          {deviceSource && (
+                            <span className="inline-flex items-center gap-0.5 text-[9px] px-1.5 py-0.5 rounded bg-accent/10 border border-accent/20 text-accent font-medium uppercase tracking-wider">
+                              ⌚ {deviceSource}
+                            </span>
+                          )}
+                          {!deviceSource && sources.includes('manual') && (
+                            <span className="inline-flex items-center gap-0.5 text-[9px] px-1.5 py-0.5 rounded bg-surface-3 text-muted uppercase tracking-wider">manual</span>
+                          )}
+                        </span>
+                        {spec.hint && <span className="block text-[10px] text-muted mt-0.5">{spec.hint}</span>}
                       </label>
                       <div className="relative">
                         <input
