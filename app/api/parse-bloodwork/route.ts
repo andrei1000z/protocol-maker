@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
 import Groq from 'groq-sdk';
 import { buildGroqParsingPrompt } from '@/lib/engine/master-prompt';
+import { logger, describeError } from '@/lib/logger';
 
 export async function POST(request: Request) {
   try {
@@ -48,7 +49,7 @@ export async function POST(request: Request) {
     const parsedBiomarkers = JSON.parse(jsonMatch[0]);
     return NextResponse.json({ biomarkers: parsedBiomarkers, rawTextLength: pdfText.length });
   } catch (err) {
-    console.error('PDF parsing error:', err);
+    logger.error('parse_bloodwork.failed', { errorMessage: describeError(err) });
     return NextResponse.json({ error: String(err) }, { status: 500 });
   }
 }

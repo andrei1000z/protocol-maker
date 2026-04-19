@@ -14,6 +14,10 @@ const GOALS = ['Longevity / Healthspan', 'Body Composition', 'Cognitive Performa
 const SLEEP_ISSUES = ['Trouble falling asleep', 'Waking in the night', 'Wake up unrested', 'Snoring', 'Restless legs', 'None'];
 const STEPS = ['Basics', 'Blood Work', 'Lifestyle', 'Day-to-Day', 'Goals'];
 
+// Auto-save draft key — versioned so a future schema rename invalidates
+// old drafts safely instead of trying to parse them against a new shape.
+const ONBOARDING_DRAFT_KEY = 'protocol:onboarding-draft:v1';
+
 // ─────────────────────────────────────────────────────────────────────────────
 // DevicePicker — "None / Brand A / Brand B / ... / Other"; clicking a brand
 // reveals a searchable model dropdown. "Other" reveals a free-text input.
@@ -617,9 +621,74 @@ export default function OnboardingPage() {
           setStep(d.profile.onboarding_step);
         }
       }
+
+      // ── localStorage draft restore ──
+      // If there's a newer locally-saved draft than the server copy (user filled
+      // fields since the last server-sync), merge it in. Handles the common case:
+      // user fills Step 2, browser crashes before they hit Next.
+      try {
+        const raw = localStorage.getItem(ONBOARDING_DRAFT_KEY);
+        if (raw && d.profile?.onboarding_completed !== true) {
+          const draft = JSON.parse(raw) as { savedAt: number; step?: number; data?: Record<string, unknown> };
+          const serverSavedAt = d.profile?.updated_at ? new Date(d.profile.updated_at).getTime() : 0;
+          // Only restore if draft is strictly newer than server (so server saves win on a reset flow)
+          if (draft?.data && draft.savedAt > serverSavedAt) {
+            const od = draft.data;
+            const setStr = (v: unknown, setter: (s: string) => void) => { if (v !== undefined && v !== null && v !== '') setter(String(v)); };
+            const setBool = (v: unknown, setter: (b: boolean) => void) => { if (typeof v === 'boolean') setter(v); };
+            // Replay the same setters against the draft — the catalog above is the authoritative list
+            setStr(od.name, setName); setStr(od.age, setAge); setStr(od.birthDate, setBirthDate);
+            if (od.sex) setSex(od.sex as typeof sex);
+            setStr(od.chromosomes, setChromosomes); setStr(od.genderIdentity, setGenderIdentity);
+            setBool(od.transitioning, setTransitioning); setStr(od.transitionTo, setTransitionTo);
+            setBool(od.pregnant, setPregnant); setStr(od.pregnancyWeeks, setPregnancyWeeks);
+            setBool(od.breastfeeding, setBreastfeeding);
+            setStr(od.heightCm, setHeightCm); setStr(od.weightKg, setWeightKg);
+            if (typeof od.activityLevel === 'number') setActivityLevel(od.activityLevel);
+            setStr(od.country, setCountry); setStr(od.city, setCity);
+            setStr(od.birthCountry, setBirthCountry); setStr(od.birthCity, setBirthCity);
+            setStr(od.ethnicity, setEthnicity); setStr(od.occupation, setOccupation);
+            setStr(od.restingHR, setRestingHR);
+            if (typeof od.hasBloodWork === 'boolean') setHasBloodWork(od.hasBloodWork);
+            // Motivation (the field with highest drop-off)
+            setStr(od.motivation, setMotivation);
+            if (typeof od.discipline === 'number') setDiscipline(od.discipline);
+            setBool(od.supportSystem, setSupportSystem);
+            // Step marker — pick whichever is further along
+            if (typeof draft.step === 'number' && draft.step > step) setStep(draft.step);
+            if (typeof window !== 'undefined') console.info('[onboarding] restored local draft from', new Date(draft.savedAt).toISOString());
+          }
+        }
+      } catch { /* ignore corrupt draft */ }
+
       setRestored(true);
     }).catch(() => setRestored(true));
-  }, [restored]);
+  }, [restored, step]);
+
+  // ── Auto-save draft to localStorage (debounced) ──
+  // Runs after every render once hydrated. The empty-dep timer cancels on the
+  // next render, so the actual write happens ~800ms after the user stops typing.
+  // Key is shared across tabs so two tabs don't fight — last writer wins.
+  useEffect(() => {
+    if (!restored) return;
+    const t = setTimeout(() => {
+      try {
+        const draft = {
+          savedAt: Date.now(),
+          step,
+          data: buildOnboardingData(),
+        };
+        localStorage.setItem(ONBOARDING_DRAFT_KEY, JSON.stringify(draft));
+      } catch { /* quota exceeded or SSR — silently ignore */ }
+    }, 800);
+    return () => clearTimeout(t);
+  });  // intentionally no deps — debounces every render
+
+  // Clear the draft on successful completion so the user doesn't see stale data
+  // if they come back to /onboarding after finishing.
+  const clearDraft = () => {
+    try { localStorage.removeItem(ONBOARDING_DRAFT_KEY); } catch { /* ignore */ }
+  };
 
   const activityLabels = ['Sedentary', 'Light', 'Moderate', 'Active', 'Athlete'];
 
@@ -827,6 +896,9 @@ export default function OnboardingPage() {
         const err = await genRes.json().catch(() => ({}));
         throw new Error(err.error || `Protocol generation failed (${genRes.status})`);
       }
+      // Clear the local draft so a subsequent visit to /onboarding starts fresh
+      // rather than rehydrating completed-state answers.
+      clearDraft();
       window.location.href = '/dashboard';
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Error. Try again.');

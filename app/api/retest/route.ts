@@ -1,5 +1,19 @@
 import { NextResponse } from 'next/server';
+import { z } from 'zod';
 import { createClient } from '@/lib/supabase/server';
+import { logger, describeError } from '@/lib/logger';
+
+const ISO_DATE = /^\d{4}-\d{2}-\d{2}$/;
+const RetestSchema = z.object({
+  biomarkers: z.array(z.object({
+    code: z.string().min(1).max(40),
+    value: z.number().finite().min(-1000).max(100000),
+    unit: z.string().max(20).optional().default(''),
+  })).min(1).max(60),
+  takenAt: z.string().regex(ISO_DATE).optional().nullable(),
+  labName: z.string().max(100).optional().nullable(),
+  notes: z.string().max(2000).optional().nullable(),
+});
 
 export const runtime = 'nodejs';
 export const maxDuration = 120;
@@ -25,12 +39,13 @@ export async function POST(request: Request) {
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) return NextResponse.json({ error: 'Not authenticated' }, { status: 401 });
 
-    const body = await request.json().catch(() => ({}));
-    const newBiomarkers = body.biomarkers;
-
-    if (!Array.isArray(newBiomarkers) || newBiomarkers.length === 0) {
-      return NextResponse.json({ error: 'biomarkers[] required (code, value, unit per item)' }, { status: 400 });
+    const raw = await request.json().catch(() => null);
+    const parsed = RetestSchema.safeParse(raw);
+    if (!parsed.success) {
+      return NextResponse.json({ error: 'Invalid retest payload', issues: parsed.error.flatten() }, { status: 400 });
     }
+    const body = parsed.data;
+    const newBiomarkers = body.biomarkers;
 
     // 1) Save new blood test
     const { data: insertedTest, error: btErr } = await supabase.from('blood_tests').insert({
@@ -99,7 +114,7 @@ export async function POST(request: Request) {
       agingPace: genResult.agingPace,
     });
   } catch (err) {
-    console.error('retest error:', err);
+    logger.error('retest.failed', { errorMessage: describeError(err) });
     return NextResponse.json({ error: err instanceof Error ? err.message : String(err) }, { status: 500 });
   }
 }

@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
 import { createAdminClient } from '@/lib/supabase/admin';
+import { logger, describeError } from '@/lib/logger';
 
 export const runtime = 'nodejs';
 
@@ -50,7 +51,7 @@ export async function POST(request: Request) {
 
     return NextResponse.json({ success: true });
   } catch (err) {
-    console.error('delete-account error:', err);
+    logger.error('delete_account.failed', { errorMessage: describeError(err) });
     return NextResponse.json({ error: err instanceof Error ? err.message : String(err) }, { status: 500 });
   }
 }

@@ -3,6 +3,7 @@ import { createClient } from '@/lib/supabase/server';
 import Groq from 'groq-sdk';
 import Anthropic from '@anthropic-ai/sdk';
 import { getChatRateLimit, checkRateLimit } from '@/lib/rate-limit';
+import { logger, describeError } from '@/lib/logger';
 
 export const maxDuration = 60;
 export const runtime = 'nodejs';
@@ -426,7 +427,7 @@ export async function POST(request: Request) {
     }
     return NextResponse.json({ reply });
   } catch (err) {
-    console.error('Chat error:', err);
+    logger.error('chat.handler_failed', { errorMessage: describeError(err) });
     return NextResponse.json({ error: err instanceof Error ? err.message : String(err) }, { status: 500 });
   }
 }

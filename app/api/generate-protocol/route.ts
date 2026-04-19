@@ -12,6 +12,7 @@ import { buildMasterPromptV2, CACHEABLE_SYSTEM_PREFIX } from '@/lib/engine/maste
 import { buildFallbackProtocol } from '@/lib/engine/fallback-protocol';
 import { BiomarkerValue, UserProfile } from '@/lib/types';
 import { getProtocolRateLimit, checkRateLimit } from '@/lib/rate-limit';
+import { logger, describeError } from '@/lib/logger';
 
 export const maxDuration = 60;
 
@@ -102,7 +103,7 @@ export async function POST(request: Request) {
           protocolJson = await generateWithClaude(prompt);
           modelUsed = 'claude-sonnet-4-5';
         } catch (claudeErr) {
-          console.warn('Claude failed, trying Groq:', claudeErr);
+          logger.warn('protocol.claude_failed_fallback_groq', { errorMessage: describeError(claudeErr) });
           protocolJson = await generateWithGroq(prompt);
           modelUsed = 'llama-3.3-70b-versatile';
         }
@@ -114,12 +115,14 @@ export async function POST(request: Request) {
       // Zod validation on final output
       const validated = ProtocolShape.safeParse(protocolJson);
       if (!validated.success) {
-        console.error('AI output failed Zod validation:', validated.error.flatten());
+        // Log only the issue paths + count, not the full malformed JSON (PII risk).
+        const issues = validated.error.issues.slice(0, 8).map(i => ({ path: i.path.join('.'), code: i.code }));
+        logger.error('protocol.ai_output_zod_failed', { userId: user.id, issueCount: validated.error.issues.length, issues });
         throw new Error('AI returned malformed JSON structure');
       }
     } catch (err) {
       aiError = err instanceof Error ? err.message : String(err);
-      console.error('All AI providers failed, using deterministic fallback:', aiError);
+      logger.error('protocol.all_ai_failed_using_fallback', { userId: user.id, errorMessage: aiError });
       protocolJson = buildFallbackProtocol(profile, biologicalAge, longevityScore, classified, patterns);
       modelUsed = 'fallback';
     }
@@ -240,13 +243,13 @@ export async function POST(request: Request) {
     });
 
     if (dbError) {
-      console.error('DB save error (non-fatal):', dbError);
+      logger.error('protocol.db_insert_failed', { userId: user.id, errorMessage: dbError.message });
       return NextResponse.json({ error: `Database error: ${dbError.message}` }, { status: 500 });
     }
 
     return NextResponse.json({ protocol: protocolJson, longevityScore: finalScore, biologicalAge: finalBioAge, agingPace: finalPace, patterns, modelUsed, aiError });
   } catch (err) {
-    console.error('Protocol generation error:', err);
+    logger.error('protocol.handler_failed', { errorMessage: describeError(err) });
     return NextResponse.json({ error: err instanceof Error ? err.message : String(err) }, { status: 500 });
   }
 }

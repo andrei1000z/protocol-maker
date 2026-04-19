@@ -1,5 +1,13 @@
 import { NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
+import { logger, describeError } from '@/lib/logger';
+
+const ISO_DATE = /^\d{4}-\d{2}-\d{2}$/;
+function isRealDate(s: unknown): s is string {
+  if (typeof s !== 'string' || !ISO_DATE.test(s)) return false;
+  const d = new Date(s);
+  return !Number.isNaN(d.getTime()) && d.toISOString().slice(0, 10) === s;
+}
 
 export async function GET(request: Request) {
   try {
@@ -13,11 +21,13 @@ export async function GET(request: Request) {
     const date = searchParams.get('date');
 
     if (date) {
+      if (!isRealDate(date)) return NextResponse.json({ error: 'Invalid date' }, { status: 400 });
       const { data } = await supabase.from('daily_metrics').select('*').eq('user_id', user.id).eq('date', date).maybeSingle();
       return NextResponse.json({ metrics: data });
     }
 
     if (!startDate || !endDate) return NextResponse.json({ error: 'startDate+endDate or date required' }, { status: 400 });
+    if (!isRealDate(startDate) || !isRealDate(endDate)) return NextResponse.json({ error: 'Invalid date range' }, { status: 400 });
 
     const { data, error } = await supabase
       .from('daily_metrics')
@@ -30,7 +40,7 @@ export async function GET(request: Request) {
     if (error) return NextResponse.json({ error: error.message }, { status: 500 });
     return NextResponse.json({ metrics: data || [] });
   } catch (err) {
-    return NextResponse.json({ error: String(err) }, { status: 500 });
+    return NextResponse.json({ error: describeError(err) }, { status: 500 });
   }
 }
 
@@ -40,9 +50,14 @@ export async function POST(request: Request) {
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) return NextResponse.json({ error: 'Not authenticated' }, { status: 401 });
 
-    const body = await request.json();
-    const { date, ...fields } = body;
-    if (!date) return NextResponse.json({ error: 'date required' }, { status: 400 });
+    const body = await request.json().catch(() => null);
+    if (!body || typeof body !== 'object') {
+      return NextResponse.json({ error: 'Invalid JSON body' }, { status: 400 });
+    }
+    const { date, ...fields } = body as { date: unknown; [k: string]: unknown };
+    if (!isRealDate(date)) {
+      return NextResponse.json({ error: 'date required and must be YYYY-MM-DD (real calendar day)' }, { status: 400 });
+    }
 
     // Try upsert as-is. If DB rejects due to missing columns (pre-migration DB),
     // strip the unknown column and retry — so the UI never breaks while users
@@ -65,6 +80,7 @@ export async function POST(request: Request) {
     }
     return NextResponse.json({ error: 'Too many missing columns — run upgrade.sql in Supabase SQL Editor' }, { status: 500 });
   } catch (err) {
-    return NextResponse.json({ error: String(err) }, { status: 500 });
+    logger.error('daily_metrics.handler_failed', { errorMessage: describeError(err) });
+    return NextResponse.json({ error: describeError(err) }, { status: 500 });
   }
 }

@@ -216,6 +216,10 @@ function useAutoResize(value: string, maxHeight = 180) {
 // ─────────────────────────────────────────────────────────────────────────────
 const STORAGE_KEY = 'protocol:chat:messages:v1';
 
+// Sentinel prefix so the UI can distinguish "AI reply" from "stream error"
+// and show a retry affordance. Real Claude replies never start with this.
+const CHAT_ERROR_PREFIX = '__CHAT_ERR__:';
+
 export default function ChatPage() {
   const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState('');
@@ -324,7 +328,7 @@ export default function ChatPage() {
         const err = await res.json().catch(() => ({ error: `HTTP ${res.status}` }));
         setMessages(curr => {
           const withoutPlaceholder = curr.slice(0, -1);
-          return [...withoutPlaceholder, { role: 'assistant', content: `⚠️ ${err.error || 'Chat failed'}` }];
+          return [...withoutPlaceholder, { role: 'assistant', content: `${CHAT_ERROR_PREFIX}${err.error || 'Chat failed'}` }];
         });
         return;
       }
@@ -348,12 +352,31 @@ export default function ChatPage() {
     } catch (err) {
       setMessages(curr => {
         const withoutPlaceholder = curr.slice(0, -1);
-        return [...withoutPlaceholder, { role: 'assistant', content: `⚠️ ${err instanceof Error ? err.message : 'Error. Try again.'}` }];
+        return [...withoutPlaceholder, { role: 'assistant', content: `${CHAT_ERROR_PREFIX}${err instanceof Error ? err.message : 'Network error. Try again.'}` }];
       });
     } finally {
       setStreaming(false);
     }
   }, [messages, streaming]);
+
+  // Retry the last user message after an error: drop both the error reply
+  // AND the user message, then resend. Preserves conversation order.
+  const retryLast = useCallback(() => {
+    if (streaming) return;
+    setMessages(curr => {
+      // Find the last user message followed by an error — drop the error,
+      // re-send the user message via send()
+      if (curr.length < 2) return curr;
+      const lastIdx = curr.length - 1;
+      const lastMsg = curr[lastIdx];
+      if (lastMsg.role !== 'assistant' || !lastMsg.content.startsWith(CHAT_ERROR_PREFIX)) return curr;
+      const priorUser = curr[lastIdx - 1];
+      if (priorUser?.role !== 'user') return curr;
+      // Drop both, then re-send. send() will re-append them.
+      setTimeout(() => send(priorUser.content), 0);
+      return curr.slice(0, lastIdx - 1);
+    });
+  }, [streaming, send]);
 
   const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
     if (e.key === 'Enter' && !e.shiftKey) {
@@ -460,7 +483,9 @@ export default function ChatPage() {
           // We persist the parsed actions into state on first parse so user statuses survive.
           let cleanText = m.content;
           let derivedActions: ChatAction[] = [];
-          if (m.role === 'assistant' && m.content) {
+          const isErrorReply = m.role === 'assistant' && m.content.startsWith(CHAT_ERROR_PREFIX);
+          const errorMessage = isErrorReply ? m.content.slice(CHAT_ERROR_PREFIX.length) : '';
+          if (m.role === 'assistant' && m.content && !isErrorReply) {
             const { clean, actions: parsed } = parseActions(m.content, i);
             cleanText = clean;
             // Merge: keep statuses/errors from existing state when IDs match
@@ -486,18 +511,37 @@ export default function ChatPage() {
                     </div>
                     <span className="text-[10px] text-muted font-medium uppercase tracking-widest">Protocol AI</span>
                   </div>
-                  <div className={clsx('glass-card rounded-2xl rounded-tl-md px-4 py-3',
-                    m.content === '' && streaming && 'animate-pulse')}>
-                    {m.content ? (
-                      <AssistantContent text={cleanText} />
-                    ) : (
-                      <div className="flex gap-1.5 py-2">
-                        <div className="w-2 h-2 bg-accent rounded-full animate-bounce" style={{ animationDelay: '0ms' }} />
-                        <div className="w-2 h-2 bg-accent rounded-full animate-bounce" style={{ animationDelay: '150ms' }} />
-                        <div className="w-2 h-2 bg-accent rounded-full animate-bounce" style={{ animationDelay: '300ms' }} />
+                  {isErrorReply ? (
+                    <div className="glass-card rounded-2xl rounded-tl-md px-4 py-3 bg-red-500/[0.04] border border-red-500/20">
+                      <div className="flex items-start gap-3">
+                        <span className="text-xl leading-none mt-0.5">⚠️</span>
+                        <div className="flex-1 min-w-0">
+                          <p className="text-sm font-medium text-danger">{errorMessage || 'Something went wrong'}</p>
+                          <p className="text-[11px] text-muted-foreground mt-1">Your message was kept — retry to resend it.</p>
+                          <button
+                            onClick={retryLast}
+                            disabled={streaming}
+                            className="mt-2.5 inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-accent text-black text-xs font-semibold hover:bg-accent-bright disabled:opacity-50 transition-all"
+                          >
+                            ↻ Retry
+                          </button>
+                        </div>
                       </div>
-                    )}
-                  </div>
+                    </div>
+                  ) : (
+                    <div className={clsx('glass-card rounded-2xl rounded-tl-md px-4 py-3',
+                      m.content === '' && streaming && 'animate-pulse')}>
+                      {m.content ? (
+                        <AssistantContent text={cleanText} />
+                      ) : (
+                        <div className="flex gap-1.5 py-2">
+                          <div className="w-2 h-2 bg-accent rounded-full animate-bounce" style={{ animationDelay: '0ms' }} />
+                          <div className="w-2 h-2 bg-accent rounded-full animate-bounce" style={{ animationDelay: '150ms' }} />
+                          <div className="w-2 h-2 bg-accent rounded-full animate-bounce" style={{ animationDelay: '300ms' }} />
+                        </div>
+                      )}
+                    </div>
+                  )}
                   {/* Action chips — appear AFTER streaming finishes for this message */}
                   {!streaming && derivedActions.length > 0 && (
                     <div className="space-y-1.5 pl-1">

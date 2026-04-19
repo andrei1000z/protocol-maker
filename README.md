@@ -4,6 +4,15 @@ AI longevity engine. Blood work in → personalized protocol out. Tracking + ret
 
 **Live**: https://protocol-tawny.vercel.app
 
+## Positioning
+
+- **Target user**: Romanian health-conscious adults 28–45 with disposable income. People who already test their blood once a year and follow Peter Attia / Bryan Johnson / Rhonda Patrick. Not medical patients — *lifestyle optimizers*.
+- **Primary market**: Romania (RON pricing, eMAG sourcing, Synevo / Regina Maria / MedLife PDF parsing). US / EU expansion is G4/G5 in the plan, not day-one.
+- **Framing**: "longevity protocol coach" (like Whoop or Noom's domain), NOT "health dashboard" (like MyChart). Every AI output is lifestyle optimization, not diagnosis. Legal copy on `/privacy` + `/terms` is explicit.
+- **Language**: English UI across the app, Romanian-facing marketing copy on landing once the founder locks H2. Labels in a future i18n dict so RO translation is 1 PR away.
+- **Business model (not yet shipped)**: free tier = lifestyle-only protocol + 1 AI generation / month. Paid €9.99/mo = unlimited regen + Claude Sonnet + daily chat. Covers Anthropic at ~100:1 conversion ratio. See `AUDIT_AND_PLAN.md` § G1.
+- **Moat**: three things competitors don't combine — (a) deterministic engine + AI coach (reproducible, not chatbot-random), (b) device-aware tracking (130+ wearable models → capability-filtered SmartLog), (c) overnight auto-regen so the protocol drifts with your data, not your memory.
+
 ## What it does
 
 1. **Onboarding** (5 steps, ~5 min) — collects 150+ optional fields stored in `profiles.onboarding_data` JSONB. Required: age, height, weight.

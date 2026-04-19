@@ -1,5 +1,40 @@
 import { NextResponse } from 'next/server';
+import { z } from 'zod';
 import { createClient } from '@/lib/supabase/server';
+import { logger, describeError } from '@/lib/logger';
+
+// Validates profile inputs at the API boundary. Ranges are sanity checks —
+// the DB has its own CHECK constraints as defense in depth. All fields are
+// optional because partial saves (per-step onboarding) are normal.
+const ProfileSchema = z.object({
+  age: z.number().int().min(5).max(120).optional().nullable(),
+  sex: z.enum(['male', 'female', 'intersex']).optional().nullable(),
+  heightCm: z.number().min(50).max(260).optional().nullable(),
+  weightKg: z.number().min(20).max(400).optional().nullable(),
+  ethnicity: z.string().max(60).optional().nullable(),
+  latitude: z.number().min(-90).max(90).optional().nullable(),
+  occupation: z.string().max(80).optional().nullable(),
+  activityLevel: z.string().max(20).optional().nullable(),
+  sleepHoursAvg: z.number().min(0).max(14).optional().nullable(),
+  sleepQuality: z.number().int().min(1).max(10).optional().nullable(),
+  dietType: z.string().max(40).optional().nullable(),
+  alcoholDrinksPerWeek: z.number().int().min(0).max(100).optional().nullable(),
+  caffeineMgPerDay: z.number().int().min(0).max(2000).optional().nullable(),
+  smoker: z.boolean().optional().nullable(),
+  cardioMinutesPerWeek: z.number().int().min(0).max(2000).optional().nullable(),
+  strengthSessionsPerWeek: z.number().int().min(0).max(14).optional().nullable(),
+  conditions: z.array(z.string().max(80)).max(40).optional().nullable(),
+  medications: z.array(z.unknown()).max(40).optional().nullable(),
+  currentSupplements: z.array(z.string().max(120)).max(60).optional().nullable(),
+  allergies: z.array(z.string().max(80)).max(40).optional().nullable(),
+  goals: z.array(z.string().max(80)).max(20).optional().nullable(),
+  timeBudgetMin: z.number().int().min(0).max(600).optional().nullable(),
+  monthlyBudgetRon: z.number().int().min(0).max(100000).optional().nullable(),
+  experimentalOpenness: z.enum(['otc_only', 'open_rx', 'open_experimental']).optional().nullable(),
+  onboardingCompleted: z.boolean().optional(),
+  onboardingStep: z.number().int().min(0).max(10).optional(),
+  onboardingData: z.record(z.string(), z.unknown()).optional(),
+}).passthrough();  // extra fields are dropped; Zod ignores them during .passthrough
 
 export async function POST(request: Request) {
   try {
@@ -7,7 +42,13 @@ export async function POST(request: Request) {
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) return NextResponse.json({ error: 'Not authenticated' }, { status: 401 });
 
-    const body = await request.json();
+    const raw = await request.json().catch(() => null);
+    const parsed = ProfileSchema.safeParse(raw);
+    if (!parsed.success) {
+      return NextResponse.json({ error: 'Invalid profile', issues: parsed.error.flatten() }, { status: 400 });
+    }
+    const body = parsed.data;
+
     const { error } = await supabase.from('profiles').update({
       age: body.age,
       sex: body.sex,
@@ -38,9 +79,13 @@ export async function POST(request: Request) {
       onboarding_data: body.onboardingData ?? {},
     }).eq('id', user.id);
 
-    if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+    if (error) {
+      logger.error('save_profile.db_failed', { userId: user.id, errorMessage: error.message });
+      return NextResponse.json({ error: error.message }, { status: 500 });
+    }
     return NextResponse.json({ success: true });
   } catch (err) {
-    return NextResponse.json({ error: String(err) }, { status: 500 });
+    logger.error('save_profile.handler_failed', { errorMessage: describeError(err) });
+    return NextResponse.json({ error: describeError(err) }, { status: 500 });
   }
 }
