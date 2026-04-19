@@ -829,10 +829,14 @@ Return ONLY valid JSON matching this EXACT structure. No markdown, no backticks,
     {
       "name": "<exact supplement name>",
       "dose": "<exact dose with unit>",
-      "timing": "<exact: 'Morning, 7-8 AM' or 'With dinner' or 'Bedtime, 10 PM' — be SPECIFIC>",
+      "timing": "<HH:MM clock time, e.g. '07:30' or '21:30'. NEVER 'anytime' or 'with meals' — pick a specific clock time anchored to user's actual schedule>",
+      "timeOfDay": "<MANDATORY bucket: 'morning' | 'lunch' | 'afternoon' | 'evening' | 'bedtime' — match timing>",
+      "anchorMeal": "<which meal/event to tie it to: 'breakfast' | 'lunch' | 'dinner' | 'pre-workout' | 'post-workout' | 'wake' | 'bedtime' | 'none (empty stomach)'>",
       "form": "<best form: glycinate/citrate/methylated/ubiquinol/etc>",
-      "withFood": <boolean>,
-      "howToTake": "<EXACT instructions: 'Swallow with 250ml water + a fatty meal (10g+ fat for absorption)' OR 'Empty stomach with cold water, wait 30 min before food' OR 'Sublingual under tongue 60 sec then swallow' — pick what's optimal for THIS supplement>",
+      "withFood": <boolean — true if needs food for absorption or to prevent GI upset>,
+      "withWaterMl": <number — recommended water volume in ml, usually 200-300>,
+      "howToTake": "<EXACT step-by-step: 'Swallow with 250ml water + a fatty meal (10g+ fat for absorption). Do NOT take with coffee — tannins block uptake.' Include: water amount, food requirement, what NOT to combine with, any prep (sublingual, dissolved, etc).>",
+      "whyThisTime": "<ONE sentence explaining why THIS specific time: e.g. 'Magnesium glycinate at 21:30 — supports GABA + calms HPA axis before sleep, not morning'. Mandatory — explains the timing choice.>",
       "alreadyTaking": <boolean — true if this is in user's current_supplements list, meaning we keep it>,
       "justification": "<MANDATORY: 'Your [biomarker/lifestyle] is [value], which is [issue]. [Supplement] at [dose] targets this by [mechanism]. Expected: [what to feel/see]. Bryan takes [his dose].'>",
       "interactions": ["<real interactions with their meds or other stack items>"],
@@ -840,7 +844,8 @@ Return ONLY valid JSON matching this EXACT structure. No markdown, no backticks,
       "monthlyCostRon": <estimated cost in RON>,
       "emagSearchQuery": "<exact search query for eMAG.ro>",
       "priority": "<'MUST' | 'STRONG' | 'OPTIONAL'>",
-      "startWeek": <1-12 — when to introduce>
+      "startWeek": <1-12 — when to introduce>,
+      "stackWithOthers": ["<names of other supplements from THIS stack that should be taken together at the same time, for efficiency>"]
     }
   ],
   "supplementsHowTo": [
@@ -905,19 +910,36 @@ Return ONLY valid JSON matching this EXACT structure. No markdown, no backticks,
     }
   ],
   "dailySchedule": [
-    "// IMPORTANT: build the schedule from idealWakeTime → idealBedtime (if provided in onboarding).",
-    "// If user has work/school hours (workStart, workEnd), include them as ONE block entry like:",
-    "//   { time: '08:00 - 14:00', activity: 'School', category: 'school', duration: '6h', notes: '', isBlock: true }",
-    "// Or 'Work' if their occupation isn't student. Use 'work' / 'school' category. Sort all entries chronologically.",
-    "// Include: wake time, morning sunlight, breakfast, supplements (split AM/midday/evening/bedtime), work/school block,",
-    "// lunch, exercise window, dinner, wind-down start, bedtime. Each at its specific time. Be GRANULAR.",
+    "// CRITICAL: The daily schedule is THE MOST IMPORTANT output — it's what the user actually executes. Make it granular, complete, and aligned to their real day.",
+    "// REQUIRED entries (minimum, in order):",
+    "//   1. Wake time + first action (morning sunlight 10 min, 500ml water, box breathing)",
+    "//   2. Morning supplements — ONE entry PER supplement timed 'morning' (list the name + dose inline)",
+    "//   3. Breakfast with protein target + recipe hint",
+    "//   4. Mid-morning supplements if any (e.g. probiotics on empty stomach before lunch)",
+    "//   5. Work/school block if applicable — { time: 'HH:MM - HH:MM', activity: 'Work', category: 'work', isBlock: true }",
+    "//   6. Movement break reminder every 60-90 min during sedentary blocks",
+    "//   7. Lunch with specific time (not vague)",
+    "//   8. Afternoon supplements (creatine, pre-workout, etc.)",
+    "//   9. Exercise window — anchored to their exerciseWindow preference + gymAccess",
+    "//  10. Post-workout if relevant (protein + electrolytes)",
+    "//  11. Dinner 3+ hours before bed",
+    "//  12. Evening supplements (omega-3 with dinner, etc.)",
+    "//  13. Wind-down start (-90 min from bedtime) — screens off, dim lights",
+    "//  14. Bedtime supplements (-60 min: magnesium glycinate + L-theanine if needed)",
+    "//  15. Bedtime with sleep hygiene reminder (cool room, phone away, blackout)",
+    "// ",
+    "// EVERY supplement in the supplements[] array MUST appear in dailySchedule at its exact timing.",
+    "// EVERY meal in nutrition.meals MUST appear here.",
+    "// Users with scheduleType='school' get 'School' instead of 'Work' at their workStart/workEnd.",
+    "// Aim for 15-25 total entries. Each entry ≤60 chars activity, ≤120 chars notes. Sort chronologically.",
     {
-      "time": "<HH:MM or 'HH:MM - HH:MM' for blocks>",
-      "activity": "<what to do — for blocks like work, write 'Work' or 'School'>",
-      "category": "<wake | sleep | supplements | exercise | nutrition | meal | work | school | mindset | tracking | wind-down>",
-      "duration": "<how long>",
-      "notes": "<any details>",
-      "isBlock": <true for work/school spans, false otherwise>
+      "time": "<HH:MM OR 'HH:MM - HH:MM' for work/school/exercise spans>",
+      "activity": "<concise action phrase: 'Vitamin D3 + K2 + Omega-3' or 'Breakfast — 3 eggs, oats, berries' or 'Zone 2 cardio bike'>",
+      "category": "<wake | sleep | supplements | exercise | meal | snack | work | school | mindset | tracking | wind-down | hydration | movement-break>",
+      "duration": "<'2 min' | '20 min' | '45 min' | '' for instant items>",
+      "notes": "<mechanism or tip: 'Fat-soluble — needs breakfast fat for absorption' or 'Stand + walk 5 min each hour' or 'Nasal breathing only'>",
+      "isBlock": <true only for work/school/exercise spans with 'HH:MM - HH:MM' format>,
+      "anchorRef": "<optional — for supplements, the supplement name it ties back to; for meals, the meal name. Lets UI cross-link>"
     }
   ],
   "tracking": {
@@ -976,6 +998,10 @@ Return ONLY valid JSON matching this EXACT structure. No markdown, no backticks,
 FINAL REMINDERS:
 - Every supplement justification MUST cite a specific biomarker with its actual value
 - Every supplement MUST have a non-empty "howToTake" (water amount, with/without food, timing, absorption tips)
+- Every supplement MUST have an explicit "timing" as HH:MM clock time AND a "timeOfDay" bucket AND an "anchorMeal" — NEVER "anytime", NEVER "with meals", NEVER blank
+- Every supplement MUST have a "whyThisTime" 1-sentence mechanism justification (e.g. "Mag glycinate at 21:30 for GABA + HPA-axis calming before sleep")
+- EVERY supplement in supplements[] must also appear as an entry in dailySchedule at its exact time — the schedule IS the execution layer
+- dailySchedule MUST have ≥15 entries covering wake → bedtime granularly; empty daily schedule = broken protocol
 - Respect the ${profile.monthlyBudgetRon} RON/month budget — do NOT exceed it
 - Adapt nutrition to ${profile.dietType} diet — do NOT force veganism
 - bryanComparison MUST have at least 5 entries if the user uploaded biomarkers (pull from their actual values)

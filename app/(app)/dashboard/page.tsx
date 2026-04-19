@@ -1024,98 +1024,136 @@ export default function DashboardPage() {
             </div>
           </div>
 
-          {/* Timing buckets */}
-          {(['morning', 'with food', 'evening', 'bedtime'] as const).map((time) => {
-            const timeSups = p.supplements.filter(s => s.timing?.toLowerCase().includes(time));
-            if (timeSups.length === 0) return null;
-            const labels: Record<string, string> = { morning: '🌅 Morning', 'with food': '🍽️ With food', evening: '🌆 Evening', bedtime: '🌙 Bedtime' };
-            return (
-              <div key={time}>
-                <p className="text-[11px] font-semibold text-accent uppercase tracking-widest mb-2">{labels[time]}</p>
-                <div className="space-y-2">
-                  {timeSups.map((s, i) => (
-                    <div key={i} className={clsx('p-4 rounded-xl border transition-colors',
-                      s.priority === 'MUST' ? 'bg-accent/[0.04] border-accent/25' :
-                      s.priority === 'STRONG' ? 'bg-blue-500/[0.04] border-blue-500/20' :
-                      'bg-surface-2 border-card-border')}>
-                      <div className="flex items-start justify-between gap-3 mb-1">
-                        <div className="flex-1 min-w-0">
-                          <div className="flex items-center gap-2 flex-wrap">
-                            <p className="text-sm font-semibold leading-tight">{s.name}</p>
-                            {s.alreadyTaking && (
-                              <span className="text-[9px] uppercase tracking-wider px-2 py-0.5 rounded-full bg-accent/15 text-accent border border-accent/30 font-medium">
-                                ✓ in your stack
-                              </span>
-                            )}
-                          </div>
-                          <p className="text-[11px] text-muted-foreground mt-0.5">
-                            <span className="font-mono">{s.dose}</span>
-                            {s.form && <> · {s.form}</>}
-                            {s.timing && <> · <span className="text-accent/80">{s.timing}</span></>}
-                          </p>
-                        </div>
-                        <span className={clsx('text-[9px] font-mono px-2 py-0.5 rounded-full shrink-0',
-                          s.priority === 'MUST' ? 'pill-optimal' :
-                          s.priority === 'STRONG' ? 'bg-blue-500/15 text-blue-400 border border-blue-500/25' :
-                          'bg-surface-3 text-muted border border-card-border')}>
-                          {s.priority}
-                        </span>
-                      </div>
+          {/* Timing buckets — uses AI's timeOfDay field with robust fallback inference from timing text */}
+          {(() => {
+            // Order buckets chronologically so the user scans top→bottom through their day
+            const BUCKETS = ['morning', 'lunch', 'afternoon', 'evening', 'bedtime'] as const;
+            const LABELS: Record<string, { title: string; sub: string }> = {
+              morning:   { title: '🌅 Morning',   sub: 'Start of day. Activating supplements + fat-soluble vitamins with breakfast.' },
+              lunch:     { title: '🍽️ Lunch',     sub: 'Midday — with food. Things that need separation from AM iron/calcium or that irritate empty stomach.' },
+              afternoon: { title: '☀️ Afternoon', sub: 'Pre-workout stimulants, afternoon-only compounds (NAC, collagen).' },
+              evening:   { title: '🌆 Evening',   sub: 'Dinner stack. Fat-soluble like Omega-3 with the fattiest meal.' },
+              bedtime:   { title: '🌙 Bedtime',   sub: 'Sleep-supporting. Magnesium glycinate, L-theanine, glycine.' },
+            };
 
-                      {s.howToTake && (
-                        <div className="mt-2 p-2.5 rounded-lg bg-surface-3 border border-card-border">
-                          <p className="text-[10px] uppercase tracking-widest text-muted mb-1">How to take</p>
-                          <p className="text-xs text-foreground/95 leading-relaxed">{s.howToTake}</p>
-                        </div>
-                      )}
+            // Infer a bucket from vague timing strings when AI didn't populate timeOfDay
+            const inferBucket = (s: { timing?: string; timeOfDay?: string }): typeof BUCKETS[number] => {
+              if (s.timeOfDay && (BUCKETS as readonly string[]).includes(s.timeOfDay)) return s.timeOfDay as typeof BUCKETS[number];
+              const t = (s.timing || '').toLowerCase();
+              // Clock time parsing: HH:MM → bucket
+              const m = t.match(/(\d{1,2}):(\d{2})/);
+              if (m) {
+                const hr = parseInt(m[1], 10);
+                if (hr >= 5  && hr < 11) return 'morning';
+                if (hr >= 11 && hr < 14) return 'lunch';
+                if (hr >= 14 && hr < 17) return 'afternoon';
+                if (hr >= 17 && hr < 21) return 'evening';
+                return 'bedtime';
+              }
+              if (/morning|breakfast|a\.m|am\b|wake|early/.test(t)) return 'morning';
+              if (/lunch|noon|mid[- ]?day/.test(t)) return 'lunch';
+              if (/afternoon|pre[- ]?workout|post[- ]?workout/.test(t)) return 'afternoon';
+              if (/bedtime|sleep|night|before bed|21:|22:|23:/.test(t)) return 'bedtime';
+              if (/evening|dinner|p\.m|pm\b/.test(t)) return 'evening';
+              // Sensible default — morning w/ food
+              return 'morning';
+            };
 
-                      <p className="text-[11px] text-muted-foreground mt-2 leading-relaxed">{s.justification}</p>
+            const grouped: Record<string, typeof p.supplements> = { morning: [], lunch: [], afternoon: [], evening: [], bedtime: [] };
+            for (const s of p.supplements) grouped[inferBucket(s)].push(s);
 
-                      {s.interactions && s.interactions.length > 0 && (
-                        <p className="text-[10px] text-warning mt-1.5">⚠️ {s.interactions.join(' · ')}</p>
-                      )}
-                      {s.warnings && (
-                        <p className="text-[10px] text-danger mt-1">⚠️ {s.warnings}</p>
-                      )}
-
-                      {s.startWeek && s.startWeek > 1 && (
-                        <p className="text-[10px] text-amber-400 mt-1.5">Start in week {s.startWeek}</p>
-                      )}
-
-                      <div className="flex items-center justify-between mt-2 pt-2 border-t border-card-border">
-                        <a
-                          href={`https://www.emag.ro/search/${encodeURIComponent(s.emagSearchQuery || s.name + ' ' + (s.form || ''))}`}
-                          target="_blank" rel="noopener noreferrer"
-                          className="inline-flex items-center gap-1 text-[11px] text-accent hover:underline"
-                        >
-                          🛒 Find on eMAG
-                        </a>
-                        {s.monthlyCostRon > 0 && (
-                          <span className="text-[10px] text-muted font-mono">~{s.monthlyCostRon} RON/mo</span>
-                        )}
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            );
-          })}
-
-          {/* Unsorted supplements */}
-          {p.supplements.filter(s => !['morning', 'with food', 'evening', 'bedtime'].some(t => s.timing?.toLowerCase().includes(t))).length > 0 && (
-            <div>
-              <p className="text-[11px] font-semibold text-accent uppercase tracking-widest mb-2">📋 Other</p>
-              <div className="space-y-2">
-                {p.supplements.filter(s => !['morning', 'with food', 'evening', 'bedtime'].some(t => s.timing?.toLowerCase().includes(t))).map((s, i) => (
-                  <div key={i} className="p-4 rounded-xl bg-surface-2 border border-card-border">
-                    <p className="text-sm font-semibold">{s.name} <span className="text-[10px] text-muted font-normal font-mono">· {s.dose} · {s.timing}</span></p>
-                    {s.howToTake && <p className="text-xs text-muted-foreground mt-1.5">{s.howToTake}</p>}
-                    <p className="text-[11px] text-muted-foreground mt-1.5 leading-relaxed">{s.justification}</p>
+            return BUCKETS.filter(bk => grouped[bk].length > 0).map(bk => {
+              const meta = LABELS[bk];
+              const items = grouped[bk];
+              return (
+                <div key={bk}>
+                  <div className="flex items-baseline justify-between gap-2 mb-2">
+                    <p className="text-[11px] font-semibold text-accent uppercase tracking-widest">{meta.title}</p>
+                    <span className="text-[10px] text-muted font-mono">{items.length} item{items.length === 1 ? '' : 's'}</span>
                   </div>
-                ))}
-              </div>
-            </div>
-          )}
+                  <p className="text-[11px] text-muted-foreground mb-2 leading-snug">{meta.sub}</p>
+                  <div className="space-y-2">
+                    {items.map((s, i) => (
+                      <div key={i} className={clsx('p-4 rounded-xl border transition-colors',
+                        s.priority === 'MUST' ? 'bg-accent/[0.04] border-accent/25' :
+                        s.priority === 'STRONG' ? 'bg-blue-500/[0.04] border-blue-500/20' :
+                        'bg-surface-2 border-card-border')}>
+                        <div className="flex items-start justify-between gap-3 mb-1">
+                          <div className="flex-1 min-w-0">
+                            <div className="flex items-center gap-2 flex-wrap">
+                              <p className="text-sm font-semibold leading-tight">{s.name}</p>
+                              {s.alreadyTaking && (
+                                <span className="text-[9px] uppercase tracking-wider px-2 py-0.5 rounded-full bg-accent/15 text-accent border border-accent/30 font-medium">
+                                  ✓ in your stack
+                                </span>
+                              )}
+                            </div>
+                            <p className="text-[11px] text-muted-foreground mt-0.5">
+                              <span className="font-mono">{s.dose}</span>
+                              {s.form && <> · {s.form}</>}
+                              {s.timing && <> · <span className="text-accent/80 font-mono">{s.timing}</span></>}
+                              {s.anchorMeal && s.anchorMeal !== 'none (empty stomach)' && <> · <span className="text-muted">with {s.anchorMeal}</span></>}
+                              {s.anchorMeal === 'none (empty stomach)' && <> · <span className="text-amber-400/80">empty stomach</span></>}
+                            </p>
+                          </div>
+                          <span className={clsx('text-[9px] font-mono px-2 py-0.5 rounded-full shrink-0',
+                            s.priority === 'MUST' ? 'pill-optimal' :
+                            s.priority === 'STRONG' ? 'bg-blue-500/15 text-blue-400 border border-blue-500/25' :
+                            'bg-surface-3 text-muted border border-card-border')}>
+                            {s.priority}
+                          </span>
+                        </div>
+
+                        {s.howToTake && (
+                          <div className="mt-2 p-2.5 rounded-lg bg-surface-3 border border-card-border">
+                            <p className="text-[10px] uppercase tracking-widest text-muted mb-1">How to take</p>
+                            <p className="text-xs text-foreground/95 leading-relaxed">{s.howToTake}</p>
+                          </div>
+                        )}
+
+                        {s.whyThisTime && (
+                          <div className="mt-2 flex gap-2 items-start">
+                            <span className="text-[10px] text-accent/80 shrink-0 mt-0.5">⏱</span>
+                            <p className="text-[11px] text-foreground/85 leading-relaxed italic">{s.whyThisTime}</p>
+                          </div>
+                        )}
+
+                        <p className="text-[11px] text-muted-foreground mt-2 leading-relaxed">{s.justification}</p>
+
+                        {s.stackWithOthers && s.stackWithOthers.length > 0 && (
+                          <p className="text-[10px] text-accent/80 mt-1.5">⊕ Take together with: {s.stackWithOthers.join(', ')}</p>
+                        )}
+
+                        {s.interactions && s.interactions.length > 0 && (
+                          <p className="text-[10px] text-warning mt-1.5">⚠️ {s.interactions.join(' · ')}</p>
+                        )}
+                        {s.warnings && (
+                          <p className="text-[10px] text-danger mt-1">⚠️ {s.warnings}</p>
+                        )}
+
+                        {s.startWeek && s.startWeek > 1 && (
+                          <p className="text-[10px] text-amber-400 mt-1.5">Start in week {s.startWeek}</p>
+                        )}
+
+                        <div className="flex items-center justify-between mt-2 pt-2 border-t border-card-border">
+                          <a
+                            href={`https://www.emag.ro/search/${encodeURIComponent(s.emagSearchQuery || s.name + ' ' + (s.form || ''))}`}
+                            target="_blank" rel="noopener noreferrer"
+                            className="inline-flex items-center gap-1 text-[11px] text-accent hover:underline"
+                          >
+                            🛒 Find on eMAG
+                          </a>
+                          {s.monthlyCostRon > 0 && (
+                            <span className="text-[10px] text-muted font-mono">~{s.monthlyCostRon} RON/mo</span>
+                          )}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              );
+            });
+          })()}
 
           {/* Universal how-to-take rules */}
           {p.supplementsHowTo && p.supplementsHowTo.length > 0 && (
@@ -1133,60 +1171,122 @@ export default function DashboardPage() {
         </>)}
       </Section>
 
-      {/* Daily Schedule */}
-      <Section id="schedule" title="Daily Schedule" icon="⏰" subtitle="Your day from ideal wake to ideal bedtime, with work/school blocks called out so you can plan around them.">
-        {(!p.dailySchedule || p.dailySchedule.length === 0) ? <EmptyState message="Daily timeline will appear once your protocol generates." /> : (
-          <div className="space-y-1.5">
-            {p.dailySchedule.map((item, i) => {
-              const isBlock = item.isBlock || item.category === 'work' || item.category === 'school';
-              const categoryColor =
-                item.category === 'sleep' || item.category === 'wind-down' ? 'text-blue-400' :
-                item.category === 'exercise' ? 'text-amber-400' :
-                item.category === 'meal' || item.category === 'nutrition' ? 'text-orange-400' :
-                item.category === 'supplements' ? 'text-purple-400' :
-                item.category === 'work' || item.category === 'school' ? 'text-foreground' :
-                'text-accent';
+      {/* Daily Schedule — grouped by time-of-day phase for easy scanning */}
+      <Section id="schedule" title="Daily Schedule" icon="⏰" subtitle="Every action of your day at its exact time. Wake → supplements → meals → exercise → wind-down → bedtime. Each item links back to why.">
+        {(!p.dailySchedule || p.dailySchedule.length === 0) ? <EmptyState message="Daily timeline will appear once your protocol generates." /> : (() => {
+          // Split entries into phases so the user sees a cohesive day, not a flat list
+          const PHASES = [
+            { key: 'morning',   label: '🌅 Morning',      range: [5, 11] },
+            { key: 'work',      label: '💼 Daytime',      range: [11, 15] },
+            { key: 'afternoon', label: '☀️ Afternoon',    range: [15, 18] },
+            { key: 'evening',   label: '🌆 Evening',      range: [18, 21] },
+            { key: 'bedtime',   label: '🌙 Wind-down + bed', range: [21, 29] },  // 29 = 5am next day
+          ] as const;
 
-              if (isBlock) {
-                // Wide block bar for school/work
-                return (
-                  <div key={i} className="flex items-center gap-3 p-3.5 rounded-xl bg-gradient-to-r from-amber-500/[0.06] to-transparent border border-amber-500/20">
-                    <div className="flex items-center justify-center w-12 h-12 rounded-xl bg-amber-500/10 border border-amber-500/20 shrink-0">
-                      <span className="text-lg">{item.category === 'school' ? '🎓' : '💼'}</span>
-                    </div>
-                    <div className="flex-1 min-w-0">
-                      <p className="text-sm font-semibold">{item.activity}</p>
-                      <p className="text-xs text-amber-400/90 font-mono">{item.time}</p>
-                      {item.notes && <p className="text-[11px] text-muted-foreground mt-0.5">{item.notes}</p>}
-                    </div>
-                  </div>
-                );
-              }
+          const getHour = (time: string): number => {
+            const m = time.match(/(\d{2}):(\d{2})/);
+            if (!m) return 0;
+            const h = parseInt(m[1], 10);
+            return h < 5 ? h + 24 : h;  // treat early AM as part of previous bedtime
+          };
+          const phaseOf = (time: string) => {
+            const h = getHour(time);
+            return PHASES.find(p => h >= p.range[0] && h < p.range[1]) || PHASES[0];
+          };
 
-              return (
-                <div key={i} className="flex items-start gap-3 p-3 rounded-xl hover:bg-surface-2 transition-colors">
-                  <span className={clsx('text-xs font-mono w-14 shrink-0 pt-0.5', categoryColor)}>{item.time}</span>
-                  <div className={clsx('w-0.5 self-stretch shrink-0 rounded',
-                    item.category === 'sleep' || item.category === 'wind-down' ? 'bg-blue-400/30' :
-                    item.category === 'exercise' ? 'bg-amber-400/30' :
-                    item.category === 'meal' || item.category === 'nutrition' ? 'bg-orange-400/30' :
-                    item.category === 'supplements' ? 'bg-purple-400/30' :
-                    'bg-accent/30')} />
-                  <div className="flex-1 min-w-0">
-                    <p className="text-sm leading-snug">{item.activity}</p>
-                    {(item.duration || item.notes) && (
-                      <p className="text-[11px] text-muted mt-0.5">
-                        {item.duration && <span>{item.duration}</span>}
-                        {item.duration && item.notes && <span> · </span>}
-                        {item.notes && <span className="text-muted-foreground">{item.notes}</span>}
-                      </p>
-                    )}
-                  </div>
+          const colorFor = (cat: string) =>
+            cat === 'sleep' || cat === 'wind-down'         ? { text: 'text-blue-400',   bar: 'bg-blue-400/30',   bg: 'bg-blue-500/[0.03]', dot: 'bg-blue-400' }
+            : cat === 'exercise'                           ? { text: 'text-amber-400',  bar: 'bg-amber-400/30',  bg: 'bg-amber-500/[0.04]', dot: 'bg-amber-400' }
+            : cat === 'meal' || cat === 'snack'            ? { text: 'text-orange-400', bar: 'bg-orange-400/30', bg: 'bg-orange-500/[0.03]', dot: 'bg-orange-400' }
+            : cat === 'supplements'                        ? { text: 'text-purple-400', bar: 'bg-purple-400/30', bg: 'bg-purple-500/[0.03]', dot: 'bg-purple-400' }
+            : cat === 'hydration'                          ? { text: 'text-cyan-400',   bar: 'bg-cyan-400/30',   bg: 'bg-cyan-500/[0.03]', dot: 'bg-cyan-400' }
+            : cat === 'movement-break'                     ? { text: 'text-lime-400',   bar: 'bg-lime-400/30',   bg: 'bg-lime-500/[0.03]', dot: 'bg-lime-400' }
+            : cat === 'work' || cat === 'school'           ? { text: 'text-foreground', bar: 'bg-card-border',   bg: 'bg-surface-2', dot: 'bg-foreground/50' }
+            : cat === 'mindset'                            ? { text: 'text-pink-400',   bar: 'bg-pink-400/30',   bg: 'bg-pink-500/[0.03]', dot: 'bg-pink-400' }
+            :                                                { text: 'text-accent',     bar: 'bg-accent/30',     bg: 'bg-accent/[0.03]', dot: 'bg-accent' };
+
+          const iconFor = (cat: string) =>
+            cat === 'sleep'          ? '🛏️' :
+            cat === 'wind-down'      ? '🌙' :
+            cat === 'wake'           ? '☀️' :
+            cat === 'exercise'       ? '🏋️' :
+            cat === 'meal'           ? '🍽️' :
+            cat === 'snack'          ? '🥜' :
+            cat === 'supplements'    ? '💊' :
+            cat === 'hydration'      ? '💧' :
+            cat === 'movement-break' ? '🚶' :
+            cat === 'work'           ? '💼' :
+            cat === 'school'         ? '🎓' :
+            cat === 'mindset'        ? '🧘' :
+                                       '·';
+
+          // Group entries into phases, preserving chronological order within each
+          const grouped: Record<string, typeof p.dailySchedule> = {};
+          for (const entry of p.dailySchedule!) {
+            const ph = phaseOf(entry.time);
+            (grouped[ph.key] ||= []).push(entry);
+          }
+
+          const totalEntries = p.dailySchedule!.length;
+
+          return (
+            <div className="space-y-5">
+              <p className="text-[11px] text-muted-foreground">{totalEntries} actions today · tap an entry for its mechanism</p>
+
+              {PHASES.filter(ph => (grouped[ph.key] || []).length > 0).map(ph => (
+                <div key={ph.key} className="space-y-1.5">
+                  <p className="text-[11px] font-semibold text-accent uppercase tracking-widest sticky top-[3.5rem] bg-background/90 backdrop-blur-sm py-1 z-10">
+                    {ph.label}
+                  </p>
+                  {(grouped[ph.key] || []).map((item, i) => {
+                    const isBlock = item.isBlock || item.category === 'work' || item.category === 'school' || item.category === 'exercise';
+                    const c = colorFor(item.category);
+
+                    if (isBlock) {
+                      return (
+                        <div key={i} className={clsx('flex items-center gap-3 p-3.5 rounded-xl border', c.bg, 'border-' + c.text.replace('text-', '') + '/20')}>
+                          <div className="flex items-center justify-center w-11 h-11 rounded-xl bg-surface-3 border border-card-border shrink-0">
+                            <span className="text-lg">{iconFor(item.category)}</span>
+                          </div>
+                          <div className="flex-1 min-w-0">
+                            <p className="text-sm font-semibold">{item.activity}</p>
+                            <p className={clsx('text-xs font-mono mt-0.5', c.text)}>{item.time}{item.duration && ` · ${item.duration}`}</p>
+                            {item.notes && <p className="text-[11px] text-muted-foreground mt-0.5 leading-snug">{item.notes}</p>}
+                          </div>
+                        </div>
+                      );
+                    }
+
+                    return (
+                      <div key={i} className="flex items-start gap-3 px-3 py-2.5 rounded-xl hover:bg-surface-2 transition-colors group">
+                        <span className={clsx('text-xs font-mono w-12 shrink-0 pt-0.5 font-medium', c.text)}>{item.time}</span>
+                        <div className={clsx('relative w-1 self-stretch shrink-0 rounded-full', c.bar)}>
+                          <span className={clsx('absolute -left-1 top-1 w-3 h-3 rounded-full border-2 border-background', c.dot)} />
+                        </div>
+                        <div className="flex-1 min-w-0 pt-0.5">
+                          <div className="flex items-start gap-2">
+                            <span className="text-sm shrink-0">{iconFor(item.category)}</span>
+                            <p className="text-sm leading-snug flex-1">{item.activity}</p>
+                          </div>
+                          {(item.duration || item.notes) && (
+                            <p className="text-[11px] text-muted mt-1 ml-6">
+                              {item.duration && <span>{item.duration}</span>}
+                              {item.duration && item.notes && <span> · </span>}
+                              {item.notes && <span className="text-muted-foreground">{item.notes}</span>}
+                            </p>
+                          )}
+                          {item.anchorRef && (
+                            <a href="#supplements" className="inline-block mt-1 ml-6 text-[10px] text-accent hover:underline">→ {item.anchorRef} card</a>
+                          )}
+                        </div>
+                      </div>
+                    );
+                  })}
                 </div>
-              );
-            })}
-          </div>
-        )}
+              ))}
+            </div>
+          );
+        })()}
       </Section>
 
       {/* Exercise */}

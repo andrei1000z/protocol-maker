@@ -231,11 +231,15 @@ export interface ProtocolOutput {
   supplements: {
     name: string;
     dose: string;
-    timing: string;
+    timing: string;             // HH:MM clock time, e.g. "07:30"
+    timeOfDay?: 'morning' | 'lunch' | 'afternoon' | 'evening' | 'bedtime';
+    anchorMeal?: 'breakfast' | 'lunch' | 'dinner' | 'pre-workout' | 'post-workout' | 'wake' | 'bedtime' | 'none (empty stomach)' | string;
     form: string;
     withFood?: boolean;
-    howToTake?: string;     // e.g. "with 250ml water + a fatty meal"
-    alreadyTaking?: boolean; // true if from user's current_supplements (we keep it)
+    withWaterMl?: number;
+    howToTake?: string;         // step-by-step instructions
+    whyThisTime?: string;       // 1-sentence mechanism for WHY this time
+    alreadyTaking?: boolean;    // true if from user's current_supplements (we keep it)
     justification: string;
     interactions: string[];
     warnings?: string;
@@ -243,6 +247,7 @@ export interface ProtocolOutput {
     emagSearchQuery?: string;
     priority: 'MUST' | 'STRONG' | 'OPTIONAL' | 'AVOID';
     startWeek?: number;
+    stackWithOthers?: string[]; // names of co-timed supplements
   }[];
   supplementsHowTo?: string[];  // top-level: 6-10 general rules ("water 250ml minimum", "fat-soluble with fat", etc.)
   exercise: {
@@ -278,12 +283,13 @@ export interface ProtocolOutput {
     tips: { tip: string; why: string; difficulty: 'easy' | 'medium' | 'hard' }[];
   }[];
   dailySchedule?: {
-    time: string;        // start time, e.g. "07:00" or "08:00 - 14:00" for blocks
+    time: string;        // "07:00" or "08:00 - 14:00" for blocks
     activity: string;
-    category: string;    // sleep | wake | work | school | meal | exercise | supplements | mindset | nutrition | tracking | wind-down
+    category: string;    // wake | sleep | supplements | exercise | meal | snack | work | school | mindset | tracking | wind-down | hydration | movement-break
     duration: string;
     notes: string;
-    isBlock?: boolean;   // true for work/school spans (renders as a wide bar instead of single time)
+    isBlock?: boolean;
+    anchorRef?: string;  // e.g. "Magnesium Glycinate" — lets UI link this entry back to its supplement card
   }[];
   tracking: {
     daily: string[];

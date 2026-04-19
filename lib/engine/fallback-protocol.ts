@@ -228,7 +228,7 @@ export function buildFallbackProtocol(
         { tip: 'Maintain social connections', why: 'Loneliness = 15 cigarettes/day mortality', difficulty: 'medium' },
       ]},
     ],
-    dailySchedule: buildFallbackDailySchedule(profile),
+    dailySchedule: buildFallbackDailySchedule(profile, buildFallbackSupplements(profile, classified)),
     bryanComparison: buildFallbackBryanComparison(classified),
     dailyBriefing: {
       morningPriorities: [
@@ -266,7 +266,29 @@ function buildFallbackBryanComparison(classified: BiomarkerValue[]) {
     });
 }
 
-function buildFallbackDailySchedule(profile: UserProfile) {
+type ScheduleEntry = {
+  time: string;
+  activity: string;
+  category: string;
+  duration: string;
+  notes: string;
+  isBlock?: boolean;
+  anchorRef?: string;
+};
+type SupplementEntry = {
+  name: string;
+  dose: string;
+  timing: string;
+  timeOfDay?: 'morning' | 'lunch' | 'afternoon' | 'evening' | 'bedtime';
+  anchorMeal?: string;
+  whyThisTime?: string;
+};
+
+// Build a rich 15-25 entry schedule that includes EVERY supplement at its
+// explicit time, plus meals, movement breaks, exercise, wind-down, bedtime.
+// Supplements that share a timing get stacked into one entry (saves clutter
+// and gives the user a realistic "take these 3 together" prompt).
+function buildFallbackDailySchedule(profile: UserProfile, supplements: Array<Record<string, unknown>>) {
   const od = (profile as UserProfile & { onboardingData?: Record<string, unknown> }).onboardingData || {};
   const wakeTime = (od.idealWakeTime as string) || profile.wakeTime || '07:00';
   const idealBed = (od.idealBedtime as string) || profile.bedtime || '22:30';
@@ -287,36 +309,100 @@ function buildFallbackDailySchedule(profile: UserProfile) {
   const blockLabel = scheduleType === 'school' ? 'School' : scheduleType === 'both' ? 'School + work' : scheduleType === 'freelance' ? 'Focus block' : 'Work';
   const blockCategory = isStudent ? 'school' : 'work';
 
-  const schedule: Array<{ time: string; activity: string; category: string; duration: string; notes: string; isBlock?: boolean }> = [];
-
-  schedule.push({ time: fmt(w.h, w.m), activity: 'Wake — 10 min direct sunlight + 500ml water', category: 'wake', duration: '15 min', notes: 'No phone yet. Sets circadian rhythm for the day.' });
-  schedule.push({ time: fmt(w.h, w.m + 15), activity: 'Vitamin D3 + K2 + Omega-3 with breakfast fat', category: 'supplements', duration: '2 min', notes: 'Fat-soluble — needs the breakfast fat to absorb' });
-  schedule.push({ time: fmt(w.h + 1), activity: 'Breakfast — protein-forward (≥30g protein)', category: 'meal', duration: '20 min', notes: 'Anchors blood sugar for the day' });
-
-  if (workStart && workEnd && !noSchedule) {
-    schedule.push({ time: `${workStart} - ${workEnd}`, activity: blockLabel, category: blockCategory, duration: '', notes: 'Stand + walk 5 min every hour', isBlock: true });
+  // Group supplements by their `timing` (HH:MM) so multiple get combined
+  const supsByTime: Record<string, SupplementEntry[]> = {};
+  for (const s of supplements as SupplementEntry[]) {
+    const t = (s.timing && /^\d{2}:\d{2}$/.test(s.timing)) ? s.timing : '07:30';
+    if (!supsByTime[t]) supsByTime[t] = [];
+    supsByTime[t].push({ ...s, timing: t });
   }
 
-  schedule.push({ time: '13:00', activity: 'Lunch — biggest meal of the day', category: 'meal', duration: '30 min', notes: '10 min walk after — drops glucose ~20%' });
+  const schedule: ScheduleEntry[] = [];
 
+  // ── MORNING ────────────────────────────────────────────────────────────
+  schedule.push({ time: fmt(w.h, w.m), activity: 'Wake + 500ml water', category: 'wake', duration: '5 min', notes: 'No phone first 10 min. Hydration > caffeine before 9 AM.' });
+  schedule.push({ time: fmt(w.h, w.m + 5), activity: 'Morning sunlight walk', category: 'mindset', duration: '10 min', notes: 'Anchors circadian; improves night-time melatonin secretion.' });
+  schedule.push({ time: fmt(w.h + 1), activity: 'Breakfast — protein-forward (≥30g)', category: 'meal', duration: '20 min', notes: 'Eat protein first — blunts glucose spike. 3 eggs + oats + berries is a strong default.' });
+
+  // ── SUPPLEMENT BLOCKS — merge per-time ─────────────────────────────────
+  for (const time of Object.keys(supsByTime).sort()) {
+    const items = supsByTime[time];
+    const [hh, mm] = time.split(':').map(Number);
+    const names = items.map(s => `${s.name} ${s.dose}`).join(' + ');
+    const firstWhy = items[0]?.whyThisTime || 'See supplement card for mechanism.';
+    const bucket = items[0]?.timeOfDay || 'morning';
+    // Skip if this is extremely close to wake/breakfast/bedtime events already handled
+    const isMorning = bucket === 'morning';
+    const isBedtime = bucket === 'bedtime';
+    schedule.push({
+      time: fmt(hh, mm),
+      activity: `Take: ${names}`,
+      category: 'supplements',
+      duration: '2 min',
+      notes: firstWhy + (items.length > 1 ? ` (${items.length} items stacked at this time)` : ''),
+      anchorRef: items[0]?.name,
+    });
+    // Hydration anchor after morning supplement block
+    if (isMorning && !schedule.some(e => e.category === 'hydration')) {
+      schedule.push({ time: fmt(hh, mm + 5), activity: 'Hydrate 300ml water', category: 'hydration', duration: '1 min', notes: '' });
+    }
+    // Wind-down start anchor before bedtime supplements
+    if (isBedtime && !schedule.some(e => e.category === 'wind-down')) {
+      schedule.push({ time: fmt(hh, mm - 30), activity: 'Wind-down — dim lights, screens off', category: 'wind-down', duration: '30 min', notes: 'Read fiction, stretch, talk with family. No blue light.' });
+    }
+  }
+
+  // ── WORK/SCHOOL BLOCK ──────────────────────────────────────────────────
+  if (workStart && workEnd && !noSchedule) {
+    schedule.push({ time: `${workStart} - ${workEnd}`, activity: blockLabel, category: blockCategory, duration: '', notes: 'Stand + walk 5 min every hour. Ergonomic posture check every 2h.', isBlock: true });
+    // Mid-morning movement reminder
+    const [wsH] = workStart.split(':').map(Number);
+    schedule.push({ time: fmt(wsH + 2), activity: 'Movement break — 5 min walk', category: 'movement-break', duration: '5 min', notes: 'Fight the sitting — lymphatic + glucose reset.' });
+  }
+
+  // ── MIDDAY ─────────────────────────────────────────────────────────────
+  schedule.push({ time: '13:00', activity: 'Lunch — biggest meal', category: 'meal', duration: '30 min', notes: '10 min walk after — drops post-prandial glucose ~20%.' });
+  schedule.push({ time: '13:40', activity: 'Post-lunch walk', category: 'movement-break', duration: '10 min', notes: 'Glucose AUC -20% per Diabetes Care 2016.' });
+
+  // ── AFTERNOON SNACK (optional, only if long workday) ──────────────────
+  if (workEnd && workEnd >= '17:00') {
+    schedule.push({ time: '15:30', activity: 'Snack — protein + fat (handful of nuts + yogurt)', category: 'snack', duration: '5 min', notes: 'Bridges the energy dip; keeps dinner portion controlled.' });
+  }
+
+  // ── EXERCISE ───────────────────────────────────────────────────────────
   const exerciseHour = profile.exerciseWindow === 'morning' ? Math.max(w.h - 1, 5)
                       : profile.exerciseWindow === 'lunch' ? 12
                       : 17;
   if (profile.exerciseWindow !== 'morning' || !workStart) {
-    schedule.push({ time: fmt(exerciseHour), activity: 'Exercise — see weekly plan for today\'s session', category: 'exercise', duration: '45 min', notes: 'Warm up 5 min before any heavy work' });
+    schedule.push({ time: fmt(exerciseHour), activity: 'Exercise — see weekly plan', category: 'exercise', duration: '45 min', notes: 'Warm up 5 min. Progressive overload weekly.', isBlock: true });
   }
 
-  schedule.push({ time: fmt(b.h - 3), activity: 'Dinner — lighter, lower-carb', category: 'meal', duration: '30 min', notes: '3+ hours before bed for clean digestion overnight' });
-  schedule.push({ time: fmt(b.h - 1, 30), activity: 'Wind-down: dim lights, screens off', category: 'wind-down', duration: '60 min', notes: 'Read fiction, stretch, talk to family' });
-  schedule.push({ time: fmt(b.h - 1), activity: 'Magnesium Glycinate 400mg + L-theanine if stressed', category: 'supplements', duration: '2 min', notes: '' });
-  schedule.push({ time: fmt(b.h, b.m), activity: 'Lights out — bed', category: 'sleep', duration: computeSleepDuration(idealBed, wakeTime), notes: '18-20°C, total darkness, phone in another room' });
+  // ── EVENING ────────────────────────────────────────────────────────────
+  const dinnerH = b.h - 3;
+  schedule.push({ time: fmt(dinnerH), activity: 'Dinner — lighter, lower-carb', category: 'meal', duration: '30 min', notes: 'Last meal 3h+ before bed for clean overnight digestion + deep sleep.' });
 
-  schedule.sort((a, c) => {
+  // Ensure wind-down + bedtime exist even without bedtime supplements
+  if (!schedule.some(e => e.category === 'wind-down')) {
+    schedule.push({ time: fmt(b.h - 1, 30), activity: 'Wind-down — dim lights, screens off', category: 'wind-down', duration: '60 min', notes: 'Read fiction, stretch. No blue light after sunset.' });
+  }
+  schedule.push({ time: fmt(b.h, b.m - 10), activity: 'Sleep hygiene — room 18-20°C, phone out of bedroom, blackout', category: 'wind-down', duration: '5 min', notes: 'Single highest-ROI sleep upgrade is room temperature.' });
+  schedule.push({ time: fmt(b.h, b.m), activity: 'Lights out — bed', category: 'sleep', duration: computeSleepDuration(idealBed, wakeTime), notes: '18-20°C, total darkness, phone in another room.' });
+
+  // Dedupe if two entries share the same time + activity
+  const seen = new Set<string>();
+  const deduped = schedule.filter(e => {
+    const k = `${e.time}|${e.activity}`;
+    if (seen.has(k)) return false;
+    seen.add(k);
+    return true;
+  });
+
+  deduped.sort((a, c) => {
     const aTime = a.time.split(' - ')[0];
     const cTime = c.time.split(' - ')[0];
     return aTime.localeCompare(cTime);
   });
-  return schedule;
+  return deduped;
 }
 
 function buildFallbackMeals(dietType: string, calories: number) {
@@ -418,28 +504,83 @@ function buildFallbackSupplements(profile: UserProfile, classified: BiomarkerVal
   const has = (kw: string) => current.some(c => c.includes(kw));
   const lowVitD = classified.some(b => b.code === 'VITD' && b.classification !== 'OPTIMAL');
 
-  const stack = [
+  // Rule-based timing map for common user-mentioned supplements — prevents
+  // vague "(when you currently take it)" fallback for well-known compounds.
+  const SUPP_TIMING_RULES: Array<{
+    match: RegExp;
+    timing: string;
+    timeOfDay: 'morning' | 'lunch' | 'afternoon' | 'evening' | 'bedtime';
+    anchorMeal: string;
+    withFood: boolean;
+    howToTake: string;
+    whyThisTime: string;
+  }> = [
+    { match: /b[- ]?12|methylcobalamin|cyanocobalamin/i, timing: '07:30', timeOfDay: 'morning', anchorMeal: 'breakfast', withFood: true, howToTake: 'Sublingual 60 sec under tongue then swallow — absorption ~3× higher than pills.', whyThisTime: 'B12 is stimulating — morning only; taking it late disrupts sleep.' },
+    { match: /b[- ]?complex/i, timing: '07:30', timeOfDay: 'morning', anchorMeal: 'breakfast', withFood: true, howToTake: 'With breakfast — B-vitamins need food to prevent mild nausea + maximize absorption.', whyThisTime: 'All B-vitamins are stimulating; never take after 14:00.' },
+    { match: /zinc/i, timing: '12:30', timeOfDay: 'lunch', anchorMeal: 'lunch', withFood: true, howToTake: 'With lunch + 250ml water. Zinc picolinate/bisglycinate are best absorbed. Avoid with coffee within 1h.', whyThisTime: 'Zinc on empty stomach = nausea for most. Lunch also gives it distance from AM iron/multivitamin.' },
+    { match: /iron|fier/i, timing: '10:00', timeOfDay: 'morning', anchorMeal: 'none (empty stomach)', withFood: false, howToTake: 'Empty stomach with 200ml water + vitamin C (100mg). No coffee/tea/dairy within 2h — cuts absorption 40-80%.', whyThisTime: 'Iron needs acidic empty stomach for absorption; separate from calcium/zinc by 2h.' },
+    { match: /calcium|calciu/i, timing: '18:30', timeOfDay: 'evening', anchorMeal: 'dinner', withFood: true, howToTake: 'Split doses ≤500mg per serving. Take with dinner — never with iron (blocks each other).', whyThisTime: 'Split across meals; evening dose helps overnight bone remodeling.' },
+    { match: /ashwagandha/i, timing: '20:30', timeOfDay: 'evening', anchorMeal: 'dinner', withFood: true, howToTake: 'KSM-66 or Sensoril extract 300-600mg with dinner. Consistency over 4-6 weeks for full cortisol benefit.', whyThisTime: 'Lowers evening cortisol + improves sleep onset — not stimulating, ideal evening use.' },
+    { match: /l[- ]?theanine|theanine/i, timing: '21:30', timeOfDay: 'bedtime', anchorMeal: 'bedtime', withFood: false, howToTake: '200mg sublingual or capsule 60 min before bed. Pairs synergistically with magnesium glycinate.', whyThisTime: 'Boosts GABA + alpha-waves without sedation — enables sleep onset without drowsiness next day.' },
+    { match: /coq10|ubiquinol/i, timing: '08:00', timeOfDay: 'morning', anchorMeal: 'breakfast', withFood: true, howToTake: 'Ubiquinol form (100-200mg) with fatty meal — it is fat-soluble. Dry stomach wastes it.', whyThisTime: 'Mitochondrial support for daytime energy; taking at night can disrupt sleep.' },
+    { match: /nac|n-acetyl/i, timing: '16:00', timeOfDay: 'afternoon', anchorMeal: 'none (empty stomach)', withFood: false, howToTake: 'Empty stomach 600-1200mg. Smells of sulfur — unavoidable. With 300ml water.', whyThisTime: 'Glutathione precursor; afternoon dose matches daytime oxidative load without disrupting sleep.' },
+    { match: /curcumin|turmeric|curcuma/i, timing: '18:30', timeOfDay: 'evening', anchorMeal: 'dinner', withFood: true, howToTake: 'With dinner + black pepper (piperine) + 10g+ fat. Without piperine, absorption is <1%.', whyThisTime: 'Dinner has highest fat; anti-inflammatory effect works overnight on joints/vascular tissue.' },
+    { match: /probiotics?|probiot/i, timing: '10:30', timeOfDay: 'morning', anchorMeal: 'none (empty stomach)', withFood: false, howToTake: 'Empty stomach between meals, 20+ billion CFU, refrigerated brands only. Store in fridge.', whyThisTime: 'Empty stomach = less acid to kill bacteria during transit.' },
+    { match: /collagen/i, timing: '15:00', timeOfDay: 'afternoon', anchorMeal: 'none (empty stomach)', withFood: false, howToTake: 'Mix 10-20g hydrolyzed peptides in water or coffee. Type I + III for skin/joints.', whyThisTime: 'Any time works but AFT tea/coffee adds habit anchor.' },
+    { match: /ashwag|rhodiola/i, timing: '07:30', timeOfDay: 'morning', anchorMeal: 'breakfast', withFood: true, howToTake: 'Rhodiola 200-400mg with breakfast. Start 4 weeks, assess.', whyThisTime: 'Rhodiola is stimulating — morning only.' },
+    { match: /5[- ]?htp|tryptophan/i, timing: '21:30', timeOfDay: 'bedtime', anchorMeal: 'bedtime', withFood: false, howToTake: '100-200mg 30-60 min before bed, empty stomach. NOT if on SSRIs/MAOIs.', whyThisTime: 'Serotonin precursor → melatonin; takes 30-60 min to cross BBB.' },
+    { match: /melatonin|melatonina/i, timing: '21:30', timeOfDay: 'bedtime', anchorMeal: 'bedtime', withFood: false, howToTake: 'Start with 0.3mg (not 5mg). Sublingual 30 min before bed.', whyThisTime: 'Pharmacologic doses suppress endogenous production; micro-dose is all that works.' },
+    { match: /protein|whey|casein/i, timing: '10:30', timeOfDay: 'morning', anchorMeal: 'post-workout', withFood: false, howToTake: 'Mix 25-40g in 300ml water or milk. Within 2h of workout is the synthesis window.', whyThisTime: 'Post-workout MPS window.' },
+    { match: /pre[- ]?workout/i, timing: '16:30', timeOfDay: 'afternoon', anchorMeal: 'pre-workout', withFood: false, howToTake: '20-30 min before training, with 300ml water. Cap caffeine at 200mg.', whyThisTime: 'Peak stimulant effect aligns with workout window.' },
+  ];
+
+  function inferTiming(name: string): {
+    timing: string; timeOfDay: 'morning' | 'lunch' | 'afternoon' | 'evening' | 'bedtime';
+    anchorMeal: string; withFood: boolean; howToTake: string; whyThisTime: string;
+  } {
+    for (const rule of SUPP_TIMING_RULES) if (rule.match.test(name)) return rule;
+    // Safe default: morning with breakfast
+    return {
+      timing: '07:30',
+      timeOfDay: 'morning',
+      anchorMeal: 'breakfast',
+      withFood: true,
+      howToTake: `Take with breakfast + 250ml water. If it causes nausea on empty stomach, always pair with food.`,
+      whyThisTime: 'Morning with food is the safest default — adjust after 2 weeks if your body reacts differently.',
+    };
+  }
+
+  const stack: Array<Record<string, unknown>> = [
     {
       name: 'Vitamin D3 + K2-MK7',
       dose: lowVitD ? '5000 IU D3 + 200mcg K2' : '4000 IU D3 + 200mcg K2',
-      timing: 'Morning, with breakfast',
+      timing: '07:30',
+      timeOfDay: 'morning',
+      anchorMeal: 'breakfast',
       form: 'softgel',
       withFood: true,
-      howToTake: 'Swallow with 250ml water + a fatty meal (10g+ fat) — D3 and K2 are fat-soluble, dry stomach wastes 70% of dose',
+      withWaterMl: 250,
+      howToTake: 'Swallow with 250ml water + a fatty meal (10g+ fat) — D3 and K2 are fat-soluble, dry stomach wastes 70% of dose.',
+      whyThisTime: 'D3 morning aligns with natural diurnal rhythm; K2 prevents arterial calcification + directs calcium to bones.',
       alreadyTaking: has('d3') || has('vitamin d') || has('vit d'),
       justification: lowVitD ? 'Your vitamin D is below optimal. D3 4000-5000 IU + K2 directs calcium to bones (not arteries). 70% of Europeans are deficient.' : 'Foundation for immunity, bone density, hormones. K2 prevents arterial calcification. Bryan takes 5000 IU D3.',
       interactions: [],
       monthlyCostRon: 40,
       priority: 'MUST',
       emagSearchQuery: 'Vitamin D3 K2 5000 IU',
+      stackWithOthers: ['Omega-3 EPA/DHA'],
     },
     {
       name: 'Omega-3 EPA/DHA',
       dose: '2g EPA+DHA combined daily',
-      timing: 'With dinner (largest fatty meal)',
+      timing: '18:30',
+      timeOfDay: 'evening',
+      anchorMeal: 'dinner',
       form: 'triglyceride form softgel',
       withFood: true,
+      withWaterMl: 250,
       howToTake: 'Take with the fattiest meal of the day — boosts EPA/DHA absorption ~2-3×. Refrigerate to prevent oxidation.',
+      whyThisTime: 'Dinner is typically highest-fat meal; fat co-ingestion multiplies EPA/DHA bioavailability.',
       alreadyTaking: has('omega') || has('fish oil'),
       justification: 'Reduces systemic inflammation (target hsCRP <1). Cardiovascular protection. Aim Omega-3 Index >8% (current Western avg 4-5%).',
       interactions: ['Mild blood-thinning effect — discuss with doctor if on warfarin/NOACs'],
@@ -450,24 +591,33 @@ function buildFallbackSupplements(profile: UserProfile, classified: BiomarkerVal
     {
       name: 'Magnesium Glycinate',
       dose: '400mg elemental',
-      timing: 'Evening, 60 min before bed',
+      timing: '21:30',
+      timeOfDay: 'bedtime',
+      anchorMeal: 'bedtime',
       form: 'capsule (glycinate, NOT oxide)',
       withFood: false,
-      howToTake: 'Take with 250ml water. Glycinate form is calming + bioavailable. Avoid oxide form — mostly excreted unused.',
+      withWaterMl: 250,
+      howToTake: 'Take with 250ml water 30-60 min before bed. Glycinate form is calming + bioavailable. Avoid oxide form — mostly excreted unused.',
+      whyThisTime: 'Glycine (from glycinate) supports GABA activity + lowers core body temp for sleep onset. Never AM — defeats the point.',
       alreadyTaking: has('magnesium') || has('magneziu'),
       justification: '300+ enzymatic reactions. Sleep architecture, stress, muscle recovery. Glycinate calms; citrate moves bowels.',
       interactions: ['Take 2h apart from antibiotics + bisphosphonates'],
       monthlyCostRon: 30,
       priority: 'MUST',
       emagSearchQuery: 'Magnesium glycinate 400mg',
+      stackWithOthers: ['L-Theanine'],
     },
     {
       name: 'Creatine Monohydrate',
       dose: '5g daily',
-      timing: 'Anytime — consistency > timing',
+      timing: '08:00',
+      timeOfDay: 'morning',
+      anchorMeal: 'breakfast',
       form: 'micronized powder',
       withFood: false,
-      howToTake: 'Mix in 250ml water or smoothie. Same time each day to build the habit. No loading phase needed — just 5g/day.',
+      withWaterMl: 300,
+      howToTake: 'Mix 5g in 300ml water or smoothie with breakfast. Same time each day to build habit. No loading phase needed.',
+      whyThisTime: 'Consistency matters more than timing — morning anchors it to an unbreakable routine.',
       alreadyTaking: has('creatine'),
       justification: 'Most-studied supplement. Strength +5-15%, cognition (especially under sleep deprivation), longevity signals.',
       interactions: [],
@@ -477,19 +627,25 @@ function buildFallbackSupplements(profile: UserProfile, classified: BiomarkerVal
     },
   ];
 
-  const known = stack.map(s => s.name.toLowerCase());
+  const known = stack.map(s => (s.name as string).toLowerCase());
   for (const cs of profile.currentSupplements || []) {
     if (!cs) continue;
     if (known.some(k => cs.toLowerCase().includes(k.split(' ')[0].toLowerCase()))) continue;
+    // Infer timing from name rather than dumping a vague "anytime" placeholder
+    const t = inferTiming(cs);
     stack.push({
       name: cs,
       dose: '(your current dose)',
-      timing: '(when you currently take it)',
+      timing: t.timing,
+      timeOfDay: t.timeOfDay,
+      anchorMeal: t.anchorMeal,
       form: '',
-      withFood: false,
-      howToTake: 'Continue as you were — we kept this in your stack',
+      withFood: t.withFood,
+      withWaterMl: 250,
+      howToTake: t.howToTake,
+      whyThisTime: t.whyThisTime,
       alreadyTaking: true,
-      justification: `You're already taking ${cs} — kept in the stack to preserve continuity. If biomarkers improve, we may reduce or rotate.`,
+      justification: `You're already taking ${cs} — kept in the stack. The timing here follows evidence-based rules for this compound; adjust if your doctor advised differently.`,
       interactions: [],
       monthlyCostRon: 0,
       priority: 'OPTIONAL',
