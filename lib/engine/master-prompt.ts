@@ -521,10 +521,19 @@ ${(() => {
   const missing: string[] = [];
   const equipLabels: Record<string, string> = {
     bathroom_scale: 'bathroom scale', smart_scale: 'smart scale (body fat)', bp_monitor: 'BP monitor',
-    body_thermometer: 'body thermometer', continuous_glucose_monitor: 'CGM',
-    pulse_oximeter: 'pulse oximeter', antioxidant_scanner: 'antioxidant scanner',
-    air_purifier: 'HEPA air purifier', water_filter: 'water filter', red_light_panel: 'red light panel',
-    sauna: 'sauna', cold_plunge: 'cold plunge', home_gym: 'home gym', resistance_bands: 'resistance bands',
+    body_thermometer: 'body thermometer', continuous_glucose_monitor: 'CGM', glucose_meter: 'glucometer',
+    pulse_oximeter: 'pulse oximeter', hrv_chest_strap: 'HRV chest strap', spirometer: 'spirometer',
+    antioxidant_scanner: 'antioxidant scanner', sleep_mat: 'sleep tracking mat',
+    air_purifier: 'HEPA air purifier', air_quality_monitor: 'air quality monitor',
+    water_filter: 'water filter', humidifier: 'humidifier', blackout_curtains: 'blackout curtains',
+    blue_light_glasses: 'blue-light glasses', light_therapy_lamp: 'light therapy lamp',
+    red_light_panel: 'red light panel', sauna: 'sauna', cold_plunge: 'cold plunge',
+    weighted_blanket: 'weighted blanket', massage_gun: 'massage gun', foam_roller: 'foam roller',
+    meditation_app: 'meditation app',
+    standing_desk: 'standing desk', walking_pad: 'walking pad / treadmill desk',
+    home_gym: 'home gym', dumbbells: 'adjustable dumbbells', kettlebells: 'kettlebells',
+    pull_up_bar: 'pull-up bar', resistance_bands: 'resistance bands', yoga_mat: 'yoga mat',
+    indoor_bike: 'indoor bike', rowing_machine: 'rowing machine',
   };
   for (const [k, status] of Object.entries(equipmentOwnership || {})) {
     const label = equipLabels[k] || k;
