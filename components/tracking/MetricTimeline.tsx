@@ -231,9 +231,13 @@ function MetricRow({
         {spec.hint && <p className="text-[10px] text-muted mt-0.5 leading-snug">{spec.hint}</p>}
       </div>
 
-      {/* Dual H+M inputs for duration fields; single input otherwise */}
+      {/* Dual H+M inputs for duration fields; single input otherwise.
+          The `data-duration-group` attribute + relatedTarget check on blur
+          is the key UX fix: moving focus from `h` → `m` should NOT commit
+          (user is still entering the minutes). Only commit when focus
+          leaves BOTH inputs. */}
       {isDuration ? (
-        <div className="flex items-center gap-1 shrink-0">
+        <div data-duration-group="true" className="flex items-center gap-1 shrink-0">
           <div className="relative w-14">
             <input
               type="number"
@@ -242,7 +246,12 @@ function MetricRow({
               value={draftH}
               onChange={e => setDraftH(e.target.value)}
               onKeyDown={onKeyDown}
-              onBlur={() => { if (!nothingEntered && !busy) commit(); }}
+              onBlur={(e) => {
+                const next = e.relatedTarget as HTMLElement | null;
+                // Tab / click to the sibling minute input → keep editing.
+                if (next && next.closest('[data-duration-group="true"]')) return;
+                if (!nothingEntered && !busy) commit();
+              }}
               placeholder="0"
               min={0}
               max={24}
@@ -258,7 +267,12 @@ function MetricRow({
               value={draftM}
               onChange={e => setDraftM(e.target.value)}
               onKeyDown={onKeyDown}
-              onBlur={() => { if (!nothingEntered && !busy) commit(); }}
+              onBlur={(e) => {
+                const next = e.relatedTarget as HTMLElement | null;
+                // Moving back to the hours input → still editing the same value.
+                if (next && next.closest('[data-duration-group="true"]')) return;
+                if (!nothingEntered && !busy) commit();
+              }}
               placeholder="0"
               min={0}
               max={59}
