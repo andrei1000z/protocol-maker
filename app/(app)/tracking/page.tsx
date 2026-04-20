@@ -14,7 +14,7 @@ import {
   ComplianceEntry,
 } from '@/lib/utils/streak';
 import { HabitsTab } from '@/components/tracking/HabitsTab';
-import { SmartLogSheet, countBucketPending, countAllPendingUpToNow, getEligibleBuckets as getEligibleBucketsFor, type TimeBucket } from '@/components/tracking/SmartLogSheet';
+import { SmartLogSheet, countBucketPending, countAllPendingUpToNow, type TimeBucket } from '@/components/tracking/SmartLogSheet';
 import { MetricTimeline } from '@/components/tracking/MetricTimeline';
 import { useProtocolStaleness } from '@/lib/hooks/useProtocolStaleness';
 import { useDailyMetrics, useDailyMetricsRange, DailyMetrics } from '@/lib/hooks/useDailyMetrics';

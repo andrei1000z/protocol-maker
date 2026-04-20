@@ -1,33 +1,48 @@
 'use client';
 
+// Shared error-boundary UI used by each `app/.../error.tsx`. Keeps the
+// visual + logging contract consistent across marketing / auth / app / share
+// routes without copy-pasting the same 40 lines five times.
+
 import { useEffect } from 'react';
 import Link from 'next/link';
 import { RotateCcw, AlertOctagon } from 'lucide-react';
 
-/**
- * Global error boundary. Catches any unhandled exception in the app layout
- * tree and shows a friendly retry page. Posts a structured error event to
- * the server logger so ops can find it alongside API errors (instead of
- * a bare console.error that would bypass our redaction pipeline).
- */
-export default function GlobalError({ error, reset }: { error: Error & { digest?: string }; reset: () => void }) {
+interface Props {
+  error: Error & { digest?: string };
+  reset: () => void;
+  /** One-line context for the error event sent to the server logger. */
+  scope: string;
+  /** Friendly title shown to the user. */
+  title?: string;
+  /** Friendly body text. */
+  body?: string;
+  /** Where "Back" should go (defaults to home). */
+  backHref?: string;
+  backLabel?: string;
+}
+
+export function RouteError({
+  error, reset, scope,
+  title = 'Something broke',
+  body = 'This is on us, not you. Your data is safe. Try once more, and if it persists, refresh the page.',
+  backHref = '/',
+  backLabel = 'Back to home',
+}: Props) {
   useEffect(() => {
-    // Fire-and-forget — ignore failures. The page already renders a useful
-    // fallback regardless of whether the log call succeeds.
-    const payload = {
-      event: 'client.unhandled_error',
-      digest: error?.digest || null,
-      message: (error?.message || '').slice(0, 500),
-      name: error?.name || null,
-      url: typeof window !== 'undefined' ? window.location.href : null,
-    };
     fetch('/api/client-log', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(payload),
+      body: JSON.stringify({
+        event: `client.${scope}.error`,
+        digest: error?.digest || null,
+        message: (error?.message || '').slice(0, 500),
+        name: error?.name || null,
+        url: typeof window !== 'undefined' ? window.location.href : null,
+      }),
       keepalive: true,
-    }).catch(() => { /* offline / network gone — nothing to do */ });
-  }, [error]);
+    }).catch(() => { /* ignore */ });
+  }, [error, scope]);
 
   return (
     <div className="min-h-dvh flex items-center justify-center px-6">
@@ -36,10 +51,8 @@ export default function GlobalError({ error, reset }: { error: Error & { digest?
           <AlertOctagon className="w-8 h-8" />
         </div>
         <div>
-          <h1 className="text-2xl sm:text-3xl font-semibold tracking-tight">Something broke</h1>
-          <p className="text-sm text-muted-foreground mt-3 leading-relaxed">
-            This is on us, not you. Your data is safe. Try once more, and if it persists, refresh the page.
-          </p>
+          <h1 className="text-2xl sm:text-3xl font-semibold tracking-tight">{title}</h1>
+          <p className="text-sm text-muted-foreground mt-3 leading-relaxed">{body}</p>
           {error?.digest && (
             <p className="text-[10px] text-muted mt-3 font-mono">error id: {error.digest}</p>
           )}
@@ -53,10 +66,10 @@ export default function GlobalError({ error, reset }: { error: Error & { digest?
             Try again
           </button>
           <Link
-            href="/dashboard"
+            href={backHref}
             className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl bg-surface-2 border border-card-border text-sm text-muted-foreground hover:text-foreground hover:border-card-border-hover transition-colors"
           >
-            Back to dashboard
+            {backLabel}
           </Link>
         </div>
       </div>
