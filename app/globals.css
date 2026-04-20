@@ -308,6 +308,7 @@ input[type="range"]::-moz-range-thumb {
 .pill-critical   { background: rgba(248, 113, 113, 0.1); color: var(--critical); border: 1px solid rgba(248, 113, 113, 0.25); }
 
 /* ── Print ────────────────────────────────────────────────────────────────── */
+@page { size: A4; margin: 12mm; }
 @media print {
   nav, header, .no-print { display: none !important; }
   body { background: white !important; color: black !important; }
@@ -316,8 +317,18 @@ input[type="range"]::-moz-range-thumb {
   .bg-card, .bg-background, .bg-surface-1, .bg-surface-2 { background: white !important; }
   .text-accent { color: #059669 !important; }
   .text-muted, .text-muted-foreground { color: #52525b !important; }
-  .rounded-2xl, .rounded-xl { border: 1px solid #e4e4e7 !important; page-break-inside: avoid; }
+  /* Keep each card together on one page — scores + drivers shouldn't split across a break. */
+  .glass-card, .hero-card, .metric-tile,
+  .rounded-2xl, .rounded-xl {
+    border: 1px solid #e4e4e7 !important;
+    page-break-inside: avoid;
+    break-inside: avoid;
+  }
+  /* Force new section on h2 so the export reads as titled chapters. */
+  h2 { break-before: auto; page-break-after: avoid; }
   h1, h2, h3 { color: black !important; }
+  /* Hide sticky nav scroll affordances on paper. */
+  [class*="sticky"] { position: static !important; }
 }
 
 /* ── Reduced motion ───────────────────────────────────────────────────────── */

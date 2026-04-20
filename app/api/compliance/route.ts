@@ -16,7 +16,9 @@ const PostSchema = z.object({
   itemName: z.string().min(1).max(200),
   date: z.string().refine(isRealDate, 'date must be YYYY-MM-DD and a real calendar day'),
   completed: z.boolean(),
-  protocolId: z.string().uuid().optional().nullable(),
+  // Omit for "no protocol attached" — explicit null is rejected so clients
+  // can't bypass ownership checks by sending `null` instead of undefined.
+  protocolId: z.string().uuid().optional(),
 });
 
 export async function GET(request: Request) {

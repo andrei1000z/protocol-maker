@@ -10,7 +10,22 @@ import { summarizeRecentMetrics, refineAgingPace, refineBiologicalAge, refineLon
 import { computeOrganSystems, generateTopWins, generateTopRisks, estimateBiomarkers, buildBryanSummary } from '@/lib/engine/lifestyle-diagnostics';
 import { buildPainPoints, buildFlexRules } from '@/lib/engine/personalization-fills';
 import { buildFallbackProtocol } from '@/lib/engine/fallback-protocol';
+import { logger } from '@/lib/logger';
 import type { BiomarkerValue, UserProfile } from '@/lib/types';
+
+// Mirrors the classifier in /api/generate-protocol — short codes so ops can
+// grep `firstProviderErrorCode=rate_limit` to spot Claude/Groq degradation.
+function classifyProviderError(err: unknown): string {
+  const msg = (err instanceof Error ? err.message : String(err || '')).toLowerCase();
+  if (!msg) return 'unknown';
+  if (msg.includes('rate') && (msg.includes('limit') || msg.includes('429'))) return 'rate_limit';
+  if (msg.includes('401') || msg.includes('unauthoriz') || msg.includes('invalid api key')) return 'auth';
+  if (msg.includes('timeout') || msg.includes('etimedout')) return 'timeout';
+  if (msg.includes('network') || msg.includes('fetch failed')) return 'network';
+  if (msg.includes('overload') || msg.includes('529') || msg.includes('503')) return 'provider_overload';
+  if (msg.includes('malformed') || msg.includes('non-json') || msg.includes('empty response')) return 'parse';
+  return 'unknown';
+}
 
 // Cron jobs can run up to 300s on Vercel Pro. Hobby is 60s — we batch small.
 export const maxDuration = 300;
@@ -219,14 +234,22 @@ async function regenerateForUser(userId: string): Promise<{ skipped?: boolean; s
   // Try AI, fall back deterministically so the cron never crashes a user
   let protocolJson: Record<string, unknown>;
   let modelUsed = 'fallback';
+  let firstProviderTried: 'claude' | 'groq' = 'groq';
+  let firstProviderOutcome: 'ok' | 'failed' | 'skipped_no_key' = 'skipped_no_key';
+  let firstProviderErrorCode: string | null = null;
+  const aiStartMs = Date.now();
   const prompt = buildMasterPromptV2(mergedProfile as UserProfile, classified, patterns, BIOMARKER_DB, longevityScore, biologicalAge, recentSignalsSummary);
 
   try {
     if (process.env.ANTHROPIC_API_KEY) {
+      firstProviderTried = 'claude';
       try {
         protocolJson = await generateWithClaude(prompt);
         modelUsed = 'claude-sonnet-4-5';
-      } catch {
+        firstProviderOutcome = 'ok';
+      } catch (claudeErr) {
+        firstProviderOutcome = 'failed';
+        firstProviderErrorCode = classifyProviderError(claudeErr);
         protocolJson = await generateWithGroq(prompt);
         modelUsed = 'llama-3.3-70b-versatile';
       }
@@ -243,6 +266,17 @@ async function regenerateForUser(userId: string): Promise<{ skipped?: boolean; s
     protocolJson = buildFallbackProtocol(mergedProfile as UserProfile, biologicalAge, longevityScore, classified, patterns);
     modelUsed = 'fallback';
   }
+
+  logger.info('cron.user_generate_done', {
+    userId,
+    model: modelUsed,
+    firstProviderTried,
+    firstProviderOutcome,
+    firstProviderErrorCode,
+    latencyMs: Date.now() - aiStartMs,
+    biomarkerCount: classified.length,
+    recentMetricDays: recentSignals.days,
+  });
 
   // Defense: if AI returned a VALID but SPARSE protocol, merge missing
   // sections from the deterministic fallback. Same fix as the main

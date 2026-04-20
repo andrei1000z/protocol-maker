@@ -54,9 +54,25 @@ export async function GET(request: Request) {
   try {
     const { searchParams } = new URL(request.url);
     const slug = searchParams.get('slug');
-    if (!slug) return NextResponse.json({ error: 'Missing slug' }, { status: 400 });
+    const mine = searchParams.get('mine') === '1';
 
     const supabase = await createClient();
+
+    // Authenticated-only list of the current user's share links. Used by the
+    // Settings page to show "revoke / set expiration" affordances.
+    if (mine) {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return NextResponse.json({ error: 'Not authenticated' }, { status: 401 });
+      const { data, error } = await supabase
+        .from('share_links')
+        .select('slug, created_at, expires_at, view_count, protocol_id')
+        .eq('user_id', user.id)
+        .order('created_at', { ascending: false });
+      if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+      return NextResponse.json({ links: data || [] });
+    }
+
+    if (!slug) return NextResponse.json({ error: 'Missing slug' }, { status: 400 });
 
     const { data: link } = await supabase
       .from('share_links')
@@ -82,6 +98,52 @@ export async function GET(request: Request) {
     if (!protocol) return NextResponse.json({ error: 'Protocol not found' }, { status: 404 });
 
     return NextResponse.json(protocol);
+  } catch (err) {
+    return NextResponse.json({ error: err instanceof Error ? err.message : String(err) }, { status: 500 });
+  }
+}
+
+// Revoke a share link. RLS already scopes DELETE to the row owner, but we add
+// an explicit user_id match for defense in depth.
+export async function DELETE(request: Request) {
+  try {
+    const supabase = await createClient();
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) return NextResponse.json({ error: 'Not authenticated' }, { status: 401 });
+    const { searchParams } = new URL(request.url);
+    const slug = searchParams.get('slug');
+    if (!slug) return NextResponse.json({ error: 'Missing slug' }, { status: 400 });
+    const { error } = await supabase.from('share_links').delete()
+      .eq('slug', slug).eq('user_id', user.id);
+    if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+    return NextResponse.json({ ok: true });
+  } catch (err) {
+    return NextResponse.json({ error: err instanceof Error ? err.message : String(err) }, { status: 500 });
+  }
+}
+
+// Set or clear a share link's expiration. `expiresAt` is ISO or null.
+export async function PATCH(request: Request) {
+  try {
+    const supabase = await createClient();
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) return NextResponse.json({ error: 'Not authenticated' }, { status: 401 });
+    const { searchParams } = new URL(request.url);
+    const slug = searchParams.get('slug');
+    if (!slug) return NextResponse.json({ error: 'Missing slug' }, { status: 400 });
+    const body = await request.json().catch(() => ({})) as { expiresAt?: string | null };
+    // Validate expiresAt if provided: must be an ISO timestamp in the future.
+    let expiresAt: string | null = null;
+    if (body.expiresAt) {
+      const d = new Date(body.expiresAt);
+      if (Number.isNaN(d.getTime())) return NextResponse.json({ error: 'Invalid expiresAt' }, { status: 400 });
+      if (d.getTime() <= Date.now()) return NextResponse.json({ error: 'expiresAt must be in the future' }, { status: 400 });
+      expiresAt = d.toISOString();
+    }
+    const { error } = await supabase.from('share_links').update({ expires_at: expiresAt })
+      .eq('slug', slug).eq('user_id', user.id);
+    if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+    return NextResponse.json({ ok: true, expiresAt });
   } catch (err) {
     return NextResponse.json({ error: err instanceof Error ? err.message : String(err) }, { status: 500 });
   }

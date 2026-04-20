@@ -80,6 +80,31 @@ const ActionSchema = z.discriminatedUnion('type', [
   AdjustProtocolSchema,
 ]);
 
+// PostgREST error codes that indicate the atomic RPC hasn't been migrated yet.
+// When the schema cache can't find the function (PGRST202) or the SQL function
+// itself doesn't exist (42883), fall back to the legacy read-merge-write path
+// so features keep working until the user runs scripts/upgrade.sql.
+function isRpcMissing(err: { code?: string; message?: string } | null | undefined): boolean {
+  if (!err) return false;
+  if (err.code === 'PGRST202' || err.code === '42883') return true;
+  const msg = err.message?.toLowerCase() ?? '';
+  return msg.includes('could not find the function')
+      || msg.includes('schema cache')
+      || (msg.includes('function') && msg.includes('does not exist'));
+}
+
+// Legacy deep-set — kept only for the RPC-missing fallback path on adjust_protocol.
+function deepSet(obj: Record<string, unknown>, path: string, value: unknown): void {
+  const parts = path.split('.');
+  let cur: Record<string, unknown> = obj;
+  for (let i = 0; i < parts.length - 1; i++) {
+    const k = parts[i];
+    if (typeof cur[k] !== 'object' || cur[k] === null) cur[k] = {};
+    cur = cur[k] as Record<string, unknown>;
+  }
+  cur[parts[parts.length - 1]] = value;
+}
+
 // ─────────────────────────────────────────────────────────────────────────────
 export async function POST(request: Request) {
   try {
@@ -113,7 +138,23 @@ export async function POST(request: Request) {
         p_smoker: directFields.smoker ?? null,
         p_od_patch: onboarding_data_patch ?? {},
       });
-      if (error) throw new Error(error.message);
+
+      if (error && isRpcMissing(error)) {
+        // Pre-migration fallback — racey but functional until upgrade.sql runs.
+        let mergedOd: Record<string, unknown> | undefined;
+        if (onboarding_data_patch) {
+          const { data: existing } = await supabase.from('profiles').select('onboarding_data').eq('id', user.id).single();
+          const existingOd = (existing?.onboarding_data || {}) as Record<string, unknown>;
+          mergedOd = { ...existingOd, ...onboarding_data_patch };
+        }
+        const update: Record<string, unknown> = { ...directFields, updated_at: new Date().toISOString() };
+        if (mergedOd) update.onboarding_data = mergedOd;
+        const { error: legacyErr } = await supabase.from('profiles').update(update).eq('id', user.id);
+        if (legacyErr) throw new Error(legacyErr.message);
+      } else if (error) {
+        throw new Error(error.message);
+      }
+
       return NextResponse.json({ ok: true, applied: 'profile', changed: Object.keys(directFields).length + (onboarding_data_patch ? 1 : 0) });
     }
 
@@ -133,7 +174,17 @@ export async function POST(request: Request) {
         p_date: date,
         p_patch: patch,
       });
-      if (error) throw new Error(error.message);
+
+      if (error && isRpcMissing(error)) {
+        // Pre-migration fallback.
+        const { data: existing } = await supabase.from('daily_metrics').select('*').eq('user_id', user.id).eq('date', date).maybeSingle();
+        const merged = { ...(existing || {}), ...patch, user_id: user.id, date };
+        const { error: legacyErr } = await supabase.from('daily_metrics').upsert(merged, { onConflict: 'user_id,date' });
+        if (legacyErr) throw new Error(legacyErr.message);
+      } else if (error) {
+        throw new Error(error.message);
+      }
+
       return NextResponse.json({ ok: true, applied: 'metric', date, fields: Object.keys(patch).length });
     }
 
@@ -146,7 +197,30 @@ export async function POST(request: Request) {
         p_path: path,
         p_value: value,
       });
-      if (error) throw new Error(error.message);
+
+      if (error && isRpcMissing(error)) {
+        // Pre-migration fallback — read, deepSet, write. Loses concurrent edits.
+        const { data: protocol, error: fetchErr } = await supabase
+          .from('protocols')
+          .select('id, protocol_json')
+          .eq('user_id', user.id)
+          .is('deleted_at', null)
+          .order('created_at', { ascending: false })
+          .limit(1)
+          .maybeSingle();
+        if (fetchErr) throw new Error(fetchErr.message);
+        if (!protocol) return NextResponse.json({ error: 'No active protocol' }, { status: 404 });
+        const json = (protocol.protocol_json || {}) as Record<string, unknown>;
+        deepSet(json, path, value);
+        const { error: updErr } = await supabase
+          .from('protocols')
+          .update({ protocol_json: json, updated_at: new Date().toISOString() })
+          .eq('id', protocol.id);
+        if (updErr) throw new Error(updErr.message);
+      } else if (error) {
+        throw new Error(error.message);
+      }
+
       return NextResponse.json({ ok: true, applied: 'protocol', path });
     }
 

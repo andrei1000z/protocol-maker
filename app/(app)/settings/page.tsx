@@ -5,8 +5,16 @@ import { useMyData, invalidate } from '@/lib/hooks/useApiData';
 import clsx from 'clsx';
 import {
   Share2, Download, RotateCcw, LogOut, Copy, Check, FileText, User, Heart,
-  Edit2, Save, Trash2, AlertTriangle, Target, Sparkles,
+  Edit2, Save, Trash2, AlertTriangle, Target, Sparkles, X, Clock,
 } from 'lucide-react';
+
+interface ShareLinkRow {
+  slug: string;
+  created_at: string;
+  expires_at: string | null;
+  view_count: number;
+  protocol_id: string;
+}
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Types
@@ -291,6 +299,21 @@ export default function SettingsPage() {
   const [shareError, setShareError] = useState('');
   const [shareBusy, setShareBusy] = useState(false);
   const [copied, setCopied] = useState(false);
+  const [shareLinks, setShareLinks] = useState<ShareLinkRow[]>([]);
+  const [shareLinksLoaded, setShareLinksLoaded] = useState(false);
+
+  // Load the user's active share links. Refreshed after every mutate
+  // (create/revoke/expire-set) by calling refreshShareLinks() explicitly.
+  const refreshShareLinks = async () => {
+    try {
+      const res = await fetch('/api/share?mine=1');
+      if (!res.ok) return;
+      const j = await res.json();
+      setShareLinks(Array.isArray(j.links) ? j.links : []);
+    } catch { /* ignore — list stays empty */ }
+    finally { setShareLinksLoaded(true); }
+  };
+  useEffect(() => { refreshShareLinks(); }, []);
   const [editing, setEditing] = useState(false);
   const [saved, setSaved] = useState(false);
   const [deleteOpen, setDeleteOpen] = useState(false);
@@ -357,6 +380,7 @@ export default function SettingsPage() {
         return;
       }
       setShareUrl(`${window.location.origin}/share/${json.slug}`);
+      refreshShareLinks();
     } catch (err) {
       setShareError(err instanceof Error ? err.message : String(err));
     } finally {
@@ -368,6 +392,29 @@ export default function SettingsPage() {
     navigator.clipboard.writeText(shareUrl);
     setCopied(true);
     setTimeout(() => setCopied(false), 2000);
+  };
+
+  const handleRevokeLink = async (slug: string) => {
+    if (!window.confirm('Revoke this link? Anyone with the URL will get a 404.')) return;
+    try {
+      await fetch(`/api/share?slug=${encodeURIComponent(slug)}`, { method: 'DELETE' });
+    } finally { refreshShareLinks(); }
+  };
+
+  const handleSetExpiration = async (slug: string, days: number | null) => {
+    const body = days === null
+      ? { expiresAt: null }
+      : { expiresAt: new Date(Date.now() + days * 86400000).toISOString() };
+    await fetch(`/api/share?slug=${encodeURIComponent(slug)}`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(body),
+    });
+    refreshShareLinks();
+  };
+
+  const handleCopyLinkSlug = (slug: string) => {
+    navigator.clipboard.writeText(`${window.location.origin}/share/${slug}`);
   };
 
   const handleExport = async () => {
@@ -691,6 +738,75 @@ export default function SettingsPage() {
             <p className="text-[11px] text-muted-foreground">
               Anyone with this link sees a read-only version — no personal data other than what&apos;s in your protocol.
             </p>
+          </div>
+        )}
+
+        {/* Active links list — revoke + expiration management. Only rendered
+            once the list has loaded AND the user actually has links. */}
+        {shareLinksLoaded && shareLinks.length > 0 && (
+          <div className="mt-5 pt-5 border-t border-card-border space-y-2">
+            <p className="text-[10px] uppercase tracking-widest text-muted font-mono mb-2">
+              Your active links ({shareLinks.length})
+            </p>
+            {shareLinks.map(link => {
+              const expired = link.expires_at && new Date(link.expires_at) < new Date();
+              const expiresIn = link.expires_at
+                ? Math.ceil((new Date(link.expires_at).getTime() - Date.now()) / 86400000)
+                : null;
+              return (
+                <div key={link.slug} className="rounded-xl bg-surface-2 border border-card-border p-2.5 space-y-2">
+                  <div className="flex items-center gap-2">
+                    <span className="font-mono text-xs truncate flex-1 text-muted-foreground">
+                      /share/{link.slug}
+                    </span>
+                    <span className="text-[10px] font-mono text-muted shrink-0">
+                      {link.view_count} {link.view_count === 1 ? 'view' : 'views'}
+                    </span>
+                  </div>
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <span className={clsx('inline-flex items-center gap-1 text-[10px] font-mono px-2 py-0.5 rounded-full border',
+                      expired ? 'bg-red-500/10 text-danger border-red-500/25'
+                      : expiresIn !== null ? 'bg-amber-500/10 text-amber-400 border-amber-500/25'
+                      : 'bg-surface-3 text-muted border-card-border'
+                    )}>
+                      <Clock className="w-2.5 h-2.5" />
+                      {expired ? 'Expired'
+                        : expiresIn !== null ? `Expires in ${expiresIn}d`
+                        : 'No expiry'}
+                    </span>
+                    <button
+                      onClick={() => handleCopyLinkSlug(link.slug)}
+                      className="text-[10px] px-2 py-1 rounded-lg bg-surface-3 hover:bg-accent/10 text-muted-foreground hover:text-accent transition-colors"
+                    >
+                      Copy URL
+                    </button>
+                    <select
+                      value=""
+                      onChange={e => {
+                        const v = e.target.value;
+                        if (v === '') return;
+                        if (v === 'none') handleSetExpiration(link.slug, null);
+                        else handleSetExpiration(link.slug, parseInt(v, 10));
+                        e.currentTarget.value = '';
+                      }}
+                      className="text-[10px] px-2 py-1 rounded-lg bg-surface-3 border border-card-border text-muted-foreground"
+                    >
+                      <option value="">Set expiry…</option>
+                      <option value="7">7 days</option>
+                      <option value="30">30 days</option>
+                      <option value="90">90 days</option>
+                      <option value="none">Never</option>
+                    </select>
+                    <button
+                      onClick={() => handleRevokeLink(link.slug)}
+                      className="ml-auto inline-flex items-center gap-1 text-[10px] px-2 py-1 rounded-lg bg-red-500/10 text-danger border border-red-500/25 hover:bg-red-500/15 transition-colors"
+                    >
+                      <X className="w-3 h-3" /> Revoke
+                    </button>
+                  </div>
+                </div>
+              );
+            })}
           </div>
         )}
       </SettingsCard>

@@ -306,6 +306,7 @@ ${context}`;
 // Streaming handler — tries Claude Sonnet 4.5 first, falls back to Groq
 // ─────────────────────────────────────────────────────────────────────────────
 async function streamResponse(
+  userId: string,
   cachedPersona: string,
   userContext: string,
   messages: ChatMessage[],
@@ -314,8 +315,13 @@ async function streamResponse(
 
   return new ReadableStream<Uint8Array>({
     async start(controller) {
+      const startMs = Date.now();
+      let model = 'none';
+      let outcome: 'ok' | 'failed' | 'no_provider' = 'no_provider';
+      let charsStreamed = 0;
       try {
         if (process.env.ANTHROPIC_API_KEY) {
+          model = 'claude-sonnet-4-5';
           const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
           const stream = await anthropic.messages.stream({
             model: 'claude-sonnet-4-5',
@@ -332,9 +338,12 @@ async function streamResponse(
           for await (const chunk of stream) {
             if (chunk.type === 'content_block_delta' && chunk.delta.type === 'text_delta') {
               controller.enqueue(encoder.encode(chunk.delta.text));
+              charsStreamed += chunk.delta.text.length;
             }
           }
+          outcome = 'ok';
         } else if (process.env.GROQ_API_KEY) {
+          model = 'llama-3.3-70b-versatile';
           const groq = new Groq({ apiKey: process.env.GROQ_API_KEY });
           // Groq doesn't support prompt caching — concatenate persona + context
           // into a single system message.
@@ -351,14 +360,30 @@ async function streamResponse(
           });
           for await (const chunk of completion) {
             const text = chunk.choices[0]?.delta?.content;
-            if (text) controller.enqueue(encoder.encode(text));
+            if (text) { controller.enqueue(encoder.encode(text)); charsStreamed += text.length; }
           }
+          outcome = 'ok';
         } else {
           controller.enqueue(encoder.encode('⚠️ No AI provider configured. Set ANTHROPIC_API_KEY or GROQ_API_KEY.'));
         }
       } catch (err) {
+        outcome = 'failed';
+        logger.warn('chat.stream_failed', {
+          userId, model,
+          errorMessage: describeError(err),
+          latencyMs: Date.now() - startMs,
+          charsStreamed,
+        });
         controller.enqueue(encoder.encode(`\n\n⚠️ Error: ${err instanceof Error ? err.message : String(err)}`));
       } finally {
+        if (outcome === 'ok') {
+          logger.info('chat.stream_done', {
+            userId, model,
+            latencyMs: Date.now() - startMs,
+            charsStreamed,
+            messageCount: messages.length,
+          });
+        }
         controller.close();
       }
     },
@@ -389,7 +414,7 @@ export async function POST(request: Request) {
 
     // Streaming response (default)
     if (body.stream !== false) {
-      const stream = await streamResponse(CHAT_CACHED_PERSONA, userContext, body.messages);
+      const stream = await streamResponse(user.id, CHAT_CACHED_PERSONA, userContext, body.messages);
       return new Response(stream, {
         headers: {
           'Content-Type': 'text/plain; charset=utf-8',

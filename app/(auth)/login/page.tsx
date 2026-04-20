@@ -73,16 +73,32 @@ export default function LoginPage() {
   const handleGoogleOAuth = async () => {
     setOauthLoading(true);
     setError('');
+    // On success, signInWithOAuth issues a redirect and this tab is replaced
+    // before the promise resolves — so the finally would never run. On a
+    // network hang, the promise also never resolves. Guard against both by
+    // auto-clearing the loading state after 10s so the button is usable again.
+    const timeoutId = window.setTimeout(() => {
+      setOauthLoading(false);
+      setError('Google took too long to respond. Try again or use email + password.');
+    }, 10000);
     try {
       const { error: err } = await supabase.auth.signInWithOAuth({
         provider: 'google',
         options: { redirectTo: `${window.location.origin}/api/auth/callback` },
       });
-      if (err) setError(err.message);
+      if (err) {
+        window.clearTimeout(timeoutId);
+        setError(err.message);
+        setOauthLoading(false);
+      }
+      // Success path: the redirect is imminent. Leave the timeout armed as a
+      // safety net in case the browser blocks the navigation (e.g. popup
+      // blocker in some embedded-webview contexts).
     } catch (e) {
+      window.clearTimeout(timeoutId);
       setError(e instanceof Error ? e.message : 'OAuth failed');
+      setOauthLoading(false);
     }
-    setOauthLoading(false);
   };
 
   const submitDisabled =

@@ -180,6 +180,44 @@ const PATTERNS: PatternRule[] = [
 // source of truth (don't hardcode "12 patterns" in UI copy).
 export const PATTERN_COUNT = PATTERNS.length;
 
+// ─────────────────────────────────────────────────────────────────────────────
+// Exclusion layer — prevents the AI from being fed redundant overlapping
+// patterns. Without this, a user with HbA1c 5.8 + TG 160 + HDL 38 would get
+// Prediabetes + Metabolic Syndrome + (if HSCRP elevated) Inflammatory +
+// Oxidative Stress, each with partially overlapping recommendations. The AI
+// then writes four sets of similar advice. Pick the most specific / most
+// actionable framing and drop the rest.
+//
+// Each rule: `suppress` is dropped when `when` is also triggered, UNLESS the
+// `unless` override is truthy (escalation path — e.g. full diabetes overrides
+// the "Prediabetes is enough" rule).
+// ─────────────────────────────────────────────────────────────────────────────
+type ExclusionRule = {
+  suppress: string;
+  when: string;
+  unless?: (m: Map<string, BiomarkerValue>) => boolean;
+};
+
+const EXCLUSIONS: ExclusionRule[] = [
+  // Prediabetes is a more actionable framing than the broader Metabolic Syndrome
+  // for the same glucose signal. Keep Metabolic only if HbA1c crosses diabetic
+  // threshold (≥6.5%) or the user has non-glucose cluster factors (low HDL).
+  {
+    suppress: 'Metabolic Syndrome',
+    when: 'Prediabetes',
+    unless: (m) => (m.get('HBA1C')?.value ?? 0) >= 6.5
+                || (m.get('HDL')?.value ?? 999) < 40
+                || (m.get('TRIG')?.value ?? 0) >= 200,
+  },
+  // Anemia Cluster is a specific diagnosis; the broader Nutritional Deficiency
+  // pattern double-counts FERRITIN / IRON. Keep only the specific one.
+  { suppress: 'Nutritional Deficiency Cluster', when: 'Anemia Cluster' },
+  // Oxidative Stress and Inflammatory Cluster share HSCRP + HOMOCYS + GGT.
+  // Inflammatory is the more clinically-actionable framing (it points to
+  // hidden sources: dental, gut, joint). Drop Oxidative when both fire.
+  { suppress: 'Oxidative Stress', when: 'Inflammatory Cluster' },
+];
+
 export function detectPatterns(biomarkers: BiomarkerValue[]): DetectedPattern[] {
   const markerMap = new Map<string, BiomarkerValue>();
   for (const b of biomarkers) markerMap.set(b.code, b);
@@ -197,7 +235,21 @@ export function detectPatterns(biomarkers: BiomarkerValue[]): DetectedPattern[] 
       });
     }
   }
-  return detected.sort((a, b) => {
+
+  // Apply exclusions — drop `suppress` patterns when their `when` partner
+  // triggered and no `unless` escalation applies.
+  const triggeredNames = new Set(detected.map(d => d.name));
+  const filtered = detected.filter(d => {
+    for (const rule of EXCLUSIONS) {
+      if (rule.suppress !== d.name) continue;
+      if (!triggeredNames.has(rule.when)) continue;
+      if (rule.unless && rule.unless(markerMap)) continue;
+      return false;  // suppressed
+    }
+    return true;
+  });
+
+  return filtered.sort((a, b) => {
     const order = { critical: 0, high: 1, moderate: 2, low: 3 };
     return order[a.severity] - order[b.severity];
   });

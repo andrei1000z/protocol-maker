@@ -139,36 +139,68 @@ export function summarizeRecentMetrics(
 
 // ─── refinement helpers ─────────────────────────────────────────────────────
 
+// Confidence tiers. A user with 25 elite days of data contains far more
+// signal than one with 5 OK days — the previous fixed ±0.03 pace cap used
+// the same ceiling for both, underusing the stronger signal.
+//
+// Returns the scaling factor applied to every individual adjustment below:
+//   days ≥ 25 → 1.6×  (allows ~±0.08 pace total after summing nudges)
+//   days ≥ 12 → 1.1×  (allows ~±0.05)
+//   days <  5 → 0     (not enough signal — suppress refinement entirely)
+//   else        0.6×  (current ~±0.03 ceiling)
+function confidenceScale(days: number): number {
+  if (days >= 25) return 1.6;
+  if (days >= 12) return 1.1;
+  if (days <   5) return 0;
+  return 0.6;
+}
+
+// Tier also caps the TOTAL drift allowed from the base value so a handful of
+// adjustments summing in the same direction can't push pace past a plausible
+// band. Tuple: [maxPaceDrift, maxBioAgeYears, maxScorePoints].
+function confidenceCaps(days: number): [number, number, number] {
+  if (days >= 25) return [0.08, 2.5, 6];
+  if (days >= 12) return [0.05, 1.5, 4];
+  if (days <   5) return [0,    0,   0];
+  return [0.03, 1,   2];
+}
+
 export function refineAgingPace(basePace: number, s: RecentSignalSummary): number {
-  let pace = basePace;
+  const scale = confidenceScale(s.days);
+  if (scale === 0) return Math.round(basePace * 100) / 100;
+  let delta = 0;
 
-  if (s.restingHRBelowExpected === true) pace -= 0.03;   // cardiovascular fitness credit
-  else if (s.restingHR !== null && s.restingHR >= 80)   pace += 0.03;
+  if (s.restingHRBelowExpected === true) delta -= 0.03;
+  else if (s.restingHR !== null && s.restingHR >= 80)   delta += 0.03;
 
-  if (s.hrvAboveExpected === true) pace -= 0.03;          // autonomic resilience
-  else if (s.hrv !== null && s.hrv < 25)                pace += 0.03;
+  if (s.hrvAboveExpected === true) delta -= 0.03;
+  else if (s.hrv !== null && s.hrv < 25)                delta += 0.03;
 
   if (s.sleepHours !== null) {
-    if (s.sleepHours < 6) pace += 0.04;
-    else if (s.sleepHours >= 7.5 && s.sleepHours <= 9) pace -= 0.02;
+    if (s.sleepHours < 6) delta += 0.04;
+    else if (s.sleepHours >= 7.5 && s.sleepHours <= 9) delta -= 0.02;
   }
-  if (s.sleepIsConsistent === true) pace -= 0.01;
-  if (s.sleepScore !== null && s.sleepScore < 65) pace += 0.02;
+  if (s.sleepIsConsistent === true) delta -= 0.01;
+  if (s.sleepScore !== null && s.sleepScore < 65) delta += 0.02;
 
-  if (s.activityHigh === true) pace -= 0.02;
-  else if (s.steps !== null && s.steps < 4500) pace += 0.02;
+  if (s.activityHigh === true) delta -= 0.02;
+  else if (s.steps !== null && s.steps < 4500) delta += 0.02;
 
-  if (s.stressHigh === true) pace += 0.02;
+  if (s.stressHigh === true) delta += 0.02;
 
   if (s.systolic !== null) {
-    if (s.systolic >= 140) pace += 0.04;
-    else if (s.systolic <= 115) pace -= 0.01;
+    if (s.systolic >= 140) delta += 0.04;
+    else if (s.systolic <= 115) delta -= 0.01;
   }
 
-  return Math.max(0.6, Math.min(1.55, Math.round(pace * 100) / 100));
+  const [maxPaceDrift] = confidenceCaps(s.days);
+  const scaledDelta = Math.max(-maxPaceDrift, Math.min(maxPaceDrift, delta * scale));
+  return Math.max(0.6, Math.min(1.55, Math.round((basePace + scaledDelta) * 100) / 100));
 }
 
 export function refineBiologicalAge(baseBioAge: number, chronoAge: number, s: RecentSignalSummary): number {
+  const scale = confidenceScale(s.days);
+  if (scale === 0) return Math.round(baseBioAge * 10) / 10;
   let delta = 0;
 
   if (s.restingHRBelowExpected === true) delta -= 0.7;
@@ -186,14 +218,14 @@ export function refineBiologicalAge(baseBioAge: number, chronoAge: number, s: Re
   if (s.systolic !== null && s.systolic >= 140) delta += 0.7;
   if (s.stressHigh === true) delta += 0.3;
 
-  const refined = baseBioAge + delta;
-  // Cap drift to ±2 years from baseline so wearable noise can't run away
-  const capped = Math.max(baseBioAge - 2, Math.min(baseBioAge + 2, refined));
-  // Never unreasonably far from chrono
-  return Math.max(5, Math.min(chronoAge + 25, Math.round(capped * 10) / 10));
+  const [, maxBioAgeDrift] = confidenceCaps(s.days);
+  const scaledDelta = Math.max(-maxBioAgeDrift, Math.min(maxBioAgeDrift, delta * scale));
+  return Math.max(5, Math.min(chronoAge + 25, Math.round((baseBioAge + scaledDelta) * 10) / 10));
 }
 
 export function refineLongevityScore(baseScore: number, s: RecentSignalSummary): number {
+  const scale = confidenceScale(s.days);
+  if (scale === 0) return Math.round(baseScore);
   let delta = 0;
 
   if (s.restingHRBelowExpected === true) delta += 2;
@@ -215,7 +247,9 @@ export function refineLongevityScore(baseScore: number, s: RecentSignalSummary):
 
   if (s.systolic !== null && s.systolic >= 140) delta -= 3;
 
-  return Math.max(0, Math.min(100, Math.round(baseScore + delta)));
+  const [, , maxScoreDrift] = confidenceCaps(s.days);
+  const scaledDelta = Math.max(-maxScoreDrift, Math.min(maxScoreDrift, delta * scale));
+  return Math.max(0, Math.min(100, Math.round(baseScore + scaledDelta)));
 }
 
 // Human-readable one-paragraph summary of what wearables say about the user.

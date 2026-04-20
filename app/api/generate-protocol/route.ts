@@ -167,6 +167,12 @@ export async function POST(request: Request) {
     let protocolJson: Record<string, unknown>;
     let modelUsed = 'llama-3.3-70b-versatile';
     let aiError: string | null = null;
+    // Track which provider was TRIED first vs succeeded, so we can tell
+    // "Claude down → Groq rescued" apart from "no API key configured".
+    let firstProviderTried: 'claude' | 'groq' = 'groq';
+    let firstProviderOutcome: 'ok' | 'failed' | 'skipped_no_key' = 'skipped_no_key';
+    let firstProviderErrorCode: string | null = null;
+    const aiStartMs = Date.now();
 
     const recentSignalsSummary = describeRecentSignals(recentSignals);
     const prompt = buildMasterPromptV2(profile, classified, patterns, BIOMARKER_DB, longevityScore, biologicalAge, recentSignalsSummary);
@@ -174,11 +180,20 @@ export async function POST(request: Request) {
     // Try Claude Opus first (best medical reasoning), fallback to Groq, then deterministic
     try {
       if (process.env.ANTHROPIC_API_KEY) {
+        firstProviderTried = 'claude';
         try {
           protocolJson = await generateWithClaude(prompt);
           modelUsed = 'claude-sonnet-4-5';
+          firstProviderOutcome = 'ok';
         } catch (claudeErr) {
-          logger.warn('protocol.claude_failed_fallback_groq', { errorMessage: describeError(claudeErr) });
+          firstProviderOutcome = 'failed';
+          // Classify the failure so ops can grep: rate_limit / auth / timeout / network / parse / other.
+          // Keeps the historical warn log but adds a structured reason.
+          firstProviderErrorCode = classifyProviderError(claudeErr);
+          logger.warn('protocol.claude_failed_fallback_groq', {
+            errorMessage: describeError(claudeErr),
+            reason: firstProviderErrorCode,
+          });
           protocolJson = await generateWithGroq(prompt);
           modelUsed = 'llama-3.3-70b-versatile';
         }
@@ -197,10 +212,32 @@ export async function POST(request: Request) {
       }
     } catch (err) {
       aiError = err instanceof Error ? err.message : String(err);
-      logger.error('protocol.all_ai_failed_using_fallback', { userId: user.id, errorMessage: aiError });
+      const fallbackReason = classifyProviderError(err);
+      logger.error('protocol.all_ai_failed_using_fallback', {
+        userId: user.id,
+        errorMessage: aiError,
+        reason: fallbackReason,
+        firstProviderTried,
+        firstProviderErrorCode,
+      });
       protocolJson = buildFallbackProtocol(profile, biologicalAge, longevityScore, classified, patterns);
       modelUsed = 'fallback';
     }
+
+    // Single summary event per generation — the one line ops greps to see the
+    // Claude/Groq/fallback distribution without parsing warn/error logs.
+    logger.info('protocol.generate_done', {
+      userId: user.id,
+      model: modelUsed,
+      firstProviderTried,
+      firstProviderOutcome,
+      firstProviderErrorCode,
+      latencyMs: Date.now() - aiStartMs,
+      hasBiomarkers: classified.length > 0,
+      biomarkerCount: classified.length,
+      patternCount: patterns.length,
+      recentMetricDays: recentSignals.days,
+    });
 
     // Defense: if AI returned a VALID but SPARSE protocol (missing nutrition,
     // supplements, dailySchedule, exercise, sleep, tracking, or doctorDiscussion)
@@ -358,6 +395,21 @@ export async function POST(request: Request) {
     logger.error('protocol.handler_failed', { errorMessage: describeError(err) });
     return NextResponse.json({ error: err instanceof Error ? err.message : String(err) }, { status: 500 });
   }
+}
+
+// Classify an AI-provider error into a short code so ops can distinguish
+// rate_limit / auth / timeout / network / parse / unknown. Logged alongside
+// the error message so a search for `reason=rate_limit` surfaces real signal.
+function classifyProviderError(err: unknown): string {
+  const msg = (err instanceof Error ? err.message : String(err || '')).toLowerCase();
+  if (!msg) return 'unknown';
+  if (msg.includes('rate') && (msg.includes('limit') || msg.includes('429'))) return 'rate_limit';
+  if (msg.includes('401') || msg.includes('unauthoriz') || msg.includes('invalid api key') || msg.includes('authentication')) return 'auth';
+  if (msg.includes('timeout') || msg.includes('timed out') || msg.includes('etimedout')) return 'timeout';
+  if (msg.includes('enotfound') || msg.includes('econnrefused') || msg.includes('network') || msg.includes('fetch failed')) return 'network';
+  if (msg.includes('malformed') || msg.includes('non-json') || msg.includes('empty response') || msg.includes('no json found')) return 'parse';
+  if (msg.includes('overload') || msg.includes('529') || msg.includes('503') || msg.includes('service unavailable')) return 'provider_overload';
+  return 'unknown';
 }
 
 async function generateWithClaude(prompt: string): Promise<Record<string, unknown>> {

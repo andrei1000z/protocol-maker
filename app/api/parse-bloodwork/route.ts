@@ -14,15 +14,34 @@ export async function POST(request: Request) {
     const file = formData.get('file') as File;
     if (!file) return NextResponse.json({ error: 'No file provided' }, { status: 400 });
 
+    // Upper bound on the raw PDF: most lab reports are 1–8 pages / <2 MB. A
+    // 10 MB cap is generous but stops someone from uploading a junk gigabyte
+    // doc to burn Groq tokens or OOM the parser.
+    const MAX_PDF_BYTES = 10 * 1024 * 1024;
+    if (file.size > MAX_PDF_BYTES) {
+      return NextResponse.json({ error: `PDF too large (${Math.round(file.size / 1024 / 1024)} MB, max 10 MB). Please upload the lab report only, not a full medical record archive.` }, { status: 413 });
+    }
+
     // Extract text from PDF
     const buffer = Buffer.from(await file.arrayBuffer());
     // eslint-disable-next-line @typescript-eslint/no-require-imports
     const pdfParse = require('pdf-parse');
     const pdf = await pdfParse(buffer);
-    const pdfText = pdf.text;
+    const pdfText: string = pdf.text;
 
     if (!pdfText || pdfText.trim().length < 50) {
       return NextResponse.json({ error: 'Could not extract text from PDF. Try manual entry.' }, { status: 400 });
+    }
+
+    // Groq's Llama 3.3 context window is 128k tokens (~480k chars). Anything
+    // past ~80k chars is almost certainly a scanned document or multi-report
+    // dump — reject with a helpful message instead of paying for a failed
+    // extraction attempt and showing the user an opaque Groq error.
+    const MAX_PDF_TEXT_CHARS = 80_000;
+    if (pdfText.length > MAX_PDF_TEXT_CHARS) {
+      return NextResponse.json({
+        error: `Lab report text is too long (${pdfText.length.toLocaleString()} chars, max ${MAX_PDF_TEXT_CHARS.toLocaleString()}). Upload a single lab report — scanned PDFs / multi-report archives aren't supported yet.`,
+      }, { status: 413 });
     }
 
     // Send to Groq for structured extraction

@@ -284,6 +284,13 @@ end $$;
 -- └──────────────────────────────────────────────────────────────────────────┘
 create index if not exists idx_blood_tests_user_date on public.blood_tests(user_id, taken_at desc)
   where deleted_at is null;
+
+-- One non-deleted blood test per user per day. The API dedupes at write time
+-- (replacing the existing row instead of inserting a new one), but this index
+-- catches any path — scripts, Studio, raw SQL — that skips the API.
+create unique index if not exists uq_blood_tests_user_date_active
+  on public.blood_tests(user_id, taken_at)
+  where deleted_at is null;
 create index if not exists idx_protocols_user_created on public.protocols(user_id, created_at desc)
   where deleted_at is null;
 create index if not exists idx_daily_metrics_user_date on public.daily_metrics(user_id, date desc);
