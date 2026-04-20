@@ -14,6 +14,7 @@ export default function sitemap(): MetadataRoute.Sitemap {
     { url: `${BASE}/terms`,          lastModified: now, changeFrequency: 'yearly',  priority: 0.3 },
     { url: `${BASE}/biomarkers`,     lastModified: now, changeFrequency: 'weekly',  priority: 0.9 },
     { url: `${BASE}/patterns`,       lastModified: now, changeFrequency: 'weekly',  priority: 0.9 },
+    { url: `${BASE}/changelog`,      lastModified: now, changeFrequency: 'weekly',  priority: 0.6 },
   ];
 
   // Programmatic SEO — one entry per biomarker + one per clinical pattern.

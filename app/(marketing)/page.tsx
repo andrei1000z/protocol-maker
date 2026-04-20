@@ -53,6 +53,7 @@ export default function LandingPage() {
           <div className="flex items-center gap-5 text-sm">
             <a href="#how" className="text-muted-foreground hover:text-foreground hidden sm:block">How it works</a>
             <a href="#demo" className="text-muted-foreground hover:text-foreground hidden sm:block">Demo</a>
+            <Link href="/changelog" className="text-muted-foreground hover:text-foreground hidden sm:block">Changelog</Link>
             <Link href="/login" className="px-4 py-1.5 rounded-lg bg-accent text-black font-semibold hover:bg-accent-dim transition-colors">
               Sign in
             </Link>
@@ -114,6 +115,38 @@ export default function LandingPage() {
               <p className="text-xs text-muted-foreground mt-1">{s.label}</p>
             </div>
           ))}
+        </div>
+      </section>
+
+      {/* Wearables trust strip — makes the "we're a real product" case without
+          asking users to read copy. 5 OAuth integrations + honest mobile-only
+          note for Samsung/Apple (no hidden surprises). */}
+      <section className="border-b border-card-border bg-gradient-to-b from-card/10 to-transparent">
+        <div className="max-w-6xl mx-auto px-6 py-10">
+          <p className="text-center text-[10px] uppercase tracking-widest text-muted mb-6">
+            Auto-syncs with your wearables
+          </p>
+          <div className="grid grid-cols-3 sm:grid-cols-5 gap-3 sm:gap-4 max-w-3xl mx-auto">
+            {[
+              { emoji: '💍', name: 'Oura Ring',  bg: 'from-purple-500/10 border-purple-500/25' },
+              { emoji: '⌚', name: 'Fitbit',     bg: 'from-cyan-500/10 border-cyan-500/25' },
+              { emoji: '⚖️', name: 'Withings',   bg: 'from-emerald-500/10 border-emerald-500/25' },
+              { emoji: '🏋️', name: 'WHOOP',      bg: 'from-amber-500/10 border-amber-500/25' },
+              { emoji: '🤖', name: 'Google Fit', bg: 'from-blue-500/10 border-blue-500/25' },
+            ].map((w, i) => (
+              <div
+                key={w.name}
+                className={`rounded-2xl bg-gradient-to-br ${w.bg} bg-card border p-4 flex flex-col items-center justify-center gap-2 animate-fade-in-up hover:border-accent/40 transition-colors`}
+                style={{ animationDelay: `${i * 50}ms` }}
+              >
+                <span className="text-2xl" aria-hidden>{w.emoji}</span>
+                <span className="text-[11px] font-medium tracking-tight text-center">{w.name}</span>
+              </div>
+            ))}
+          </div>
+          <p className="text-center text-[10px] text-muted mt-5">
+            Samsung Galaxy Watch + Apple Watch coming with the native mobile app.
+          </p>
         </div>
       </section>
 
