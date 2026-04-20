@@ -8,6 +8,7 @@
 import { NextResponse } from 'next/server';
 import { z } from 'zod';
 import { createClient } from '@/lib/supabase/server';
+import { logger } from '@/lib/logger';
 
 export const runtime = 'nodejs';
 
@@ -56,13 +57,31 @@ const LogMetricSchema = z.object({
 
 // Adjust-protocol uses a tiny dot-path setter against protocols.protocol_json.
 // Allowed path roots are intentionally limited to "soft" sections — never
-// supplements/biomarkers (those need a full regenerate).
+// supplements/biomarkers (those need a full regenerate). Expanded based on
+// paths the AI actually emits in conversation (cardio minutes, vegetable
+// servings, protein grams, etc.) — originally too narrow and chat actions
+// were bouncing off "Invalid action" for common suggestions.
 const ALLOWED_PROTOCOL_ROOTS = new Set([
+  // Sleep
   'sleep.targetBedtime', 'sleep.targetWakeTime', 'sleep.idealBedtime', 'sleep.idealWakeTime',
-  'sleep.caffeineLimit', 'sleep.morningLightMinutes',
+  'sleep.targetHours', 'sleep.caffeineLimit', 'sleep.morningLightMinutes',
+  'sleep.windDownStart', 'sleep.screenCutoff',
+  // Nutrition
   'nutrition.eatingWindow', 'nutrition.dailyCalories',
   'nutrition.macros.protein', 'nutrition.macros.carbs', 'nutrition.macros.fat',
-  'exercise.dailyStepsTarget', 'exercise.zone2Target', 'exercise.strengthSessions', 'exercise.hiitSessions',
+  'nutrition.proteinGrams', 'nutrition.fiberGrams', 'nutrition.waterLitersPerDay',
+  'nutrition.vegetableServingsPerDay', 'nutrition.fruitServingsPerDay',
+  'nutrition.mealsPerDay', 'nutrition.alcoholDrinksPerWeek', 'nutrition.caffeineCutoffTime',
+  // Exercise — the AI most frequently wants to adjust these
+  'exercise.dailyStepsTarget', 'exercise.zone2Target', 'exercise.zone2MinutesPerWeek',
+  'exercise.strengthSessions', 'exercise.strengthSessionsPerWeek',
+  'exercise.hiitSessions', 'exercise.hiitMinutesPerWeek',
+  'exercise.cardioMinutesPerWeek', 'exercise.cardioSessions',
+  'exercise.yogaMobilityMinutes', 'exercise.restDays',
+  // Stress / recovery
+  'mindset.meditationMinutes', 'mindset.breathworkMinutes', 'mindset.saunaMinutes',
+  'mindset.coldExposureMinutes',
+  // Daily briefing
   'dailyBriefing.morningPriorities', 'dailyBriefing.eveningReview',
 ]);
 
@@ -115,7 +134,22 @@ export async function POST(request: Request) {
     const body = await request.json();
     const parsed = ActionSchema.safeParse(body);
     if (!parsed.success) {
-      return NextResponse.json({ error: 'Invalid action', details: parsed.error.issues }, { status: 400 });
+      // Log which path / field the AI emitted that didn't fit. Most common case:
+      // an adjust_protocol path outside ALLOWED_PROTOCOL_ROOTS. Logging both
+      // lets us grow the allowlist from real traffic instead of guesswork.
+      const probe = body as { type?: string; payload?: { path?: string } };
+      const rejectedPath = typeof probe?.payload?.path === 'string' ? probe.payload.path : undefined;
+      logger.warn('chat_action.schema_reject', {
+        userId: user.id,
+        type: String(probe?.type || 'unknown'),
+        rejectedPath,
+        issuePaths: parsed.error.issues.slice(0, 5).map(i => i.path.join('.')),
+      });
+      // User-facing hint: name the path so the retry decision is obvious.
+      const hint = rejectedPath
+        ? `Path '${rejectedPath}' isn't adjustable from chat — try a full Refresh protocol instead.`
+        : 'This action can\'t be applied — try asking differently.';
+      return NextResponse.json({ error: hint, details: parsed.error.issues }, { status: 400 });
     }
     const action = parsed.data;
 
@@ -214,7 +248,7 @@ export async function POST(request: Request) {
         deepSet(json, path, value);
         const { error: updErr } = await supabase
           .from('protocols')
-          .update({ protocol_json: json, updated_at: new Date().toISOString() })
+          .update({ protocol_json: json })
           .eq('id', protocol.id);
         if (updErr) throw new Error(updErr.message);
       } else if (error) {

@@ -638,14 +638,14 @@ begin
 
   path_parts := string_to_array(p_path, '.');
 
+  -- protocols has no updated_at column (unlike profiles); don't try to set it.
   update public.protocols p
   set protocol_json = jsonb_set(
         coalesce(p.protocol_json, '{}'::jsonb),
         path_parts,
         p_value,
         true   -- create missing path segments
-      ),
-      updated_at = now()
+      )
   where p.id = (
     select id from public.protocols
     where user_id = p_user_id and deleted_at is null
