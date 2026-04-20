@@ -46,11 +46,35 @@ function Section({ id, title, icon, subtitle, action, children, className }: { i
   );
 }
 
-function EmptyState({ message }: { message: string }) {
+function EmptyState({ message, allowRegenerate }: { message: string; allowRegenerate?: boolean }) {
+  // When `allowRegenerate` is true, show an inline button so the user can
+  // trigger a fresh AI generation right from the missing section instead
+  // of scrolling to the footer.
+  const regen = async () => {
+    // Hit the regenerate endpoint directly (no onboarding reset needed if the
+    // user already has a profile). Redirect to dashboard with a cache-buster
+    // so SWR re-reads the fresh protocol.
+    const res = await fetch('/api/generate-protocol', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ profile: {}, biomarkers: [] }),
+    });
+    if (res.ok) window.location.href = '/dashboard';
+    else window.location.href = '/onboarding';  // fallback: let onboarding resync
+  };
   return (
-    <div className="p-8 rounded-xl bg-background/50 border border-dashed border-card-border text-center">
+    <div className="p-8 rounded-xl bg-background/50 border border-dashed border-card-border text-center space-y-3">
       <p className="text-xs text-muted-foreground">{message}</p>
-      <p className="text-[10px] text-muted mt-1.5">Upload blood work or complete more onboarding for richer data.</p>
+      {allowRegenerate ? (
+        <div className="space-y-2">
+          <p className="text-[10px] text-muted">This looks like an incomplete generation — regenerate to fill it in.</p>
+          <button onClick={regen} className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-accent text-black text-xs font-semibold hover:bg-accent-bright transition-colors">
+            ↻ Regenerate protocol
+          </button>
+        </div>
+      ) : (
+        <p className="text-[10px] text-muted mt-1.5">Upload blood work or complete more onboarding for richer data.</p>
+      )}
     </div>
   );
 }
@@ -71,6 +95,50 @@ function ProgressRing({ value, size = 120, stroke = 8, color = 'var(--accent)' }
         style={{ transition: 'stroke-dashoffset 1.2s cubic-bezier(0.4, 0, 0.2, 1)' }}
       />
     </svg>
+  );
+}
+
+// Alerts the user that their currently-stored protocol is missing required
+// sections (usually because an older AI generation returned a sparse JSON
+// that slipped past our validation layer). Offers an inline regenerate.
+// Tight UX: one sentence + one button. Regeneration fires /api/generate-protocol
+// which, post Round 14 fix, will merge in any still-missing fallback sections.
+function IncompleteProtocolBanner({ missing }: { missing: string[] }) {
+  const [regenerating, setRegenerating] = useState(false);
+  const doRegen = async () => {
+    setRegenerating(true);
+    try {
+      const res = await fetch('/api/generate-protocol', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ profile: {}, biomarkers: [] }),
+      });
+      if (res.ok) {
+        window.location.href = '/dashboard';
+        return;
+      }
+    } catch { /* network — fall through to onboarding */ }
+    window.location.href = '/onboarding';
+  };
+  return (
+    <div className="rounded-2xl bg-amber-500/[0.06] border border-amber-500/30 p-4 flex items-start gap-3 animate-fade-in-up">
+      <div className="w-10 h-10 rounded-xl bg-amber-500/15 border border-amber-500/30 flex items-center justify-center shrink-0">
+        <span className="text-base">⚠️</span>
+      </div>
+      <div className="flex-1 min-w-0">
+        <p className="text-sm font-semibold text-warning">Your protocol is incomplete — missing {missing.join(' + ')}</p>
+        <p className="text-[11px] text-muted-foreground mt-0.5 leading-relaxed">
+          The AI returned a partial response last time. One tap to regenerate fills every section with fresh data based on your profile and biomarkers.
+        </p>
+      </div>
+      <button
+        onClick={doRegen}
+        disabled={regenerating}
+        className="shrink-0 inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-accent text-black text-xs font-semibold hover:bg-accent-bright disabled:opacity-60 transition-colors"
+      >
+        {regenerating ? 'Regenerating…' : '↻ Regenerate now'}
+      </button>
+    </div>
   );
 }
 
@@ -302,6 +370,23 @@ export default function DashboardPage() {
 
       {/* ═══════════════ CRON REGEN BANNER — overnight auto-refresh notice ═══════════════ */}
       {cronBannerInfo && <CronRegenBanner createdAt={cronBannerInfo.createdAt} protocolId={cronBannerInfo.protocolId} />}
+
+      {/* ═══════════════ INCOMPLETE-PROTOCOL BANNER ═══════════════
+          Detects the "AI returned only {diagnostic:{...}}" failure mode that used
+          to slip past Zod validation. If any of nutrition / supplements /
+          dailySchedule is missing from the current protocol, surface a loud
+          banner with a one-tap Regenerate button. Hidden in demo mode.
+          Post Round 14 fix this should stop happening — but old protocols in
+          the DB can still be in this state, so the affordance remains. */}
+      {!demoMode && (!p.nutrition || !p.supplements?.length || !p.dailySchedule?.length) && (
+        <IncompleteProtocolBanner
+          missing={[
+            !p.nutrition ? 'Nutrition' : null,
+            !p.supplements?.length ? 'Supplements' : null,
+            !p.dailySchedule?.length ? 'Daily Schedule' : null,
+          ].filter(Boolean) as string[]}
+        />
+      )}
 
       {/* ═══════════════ PROTOCOL CHANGE BANNER (v2 vs v1) ═══════════════ */}
       {diffData?.diff && (diffData.diff.totalChanges > 0 || diffData.diff.score.delta !== 0 || Math.abs(diffData.diff.bioAge.delta) >= 0.1) && (() => {
@@ -970,7 +1055,7 @@ export default function DashboardPage() {
 
       {/* Nutrition */}
       <Section id="nutrition" title="Nutrition" icon="🥗" subtitle="Your daily targets, 3 personalized options per meal type, and the maximums to stay under.">
-        {!p.nutrition ? <EmptyState message="Nutrition plan will generate after onboarding." /> : (<>
+        {!p.nutrition ? <EmptyState message="Nutrition plan will generate after onboarding." allowRegenerate /> : (<>
           {/* Daily macro targets */}
           <div className="grid grid-cols-4 gap-2 sm:gap-3">
             <div className="metric-tile text-center">
@@ -1108,7 +1193,7 @@ export default function DashboardPage() {
 
       {/* Supplements timeline */}
       <Section id="supplements" title="Supplements" icon="💊" subtitle="Your stack with exact timing, how to take each one, and what's already in your routine kept intact.">
-        {(!p.supplements || p.supplements.length === 0) ? <EmptyState message="Supplement stack will be generated based on your biomarkers." /> : (<>
+        {(!p.supplements || p.supplements.length === 0) ? <EmptyState message="Supplement stack will be generated based on your biomarkers." allowRegenerate /> : (<>
           {/* Header stats */}
           <div className="grid grid-cols-3 gap-2 sm:gap-3">
             <div className="metric-tile text-center">
@@ -1274,7 +1359,7 @@ export default function DashboardPage() {
 
       {/* Daily Schedule — grouped by time-of-day phase for easy scanning */}
       <Section id="schedule" title="Daily Schedule" icon="⏰" subtitle="Every action of your day at its exact time. Wake → supplements → meals → exercise → wind-down → bedtime. Each item links back to why.">
-        {(!p.dailySchedule || p.dailySchedule.length === 0) ? <EmptyState message="Daily timeline will appear once your protocol generates." /> : (() => {
+        {(!p.dailySchedule || p.dailySchedule.length === 0) ? <EmptyState message="Daily timeline will appear once your protocol generates." allowRegenerate /> : (() => {
           // Split entries into phases so the user sees a cohesive day, not a flat list
           const PHASES = [
             { key: 'morning',   label: '🌅 Morning',      range: [5, 11] },

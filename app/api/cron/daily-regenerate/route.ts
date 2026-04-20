@@ -8,6 +8,7 @@ import { BIOMARKER_DB } from '@/lib/engine/biomarkers';
 import { buildMasterPromptV2, CACHEABLE_SYSTEM_PREFIX } from '@/lib/engine/master-prompt';
 import { computeOrganSystems, generateTopWins, generateTopRisks, estimateBiomarkers, buildBryanSummary } from '@/lib/engine/lifestyle-diagnostics';
 import { buildPainPoints, buildFlexRules } from '@/lib/engine/personalization-fills';
+import { buildFallbackProtocol } from '@/lib/engine/fallback-protocol';
 import type { BiomarkerValue, UserProfile } from '@/lib/types';
 
 // Cron jobs can run up to 300s on Vercel Pro. Hobby is 60s — we batch small.
@@ -221,8 +222,37 @@ async function regenerateForUser(userId: string): Promise<{ skipped?: boolean; s
       modelUsed = 'llama-3.3-70b-versatile';
     }
   } catch {
-    protocolJson = { diagnostic: {}, _fallback: true };
+    // BUG FIX: previously set protocolJson to `{diagnostic: {}, _fallback: true}`
+    // which wrote an EMPTY protocol to the DB overnight. Users woke up to a
+    // dashboard with missing Nutrition / Supplements / Daily Schedule sections.
+    // Now uses the real deterministic fallback so the worst case is a protocol
+    // built from rules, not silence.
+    protocolJson = buildFallbackProtocol(mergedProfile as UserProfile, biologicalAge, longevityScore, classified, patterns);
     modelUsed = 'fallback';
+  }
+
+  // Defense: if AI returned a VALID but SPARSE protocol, merge missing
+  // sections from the deterministic fallback. Same fix as the main
+  // generate-protocol route — without this, a truncated or lazy AI response
+  // writes a dashboard with empty section cards.
+  const REQUIRED_SECTIONS = [
+    'nutrition', 'supplements', 'supplementsHowTo', 'exercise', 'sleep',
+    'tracking', 'doctorDiscussion', 'dailySchedule', 'bryanComparison',
+    'universalTips', 'dailyBriefing', 'costBreakdown',
+  ];
+  const missingSections = REQUIRED_SECTIONS.filter(k => {
+    const v = protocolJson[k];
+    if (v === undefined || v === null) return true;
+    if (Array.isArray(v) && v.length === 0) return true;
+    if (typeof v === 'object' && Object.keys(v).length === 0) return true;
+    return false;
+  });
+  if (missingSections.length > 0 && modelUsed !== 'fallback') {
+    const deterministic = buildFallbackProtocol(mergedProfile as UserProfile, biologicalAge, longevityScore, classified, patterns);
+    for (const key of missingSections) {
+      if (deterministic[key] !== undefined) protocolJson[key] = deterministic[key];
+    }
+    if (missingSections.length >= 4) modelUsed = `${modelUsed}+fallback`;
   }
 
   // Inject authoritative numbers + lifestyle diagnostics (same as main route)

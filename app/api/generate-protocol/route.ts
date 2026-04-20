@@ -55,13 +55,63 @@ export async function POST(request: Request) {
       }, { status: 429 });
     }
 
-    const { profile: rawProfile, biomarkers } = await request.json();
-    const biomarkerValues: BiomarkerValue[] = biomarkers || [];
+    const body = await request.json().catch(() => ({} as Record<string, unknown>));
+    const rawProfileFromClient = (body as { profile?: Record<string, unknown> }).profile || {};
+    const biomarkersFromClient = (body as { biomarkers?: BiomarkerValue[] }).biomarkers;
+
+    // Server-side profile hydration — when the client sends an empty/sparse
+    // profile (e.g. regenerate-banner on dashboard), load the user's saved
+    // profile + latest bloodwork from Supabase. This makes regenerate work
+    // with just a POST and no body, so any page can trigger it safely.
+    let rawProfile: Record<string, unknown> = rawProfileFromClient;
+    let biomarkerValues: BiomarkerValue[] = biomarkersFromClient || [];
+    const clientSparse = !rawProfileFromClient || Object.keys(rawProfileFromClient).length < 3;
+
+    if (clientSparse) {
+      const [{ data: dbProfile }, { data: latestBT }] = await Promise.all([
+        supabase.from('profiles').select('*').eq('id', user.id).is('deleted_at', null).maybeSingle(),
+        supabase.from('blood_tests').select('biomarkers').eq('user_id', user.id).is('deleted_at', null).order('taken_at', { ascending: false }).limit(1).maybeSingle(),
+      ]);
+      if (dbProfile) {
+        const od = (dbProfile.onboarding_data || {}) as Record<string, unknown>;
+        // Reshape DB row → UserProfile shape the prompt expects
+        rawProfile = {
+          ...od,
+          age: dbProfile.age, sex: dbProfile.sex,
+          heightCm: dbProfile.height_cm, weightKg: dbProfile.weight_kg,
+          ethnicity: dbProfile.ethnicity, occupation: dbProfile.occupation,
+          activityLevel: dbProfile.activity_level,
+          sleepHoursAvg: dbProfile.sleep_hours_avg, sleepQuality: dbProfile.sleep_quality,
+          dietType: dbProfile.diet_type,
+          alcoholDrinksPerWeek: dbProfile.alcohol_drinks_per_week,
+          caffeineMgPerDay: dbProfile.caffeine_mg_per_day,
+          smoker: dbProfile.smoker,
+          cardioMinutesPerWeek: dbProfile.cardio_minutes_per_week,
+          strengthSessionsPerWeek: dbProfile.strength_sessions_per_week,
+          conditions: dbProfile.conditions || [],
+          medications: dbProfile.medications || [],
+          currentSupplements: dbProfile.current_supplements || [],
+          allergies: dbProfile.allergies || [],
+          goals: dbProfile.goals || [],
+          timeBudgetMin: dbProfile.time_budget_min,
+          monthlyBudgetRon: dbProfile.monthly_budget_ron,
+          experimentalOpenness: dbProfile.experimental_openness,
+          onboardingData: od,
+        };
+      }
+      // Load biomarkers only if client didn't send any
+      if (!biomarkersFromClient && latestBT?.biomarkers) {
+        biomarkerValues = latestBT.biomarkers as BiomarkerValue[];
+      }
+    }
 
     // Flatten onboardingData into top-level fields for the prompt's pick() helper
-    // (it checks top-level first, then onboardingData, so this preserves typed fields)
-    const onboardingData = rawProfile.onboardingData || {};
-    const profile = { ...onboardingData, ...rawProfile };
+    // (it checks top-level first, then onboardingData, so this preserves typed fields).
+    // Keep as a flexible flattened record — downstream helpers take UserProfile
+    // or Record<string, unknown> via cast where needed, and all have defaults
+    // for missing fields at runtime.
+    const onboardingData = (rawProfile.onboardingData || {}) as Record<string, unknown>;
+    const profile = { ...onboardingData, ...rawProfile } as UserProfile & Record<string, unknown>;
 
     // Local classification (instant, never fails)
     const classified = classifyAll(biomarkerValues);
@@ -125,6 +175,37 @@ export async function POST(request: Request) {
       logger.error('protocol.all_ai_failed_using_fallback', { userId: user.id, errorMessage: aiError });
       protocolJson = buildFallbackProtocol(profile, biologicalAge, longevityScore, classified, patterns);
       modelUsed = 'fallback';
+    }
+
+    // Defense: if AI returned a VALID but SPARSE protocol (missing nutrition,
+    // supplements, dailySchedule, exercise, sleep, tracking, or doctorDiscussion)
+    // fill the gaps from the deterministic fallback. This was a real user-facing
+    // bug: Zod schema made every section optional, so an AI that only produced
+    // `{diagnostic:{...}}` would pass validation and save a dashboard with
+    // empty Nutrition / Supplements / Daily Schedule cards.
+    const REQUIRED_SECTIONS: string[] = [
+      'nutrition', 'supplements', 'supplementsHowTo', 'exercise', 'sleep',
+      'tracking', 'doctorDiscussion', 'dailySchedule', 'bryanComparison',
+      'universalTips', 'dailyBriefing', 'costBreakdown',
+    ];
+    const missingSections = REQUIRED_SECTIONS.filter(k => {
+      const v = protocolJson[k];
+      if (v === undefined || v === null) return true;
+      if (Array.isArray(v) && v.length === 0) return true;
+      if (typeof v === 'object' && Object.keys(v).length === 0) return true;
+      return false;
+    });
+    if (missingSections.length > 0) {
+      logger.warn('protocol.ai_sparse_merging_fallback', { userId: user.id, missing: missingSections, source: modelUsed });
+      const deterministic = buildFallbackProtocol(profile, biologicalAge, longevityScore, classified, patterns);
+      for (const key of missingSections) {
+        if (deterministic[key] !== undefined) protocolJson[key] = deterministic[key];
+      }
+      // If we merged ≥4 sections, mark the source as 'hybrid' so downstream
+      // tracking can see we patched a weak AI output with real data.
+      if (missingSections.length >= 4 && modelUsed !== 'fallback') {
+        modelUsed = `${modelUsed}+fallback`;
+      }
     }
 
     // Blend AI output with our deterministic baseline. AI gets trust within sanity bounds;
