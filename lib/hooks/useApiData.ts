@@ -111,6 +111,28 @@ export function useMyData() {
   return useSWR<MyDataResponse>('/api/my-data', fastCache);
 }
 
+// Live-scores response — deterministic refined numbers computed on every
+// call. Dashboard shows these alongside the "locked in" protocol scores so
+// a new tracking log updates the visible number instantly.
+interface LiveScoresResponse {
+  configured: boolean;
+  reason?: string;
+  chronoAge?: number;
+  longevityScore?: number;
+  biologicalAge?: number;
+  agingPace?: number;
+  wearableSignalDays?: number;
+  organScores?: Record<string, number>;
+  hasBiomarkers?: boolean;
+  biomarkerCount?: number;
+}
+
+/** Deterministic refinement of bio-age / pace / longevity score. Cheap —
+ *  no AI. Re-reads on every tracking save via invalidate.liveScores(). */
+export function useLiveScores() {
+  return useSWR<LiveScoresResponse>('/api/live-scores', realtimeish);
+}
+
 export function useStatistics() {
   return useSWR<StatisticsResponse>('/api/statistics', fastCache);
 }
@@ -157,6 +179,7 @@ export const invalidate = {
   myData:           () => globalMutate('/api/my-data'),
   statistics:       () => globalMutate('/api/statistics'),
   protocolHistory:  () => globalMutate('/api/protocol-history'),
+  liveScores:       () => globalMutate('/api/live-scores'),
   compliance:       () => globalMutate((key) => typeof key === 'string' && key.startsWith('/api/compliance')),
   dailyMetrics:     () => globalMutate((key) => typeof key === 'string' && key.startsWith('/api/daily-metrics')),
   all:              () => globalMutate(() => true),

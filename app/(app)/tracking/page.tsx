@@ -20,6 +20,7 @@ import { useProtocolStaleness } from '@/lib/hooks/useProtocolStaleness';
 import { useDailyMetrics, useDailyMetricsRange, DailyMetrics } from '@/lib/hooks/useDailyMetrics';
 import { buildInsights, currentWorkoutStreak, loggedDaysInLastN, Insight } from '@/lib/engine/tracking-insights';
 import { SectionCard as Section, StatTile as Stat, ProgressRing } from '@/components/ui/SectionCard';
+import { UpgradeProgress } from '@/components/ui/UpgradeProgress';
 import { summarizeUserDevices, type UserDeviceSummary, CAPABILITY_TO_COLUMNS, EQUIPMENT_TO_COLUMNS } from '@/lib/engine/device-catalog';
 import { SITE_URL } from '@/lib/config';
 
@@ -453,6 +454,10 @@ export default function TrackingPage() {
   // computed below for the compliance API; use it via hook arg.)
   const staleness = useProtocolStaleness(myData?.protocol?.id || null);
   const [refreshing, setRefreshing] = useState(false);
+  // Separate flag for "server work is DONE" — the UpgradeProgress modal
+  // holds the 'ai' stage open until we flip this, then sprints through the
+  // last 2 stages and auto-closes.
+  const [regenDone, setRegenDone] = useState(false);
 
   // Wrap the save hook so every log bumps the local staleness counter.
   // Retroactive saves (picking yesterday) still count — old data getting
@@ -461,7 +466,14 @@ export default function TrackingPage() {
     await saveMetricsRaw(updates);
     // Only bump for actual values (not clears). Checks each field.
     const hasValue = Object.values(updates).some(v => v !== null && v !== undefined && v !== '');
-    if (hasValue) staleness.recordLog();
+    if (hasValue) {
+      staleness.recordLog();
+      // Invalidate the live-scores SWR cache so the dashboard's refined
+      // bio-age / pace / longevity / organ scores update the next time the
+      // user opens it — no waiting for a full AI regen.
+      invalidate.liveScores();
+      invalidate.statistics();
+    }
   }, [saveMetricsRaw, staleness]);
 
   // Manual regenerate — only fires on button tap, never automatic, to respect
@@ -469,6 +481,7 @@ export default function TrackingPage() {
   // server-side profile hydration path (Round 14) so we pass an empty body.
   const handleRefreshProtocol = useCallback(async () => {
     setRefreshing(true);
+    setRegenDone(false);
     try {
       const res = await fetch('/api/generate-protocol', {
         method: 'POST',
@@ -488,12 +501,15 @@ export default function TrackingPage() {
             }));
           }
         } catch { /* ignore — reload still happens below */ }
-        // Hard refresh so SWR caches drop stale protocol + dashboard re-reads.
-        window.location.href = '/dashboard';
+        // Tell the modal server work is done so it finishes its stages, then
+        // redirect after the celebration frame closes the modal.
+        setRegenDone(true);
+        setTimeout(() => { window.location.href = '/dashboard'; }, 2200);
         return;
       }
     } catch { /* network — stay put */ }
     setRefreshing(false);
+    setRegenDone(false);
   }, [staleness]);
 
   // User's personalized wake time for the FASTED group hint. Prefer the
@@ -890,6 +906,17 @@ export default function TrackingPage() {
       <p className="text-[11px] text-center text-muted pt-2">
         Daily averages feed into tomorrow&apos;s protocol regeneration (3 AM Romania).
       </p>
+
+      {/* Upgrade-progress modal — shown while generate-protocol is running.
+          Animates through 7 named stages ("Upgrading the AI protocol generator",
+          "Computing organ system scores", etc.) so the 10-15s AI call doesn't
+          feel like a hang. Parent flips `done` when the fetch resolves; modal
+          sprints through the remaining stages, celebrates for 700ms, auto-closes. */}
+      <UpgradeProgress
+        open={refreshing}
+        done={regenDone}
+        onClose={() => { /* tracking page will be gone by now — redirect already scheduled */ }}
+      />
     </div>
   );
 }

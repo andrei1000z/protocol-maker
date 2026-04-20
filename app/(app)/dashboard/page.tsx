@@ -5,7 +5,7 @@ import { ProtocolOutput, Classification } from '@/lib/types';
 import { getClassificationColor, getClassificationBg } from '@/lib/engine/classifier';
 import { AnimatedNumber } from '@/components/ui/AnimatedNumber';
 import { DashboardTOC } from '@/components/layout/DashboardTOC';
-import { useMyData, useProtocolDiff } from '@/lib/hooks/useApiData';
+import { useMyData, useProtocolDiff, useLiveScores } from '@/lib/hooks/useApiData';
 import { SAMPLE_PROTOCOL, SAMPLE_LONGEVITY_SCORE, SAMPLE_BIO_AGE } from '@/lib/engine/sample-protocol';
 import { BRYAN } from '@/lib/engine/bryan-constants';
 import { pickTodaysFocus, type ScheduleEntry, type FocusPick } from '@/lib/engine/todays-focus';
@@ -157,6 +157,32 @@ function IncompleteProtocolBanner({ missing }: { missing: string[] }) {
 // since their last visit, so new numbers on the dashboard don't feel like
 // they came from nowhere. Dismissal is stored per protocol id in localStorage,
 // so the banner won't come back until the NEXT cron regenerates.
+// Small chip that surfaces a live-refinement delta next to a hero metric.
+// "direction: up" = improvement (accent green), "down" = decline (danger red).
+function LiveDriftChip({ label, direction, value, title }: {
+  label: string;
+  direction: 'up' | 'down';
+  value: string;
+  title?: string;
+}) {
+  const tone = direction === 'up'
+    ? 'bg-accent/10 text-accent border-accent/25'
+    : 'bg-red-500/10 text-danger border-red-500/25';
+  const arrow = direction === 'up' ? '↑' : '↓';
+  return (
+    <span
+      title={title}
+      className={clsx(
+        'inline-flex items-center gap-1 mt-2 ml-2 text-[10px] font-mono px-2 py-0.5 rounded-full border',
+        tone,
+      )}
+    >
+      <span className="w-1.5 h-1.5 rounded-full bg-current animate-pulse" />
+      {label} {arrow} {value}
+    </span>
+  );
+}
+
 // One-shot toast showing the delta from the user's most recent regen.
 // Written by the tracking page's Refresh button into localStorage; we read
 // it on mount, render it once, then clear so a refresh doesn't re-show.
@@ -358,6 +384,11 @@ function BiomarkerBar({ value, low, high, popLow, popHigh, bryanVal, unit }: {
 export default function DashboardPage() {
   const { data: myData, isLoading } = useMyData();
   const { data: diffData } = useProtocolDiff();
+  // Live refined scores — computed against current profile + bloodwork +
+  // last-30d daily metrics without the AI in the loop. Updates whenever the
+  // tracking page saves a metric (invalidate.liveScores()) so the dashboard
+  // hero reflects new data instantly instead of waiting for a full regen.
+  const { data: liveScores } = useLiveScores();
   const [expandedBiomarker, setExpandedBiomarker] = useState<string | null>(null);
   const [demoMode, setDemoMode] = useState(false);
   const [showEstimatedBiomarkers, setShowEstimatedBiomarkers] = useState(false);
@@ -461,8 +492,12 @@ export default function DashboardPage() {
   const cronBannerInfo = !demoMode && myData?.protocol?.generation_source === 'cron' && myData.protocol.created_at
     ? { createdAt: myData.protocol.created_at, protocolId: myData.protocol.id }
     : null;
-  const radarData = diag?.organSystemScores
-    ? Object.entries(diag.organSystemScores).map(([key, val]) => ({ name: key.charAt(0).toUpperCase() + key.slice(1), score: val as number }))
+  // Prefer the live organ scores when present — re-computes on every tracking
+  // save so the radar reflects new data without waiting for a regen. Falls
+  // back to the snapshot saved at last generation.
+  const organScoresSource = liveScores?.organScores ?? diag?.organSystemScores;
+  const radarData = organScoresSource
+    ? Object.entries(organScoresSource).map(([key, val]) => ({ name: key.charAt(0).toUpperCase() + key.slice(1), score: val as number }))
     : [];
 
   // Prefer DB decimal column → diagnostic block → integer fallback
@@ -483,6 +518,23 @@ export default function DashboardPage() {
   const organsDetailed = diag?.organSystemsDetailed || [];
   const bryanSummary = diag?.bryanSummary;
   const estimatedBiomarkers = diag?.estimatedBiomarkers || [];
+
+  // Live refined numbers for the hero — when they differ from the locked-in
+  // protocol values by at least 1 pt / 0.1 yr / 0.02 pace, surface a subtle
+  // chip ("live 72 · locked 69"). Hidden in demo + when scores are identical.
+  const live = demoMode ? null : liveScores;
+  const hasLive = !!(live?.configured);
+  const liveLongevityScore = hasLive && typeof live.longevityScore === 'number' ? live.longevityScore : longevityScore;
+  const liveBioAgeDecimal = hasLive && typeof live.biologicalAge === 'number' ? live.biologicalAge : bioAgeDecimal;
+  const liveAgingPace = hasLive && typeof live.agingPace === 'number' ? live.agingPace : velocity;
+  const scoreDrift = hasLive ? liveLongevityScore - longevityScore : 0;
+  const bioAgeDrift = hasLive ? Math.round((liveBioAgeDecimal - bioAgeDecimal) * 10) / 10 : 0;
+  const paceDrift = hasLive ? Math.round((liveAgingPace - velocity) * 100) / 100 : 0;
+  const liveDelta = hasLive && (Math.abs(scoreDrift) >= 1 || Math.abs(bioAgeDrift) >= 0.1 || Math.abs(paceDrift) >= 0.02);
+
+  const bioYearsLive = Math.floor(liveBioAgeDecimal);
+  const bioMonthsLive = Math.round((liveBioAgeDecimal - bioYearsLive) * 12);
+  const bioAgeLabelLive = bioMonthsLive === 12 ? `${bioYearsLive + 1}y 0m` : `${bioYearsLive}y ${bioMonthsLive}m`;
 
   return (
     <div className="max-w-[1200px] mx-auto px-4 py-6 flex gap-6">
@@ -620,6 +672,14 @@ export default function DashboardPage() {
                 <p className="text-[11px] text-muted-foreground mt-1.5 leading-tight">{longevityScore >= 85 ? 'Top tier' : longevityScore >= 70 ? 'Above average' : longevityScore >= 55 ? 'Room to improve' : 'Needs attention'}</p>
               </div>
             </div>
+            {liveDelta && Math.abs(scoreDrift) >= 1 && (
+              <LiveDriftChip
+                label="Live"
+                direction={scoreDrift > 0 ? 'up' : 'down'}
+                value={`${scoreDrift > 0 ? '+' : ''}${scoreDrift.toFixed(0)}`}
+                title={`Based on new tracking data — engine estimates ${liveLongevityScore}. Refresh to lock in.`}
+              />
+            )}
           </div>
 
           {/* Bio Age */}
@@ -637,10 +697,15 @@ export default function DashboardPage() {
               </div>
             )}
             {/* Confidence chip — surfaces how much wearable/daily-log data
-                fed the refinement. Matches thresholds in wearable-refinement.ts
-                (≥25 days = high, ≥12 = medium, ≥5 = low, <5 = baseline-only). */}
-            {typeof diag?.wearableSignalDays === 'number' && (() => {
-              const d = diag.wearableSignalDays;
+                fed the refinement. Prefer the LIVE signal-days count so new
+                logs immediately bump "Low confidence" → "Medium confidence".
+                Falls back to the diagnostic snapshot when live data is still
+                loading. Thresholds match wearable-refinement.ts. */}
+            {(() => {
+              const d = typeof live?.wearableSignalDays === 'number'
+                ? live.wearableSignalDays
+                : (typeof diag?.wearableSignalDays === 'number' ? diag.wearableSignalDays : null);
+              if (d === null) return null;
               const { label, tone } = d >= 25 ? { label: 'High confidence',   tone: 'text-accent bg-accent/10 border-accent/25' }
                                      : d >= 12 ? { label: 'Medium confidence', tone: 'text-amber-400 bg-amber-500/10 border-amber-500/25' }
                                      : d >= 5  ? { label: 'Low confidence',    tone: 'text-muted-foreground bg-surface-3 border-card-border' }
@@ -652,6 +717,14 @@ export default function DashboardPage() {
                 </p>
               );
             })()}
+            {liveDelta && Math.abs(bioAgeDrift) >= 0.1 && (
+              <LiveDriftChip
+                label="Live"
+                direction={bioAgeDrift < 0 ? 'up' : 'down'}   /* lower bio age = improvement */
+                value={`${bioAgeDrift > 0 ? '+' : ''}${bioAgeDrift.toFixed(1)}y`}
+                title={`Based on new tracking data — engine estimates ${bioAgeLabelLive}. Refresh to lock in.`}
+              />
+            )}
           </div>
 
           {/* Aging Speed */}
@@ -664,6 +737,14 @@ export default function DashboardPage() {
             <p className="text-[11px] text-muted-foreground mt-2 leading-tight">
               {velocity < 0.85 ? 'Aging slower than real time — top percentile' : velocity < 0.95 ? 'Slower than clock — ahead' : velocity <= 1.05 ? 'Pacing with real time' : velocity <= 1.25 ? 'Accelerated — reversible' : 'Rapidly accelerated — act now'}
             </p>
+            {liveDelta && Math.abs(paceDrift) >= 0.02 && (
+              <LiveDriftChip
+                label="Live"
+                direction={paceDrift < 0 ? 'up' : 'down'}      /* slower pace = improvement */
+                value={`${paceDrift > 0 ? '+' : ''}${paceDrift.toFixed(2)}×`}
+                title={`Based on new tracking data — engine estimates ${liveAgingPace.toFixed(2)}×. Refresh to lock in.`}
+              />
+            )}
           </div>
         </div>
 
