@@ -182,10 +182,29 @@ function lifestyleScore(profile: Record<string, unknown>): number {
 }
 
 export function calculateLongevityScore(classified: BiomarkerValue[], profile?: Record<string, unknown>): number {
+  // Weight each biomarker by its strength as a longevity / all-cause-mortality
+  // predictor. Values roughly reflect the effect size of the marker in large
+  // cohort studies (e.g. Ference 2020 for ApoB, Ridker 2002 for hsCRP,
+  // Nordestgaard 2018 for Lp(a), Kunutsor 2018 for GGT). Every biomarker in
+  // BIOMARKER_DB must appear here — unweighted codes previously fell through to
+  // weight=1, so a 33-marker panel scored roughly the same as the canonical 17.
   const weights: Record<string, number> = {
-    HSCRP: 3, HBA1C: 3, INSULIN: 2.5, GLUC: 2, LDL: 2, HDL: 2, TRIG: 2,
-    VITD: 2, OMEGA3: 2.5, HOMOCYS: 2, APOB: 2.5, TSH: 1.5,
-    FERRITIN: 1.5, B12: 1.5, TESTO: 1.5, ALT: 1, CREAT: 1.5,
+    // Inflammation / cardiometabolic (strongest signals)
+    HSCRP: 3, HBA1C: 3, INSULIN: 2.5, APOB: 2.5, LPA: 2.5, OMEGA3: 2.5,
+    // Glucose + lipids
+    GLUC: 2, LDL: 2, HDL: 2, TRIG: 2, HOMOCYS: 2, VITD: 2,
+    // Liver (GGT is a strong independent mortality predictor)
+    GGT: 1.5, ALT: 1, AST: 1,
+    // Kidney + metabolic
+    CREAT: 1.5, URIC_ACID: 1.5,
+    // Thyroid
+    TSH: 1.5, FT4: 1, ANTI_TPO: 1.2,
+    // Hormones
+    TESTO: 1.5, ESTRADIOL: 1.5, CORTISOL: 1.5, DHEAS: 1.5,
+    // Micronutrients
+    B12: 1.5, FOLAT: 1.2, FERRITIN: 1.5, IRON: 1, MAGNE: 1.2,
+    // CBC
+    WBC: 1.5, HGB: 1, PLT: 1, RBC: 0.8,
   };
 
   let bmScore: number | null = null;
@@ -195,14 +214,24 @@ export function calculateLongevityScore(classified: BiomarkerValue[], profile?: 
     for (const b of classified) {
       const w = weights[b.code] || 1;
       totalWeight += w;
+      // Base bucket score by classification. Then nudge within ±10 based on
+      // longevityGap so a marker 1% outside optimal doesn't carry the same
+      // penalty as one 50% outside. gap is normalized: 0 = at target, 1 =
+      // fully outside the longevity-optimal range.
+      let base = 50;
       switch (b.classification) {
-        case 'OPTIMAL': weightedScore += w * 100; break;
+        case 'OPTIMAL':         base = 100; break;
         case 'SUBOPTIMAL_LOW':
-        case 'SUBOPTIMAL_HIGH': weightedScore += w * 65; break;
+        case 'SUBOPTIMAL_HIGH': base = 65;  break;
         case 'DEFICIENT':
-        case 'EXCESS': weightedScore += w * 35; break;
-        case 'CRITICAL': weightedScore += w * 10; break;
+        case 'EXCESS':          base = 35;  break;
+        case 'CRITICAL':        base = 10;  break;
       }
+      const gap = Math.min(1, Math.abs(b.longevityGap ?? 0));
+      // For non-optimal classifications, subtract up to 10 pts for severity;
+      // for OPTIMAL, small positive gap shouldn't drag the 100 down.
+      const nudge = b.classification === 'OPTIMAL' ? 0 : -10 * gap;
+      weightedScore += w * Math.max(0, Math.min(100, base + nudge));
     }
     bmScore = totalWeight > 0 ? weightedScore / totalWeight : 50;
     const dataBonusFactor = Math.min(1, classified.length / 15);

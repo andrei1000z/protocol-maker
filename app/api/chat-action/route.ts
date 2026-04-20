@@ -81,21 +81,6 @@ const ActionSchema = z.discriminatedUnion('type', [
 ]);
 
 // ─────────────────────────────────────────────────────────────────────────────
-// Helper: deep-set a value at a dot path on a plain object (mutates in place).
-// We hand-rolled this because lodash adds 70KB and we only need this one fn.
-// ─────────────────────────────────────────────────────────────────────────────
-function deepSet(obj: Record<string, unknown>, path: string, value: unknown): void {
-  const parts = path.split('.');
-  let cur: Record<string, unknown> = obj;
-  for (let i = 0; i < parts.length - 1; i++) {
-    const k = parts[i];
-    if (typeof cur[k] !== 'object' || cur[k] === null) cur[k] = {};
-    cur = cur[k] as Record<string, unknown>;
-  }
-  cur[parts[parts.length - 1]] = value;
-}
-
-// ─────────────────────────────────────────────────────────────────────────────
 export async function POST(request: Request) {
   try {
     const supabase = await createClient();
@@ -112,53 +97,56 @@ export async function POST(request: Request) {
     if (action.type === 'update_profile') {
       const { onboarding_data_patch, ...directFields } = action.payload;
 
-      // Merge onboarding_data nested patch with the existing JSONB
-      let mergedOd: Record<string, unknown> | undefined;
-      if (onboarding_data_patch) {
-        const { data: existing } = await supabase.from('profiles').select('onboarding_data').eq('id', user.id).single();
-        const existingOd = (existing?.onboarding_data || {}) as Record<string, unknown>;
-        mergedOd = { ...existingOd, ...onboarding_data_patch };
-      }
-
-      const update: Record<string, unknown> = { ...directFields, updated_at: new Date().toISOString() };
-      if (mergedOd) update.onboarding_data = mergedOd;
-
-      const { error } = await supabase.from('profiles').update(update).eq('id', user.id);
+      // Atomic RPC — applies only non-null args via COALESCE and merges the
+      // onboarding_data jsonb server-side. No read-before-write, so this can
+      // safely race against cron or another tab without losing writes.
+      const { error } = await supabase.rpc('apply_profile_patch', {
+        p_user_id: user.id,
+        p_height_cm: directFields.height_cm ?? null,
+        p_weight_kg: directFields.weight_kg ?? null,
+        p_activity_level: directFields.activity_level ?? null,
+        p_sleep_hours_avg: directFields.sleep_hours_avg ?? null,
+        p_cardio_minutes_per_week: directFields.cardio_minutes_per_week ?? null,
+        p_strength_sessions_per_week: directFields.strength_sessions_per_week ?? null,
+        p_alcohol_drinks_per_week: directFields.alcohol_drinks_per_week ?? null,
+        p_caffeine_mg_per_day: directFields.caffeine_mg_per_day ?? null,
+        p_smoker: directFields.smoker ?? null,
+        p_od_patch: onboarding_data_patch ?? {},
+      });
       if (error) throw new Error(error.message);
-      return NextResponse.json({ ok: true, applied: 'profile', changed: Object.keys(directFields).length + (mergedOd ? 1 : 0) });
+      return NextResponse.json({ ok: true, applied: 'profile', changed: Object.keys(directFields).length + (onboarding_data_patch ? 1 : 0) });
     }
 
     if (action.type === 'log_metric') {
       const { date, ...metrics } = action.payload;
-      // Upsert: keep existing values for fields not in this payload
-      const { data: existing } = await supabase.from('daily_metrics').select('*').eq('user_id', user.id).eq('date', date).maybeSingle();
-      const merged = { ...(existing || {}), ...metrics, user_id: user.id, date };
-      const { error } = await supabase.from('daily_metrics').upsert(merged, { onConflict: 'user_id,date' });
+      // Strip null/undefined so the RPC's COALESCE treats "not mentioned in
+      // this chat turn" as "don't touch" rather than "clear". Matches the
+      // original merge semantic without the race.
+      const patch: Record<string, unknown> = {};
+      for (const [k, v] of Object.entries(metrics)) {
+        if (v !== null && v !== undefined) patch[k] = v;
+      }
+      // Atomic RPC — only keys in `patch` get written; everything else
+      // (including fields set by another tab between reads) stays intact.
+      const { error } = await supabase.rpc('apply_daily_metric_patch', {
+        p_user_id: user.id,
+        p_date: date,
+        p_patch: patch,
+      });
       if (error) throw new Error(error.message);
-      return NextResponse.json({ ok: true, applied: 'metric', date, fields: Object.keys(metrics).length });
+      return NextResponse.json({ ok: true, applied: 'metric', date, fields: Object.keys(patch).length });
     }
 
     if (action.type === 'adjust_protocol') {
       const { path, value } = action.payload;
-      const { data: protocol, error: fetchErr } = await supabase
-        .from('protocols')
-        .select('id, protocol_json')
-        .eq('user_id', user.id)
-        .is('deleted_at', null)
-        .order('created_at', { ascending: false })
-        .limit(1)
-        .maybeSingle();
-      if (fetchErr) throw new Error(fetchErr.message);
-      if (!protocol) return NextResponse.json({ error: 'No active protocol' }, { status: 404 });
-
-      const json = (protocol.protocol_json || {}) as Record<string, unknown>;
-      deepSet(json, path, value);
-
-      const { error: updErr } = await supabase
-        .from('protocols')
-        .update({ protocol_json: json, updated_at: new Date().toISOString() })
-        .eq('id', protocol.id);
-      if (updErr) throw new Error(updErr.message);
+      // Atomic jsonb_set server-side — no read-modify-write window. The RPC
+      // picks the user's latest active protocol under the hood.
+      const { error } = await supabase.rpc('apply_protocol_adjust', {
+        p_user_id: user.id,
+        p_path: path,
+        p_value: value,
+      });
+      if (error) throw new Error(error.message);
       return NextResponse.json({ ok: true, applied: 'protocol', path });
     }
 

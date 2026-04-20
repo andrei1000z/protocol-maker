@@ -371,7 +371,10 @@ export default function SettingsPage() {
   };
 
   const handleExport = async () => {
-    const res = await fetch('/api/my-data');
+    // ?full=1 → complete GDPR archive (daily_metrics, compliance_logs,
+    // share_links, protocol history). Plain /api/my-data is the lean
+    // page-hydration shape and would be an incomplete Article 15 response.
+    const res = await fetch('/api/my-data?full=1');
     const data = await res.json();
     const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
     const url = URL.createObjectURL(blob);

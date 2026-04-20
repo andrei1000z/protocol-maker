@@ -58,6 +58,15 @@ export async function POST(request: Request) {
     if (!isRealDate(date)) {
       return NextResponse.json({ error: 'date required and must be YYYY-MM-DD (real calendar day)' }, { status: 400 });
     }
+    // Block future dates — logging ahead corrupts trend math + statistics views.
+    // Allow today in any timezone: compare against tomorrow's UTC date so a user
+    // in UTC+3 logging at 23:30 local on day N isn't rejected just because the
+    // server is already on day N+1 in UTC.
+    const tomorrow = new Date();
+    tomorrow.setUTCDate(tomorrow.getUTCDate() + 1);
+    if (date > tomorrow.toISOString().slice(0, 10)) {
+      return NextResponse.json({ error: 'date cannot be in the future' }, { status: 400 });
+    }
 
     // Try upsert as-is. If DB rejects due to missing columns (pre-migration DB),
     // strip the unknown column and retry — so the UI never breaks while users

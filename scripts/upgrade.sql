@@ -501,6 +501,153 @@ returns integer language sql as $$
 $$;
 grant execute on function public.increment_share_view(text) to anon, authenticated;
 
+-- Atomic partial-upsert for daily_metrics. Replaces the chat-action /api/daily-metrics
+-- read-merge-write pattern which silently lost concurrent writes when two tabs
+-- saved to the same date. Only keys present in p_patch are written; other columns
+-- keep their existing values via COALESCE(excluded, current).
+--
+-- Security: enforces auth.uid() = p_user_id so even if a user patches another
+-- user's row via SQL, the function refuses. Whitelist keys match daily_metrics
+-- columns via information_schema to prevent SQL injection through patch keys.
+create or replace function public.apply_daily_metric_patch(
+  p_user_id uuid,
+  p_date date,
+  p_patch jsonb
+) returns void
+language plpgsql
+security definer
+set search_path = public
+as $$
+declare
+  update_set text;
+  rec public.daily_metrics;
+begin
+  if p_user_id is null or p_user_id <> auth.uid() then
+    raise exception 'not authorized';
+  end if;
+
+  -- Strip reserved/immutable keys so a client can't overwrite ownership.
+  p_patch := p_patch - array['id','user_id','date','created_at','updated_at'];
+
+  -- Build the ON CONFLICT update list: only keys that both (a) appear in the
+  -- patch and (b) exist as real columns on daily_metrics. Any unknown key in
+  -- the patch is silently skipped — safer than raising on schema drift.
+  select string_agg(format('%I = coalesce(excluded.%I, daily_metrics.%I)', key, key, key), ', ')
+    into update_set
+  from jsonb_object_keys(p_patch) as key
+  where exists (
+    select 1 from information_schema.columns
+    where table_schema = 'public' and table_name = 'daily_metrics' and column_name = key
+  );
+
+  -- Coerce the jsonb patch to a typed record. Unset columns become NULL — that's
+  -- exactly what we need: COALESCE(NULL, existing) = existing on the UPDATE path.
+  rec := jsonb_populate_record(
+    null::public.daily_metrics,
+    coalesce(p_patch, '{}'::jsonb) || jsonb_build_object('user_id', p_user_id, 'date', p_date)
+  );
+
+  if update_set is null then
+    -- Empty patch — ensure a row exists for the date but don't touch anything.
+    insert into public.daily_metrics (user_id, date) values (p_user_id, p_date)
+      on conflict (user_id, date) do nothing;
+    return;
+  end if;
+
+  execute format(
+    'insert into public.daily_metrics select ($1).* on conflict (user_id, date) do update set %s',
+    update_set
+  ) using rec;
+end;
+$$;
+grant execute on function public.apply_daily_metric_patch(uuid, date, jsonb) to authenticated;
+
+-- Atomic partial-update for profiles + onboarding_data JSONB. Same motivation
+-- as apply_daily_metric_patch: stop losing writes when chat-action runs against
+-- a profile the cron (or another tab) also just wrote. onboarding_data merges
+-- shallowly via `||`; nested field collisions within a single key still last-
+-- writer-wins, which is fine — the chat-action payload scope is single-field.
+create or replace function public.apply_profile_patch(
+  p_user_id uuid,
+  p_height_cm int,
+  p_weight_kg numeric,
+  p_activity_level int,
+  p_sleep_hours_avg numeric,
+  p_cardio_minutes_per_week int,
+  p_strength_sessions_per_week int,
+  p_alcohol_drinks_per_week int,
+  p_caffeine_mg_per_day int,
+  p_smoker boolean,
+  p_od_patch jsonb
+) returns void
+language plpgsql
+security definer
+set search_path = public
+as $$
+begin
+  if p_user_id is null or p_user_id <> auth.uid() then
+    raise exception 'not authorized';
+  end if;
+
+  update public.profiles set
+    height_cm                  = coalesce(p_height_cm,                  height_cm),
+    weight_kg                  = coalesce(p_weight_kg,                  weight_kg),
+    activity_level             = coalesce(p_activity_level,             activity_level),
+    sleep_hours_avg            = coalesce(p_sleep_hours_avg,            sleep_hours_avg),
+    cardio_minutes_per_week    = coalesce(p_cardio_minutes_per_week,    cardio_minutes_per_week),
+    strength_sessions_per_week = coalesce(p_strength_sessions_per_week, strength_sessions_per_week),
+    alcohol_drinks_per_week    = coalesce(p_alcohol_drinks_per_week,    alcohol_drinks_per_week),
+    caffeine_mg_per_day        = coalesce(p_caffeine_mg_per_day,        caffeine_mg_per_day),
+    smoker                     = coalesce(p_smoker,                     smoker),
+    onboarding_data            = case
+      when p_od_patch is null or p_od_patch = '{}'::jsonb then onboarding_data
+      else coalesce(onboarding_data, '{}'::jsonb) || p_od_patch
+    end,
+    updated_at                 = now()
+  where id = p_user_id;
+end;
+$$;
+grant execute on function public.apply_profile_patch(uuid, int, numeric, int, numeric, int, int, int, int, boolean, jsonb) to authenticated;
+
+-- Atomic jsonb_set on the user's latest protocol. Replaces the chat-action
+-- read-deepSet-write pattern (two concurrent tap-to-apply chips from the same
+-- user would silently drop one). p_path uses dot-notation; caller is already
+-- allowlist-restricted in /api/chat-action so arbitrary paths can't reach here.
+create or replace function public.apply_protocol_adjust(
+  p_user_id uuid,
+  p_path text,
+  p_value jsonb
+) returns void
+language plpgsql
+security definer
+set search_path = public
+as $$
+declare
+  path_parts text[];
+begin
+  if p_user_id is null or p_user_id <> auth.uid() then
+    raise exception 'not authorized';
+  end if;
+
+  path_parts := string_to_array(p_path, '.');
+
+  update public.protocols p
+  set protocol_json = jsonb_set(
+        coalesce(p.protocol_json, '{}'::jsonb),
+        path_parts,
+        p_value,
+        true   -- create missing path segments
+      ),
+      updated_at = now()
+  where p.id = (
+    select id from public.protocols
+    where user_id = p_user_id and deleted_at is null
+    order by created_at desc limit 1
+  );
+end;
+$$;
+grant execute on function public.apply_protocol_adjust(uuid, text, jsonb) to authenticated;
+
 -- ┌──────────────────────────────────────────────────────────────────────────┐
 -- │ 13. REALTIME PUBLICATION                                                 │
 -- └──────────────────────────────────────────────────────────────────────────┘

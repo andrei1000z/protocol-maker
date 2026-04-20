@@ -3,32 +3,67 @@ import { createClient } from '@/lib/supabase/server';
 
 export const dynamic = 'force-dynamic';
 
-export async function GET() {
+// Dual-mode endpoint:
+//   GET /api/my-data        → lean response for page-load hydration (profile,
+//                             latest protocol, blood tests). Hit on every nav.
+//   GET /api/my-data?full=1 → complete per-user export (GDPR Article 15).
+//                             Adds daily_metrics, compliance_logs, share_links,
+//                             and full protocol history. Larger payload, hit
+//                             only from Settings → "Export my data".
+//
+// Split because useMyData() fires on every page transition — ballooning its
+// response with years of daily_metrics would waste bandwidth on 99% of calls.
+export async function GET(request: Request) {
   try {
     const supabase = await createClient();
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) return NextResponse.json({ error: 'Not authenticated' }, { status: 401 });
 
+    const full = new URL(request.url).searchParams.get('full') === '1';
+
     const [profileRes, protocolRes, bloodTestsRes] = await Promise.all([
       supabase.from('profiles').select('*').eq('id', user.id).single(),
-      // .maybeSingle() so no-protocol case doesn't produce an RLS-style error row
       supabase.from('protocols').select('*').eq('user_id', user.id).is('deleted_at', null).order('created_at', { ascending: false }).limit(1).maybeSingle(),
       supabase.from('blood_tests').select('id, taken_at, biomarkers, lab_name').eq('user_id', user.id).is('deleted_at', null).order('taken_at', { ascending: false }),
     ]);
 
-    return NextResponse.json(
-      {
-        profile: profileRes.data,
-        protocol: protocolRes.data,
-        bloodTests: bloodTestsRes.data || [],
-      },
-      {
+    const baseBody = {
+      profile: profileRes.data,
+      protocol: protocolRes.data,
+      bloodTests: bloodTestsRes.data || [],
+    };
+
+    if (!full) {
+      return NextResponse.json(baseBody, {
         headers: {
           // Private CDN cache for 10s + stale-while-revalidate 5min.
-          // User still hits origin for fresh data, but rapid nav feels instant.
           'Cache-Control': 'private, max-age=10, stale-while-revalidate=300',
         },
-      }
+      });
+    }
+
+    // Full export — every user-owned row across the app. No caching: this is
+    // a one-shot download the user intentionally triggered.
+    const [dailyMetricsRes, complianceRes, shareLinksRes, protocolHistoryRes] = await Promise.all([
+      supabase.from('daily_metrics').select('*').eq('user_id', user.id).order('date', { ascending: false }),
+      supabase.from('compliance_logs').select('*').eq('user_id', user.id).order('date', { ascending: false }),
+      supabase.from('share_links').select('*').eq('user_id', user.id),
+      supabase.from('protocols').select('id, created_at, longevity_score, biological_age_decimal, aging_pace, model_used, generation_source')
+        .eq('user_id', user.id).is('deleted_at', null).order('created_at', { ascending: false }),
+    ]);
+
+    return NextResponse.json(
+      {
+        ...baseBody,
+        dailyMetrics:    dailyMetricsRes.data    || [],
+        complianceLogs:  complianceRes.data      || [],
+        shareLinks:      shareLinksRes.data      || [],
+        protocolHistory: protocolHistoryRes.data || [],
+        exportedAt: new Date().toISOString(),
+        exportedForUserId: user.id,
+        gdprNotice: 'This archive contains all personal data we store for your account. Under GDPR Article 15 you have the right to access, correct, or delete any of it — contact support or use Delete Account in Settings.',
+      },
+      { headers: { 'Cache-Control': 'private, no-store' } }
     );
   } catch (err) {
     return NextResponse.json({ error: String(err) }, { status: 500 });
