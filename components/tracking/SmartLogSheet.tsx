@@ -83,7 +83,7 @@ export const BUCKET_GROUPS: Record<TimeBucket, GroupDef[]> = {
       { key: 'hrv_sleep_avg', label: 'HRV during sleep', unit: 'ms', min: 0, max: 250, type: 'integer' },
       { key: 'blood_oxygen_avg_sleep', label: 'Blood O₂ avg', unit: '%', min: 70, max: 100, step: 0.1 },
       { key: 'avg_respiratory_rate', label: 'Avg respiratory rate', unit: '/min', min: 5, max: 30, step: 0.1 },
-      { key: 'skin_temp_deviation', label: 'Skin temp deviation', unit: '°C', min: -3, max: 3, step: 0.1, hint: 'vs your recent avg' },
+      { key: 'skin_temp_deviation', label: 'Skin temp deviation', unit: '°C', min: -3, max: 3, step: 0.1, hint: 'Range: −0.5 to +0.5 normal. Above +0.5 = possible cycle / fever / overtraining. Below −0.5 = cold exposure / deep recovery.' },
     ]},
     { title: '🔋 How you feel', fields: [
       { key: 'energy_score', label: 'Energy score (watch)', unit: '/100', min: 0, max: 100, type: 'integer' },

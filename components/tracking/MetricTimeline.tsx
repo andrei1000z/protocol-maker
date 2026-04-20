@@ -36,8 +36,13 @@ import {
 // "7.5" or "90" number. This returns how to interpret the stored value,
 // or null if it's not a duration at all.
 type DurationShape = 'hours-decimal' | 'minutes-int' | null;
+// Fields that stay as a SINGLE "minutes" input even though they end in `_min`.
+// These measure short durations where splitting H+M adds noise — a 32-minute
+// active-time reading is clearer than "0h 32m".
+const SINGLE_MINUTES_FIELDS = new Set(['active_time_min']);
 function durationShape(key: string): DurationShape {
   if (key === 'sleep_hours' || key === 'sleep_hours_planned') return 'hours-decimal';
+  if (SINGLE_MINUTES_FIELDS.has(key)) return null;
   if (key.endsWith('_min') || key === 'workout_minutes') return 'minutes-int';
   return null;
 }
@@ -57,6 +62,32 @@ function hmToStored(h: string, m: string, shape: 'hours-decimal' | 'minutes-int'
   if (totalMin === 0 && h === '' && m === '') return null;
   return shape === 'hours-decimal' ? Math.round(totalMin / 60 * 10) / 10 : totalMin;
 }
+// Fields that render as a small button group instead of a numeric input.
+// The stored value is still an integer (1–10 scale) so downstream stats
+// and the AI prompt don't change. Labels map to sensible anchor values.
+const PRESET_BUTTONS: Record<string, { label: string; value: number }[]> = {
+  stress_level: [
+    { label: 'Relaxed',  value: 2 },
+    { label: 'Low',      value: 4 },
+    { label: 'Moderate', value: 6 },
+    { label: 'High',     value: 9 },
+  ],
+};
+
+// Given a stored value, return the preset whose anchor is closest. Lets the
+// LOGGED row display "Moderate" instead of "6".
+function presetLabelFor(key: string, value: number | null | undefined): string | null {
+  const presets = PRESET_BUTTONS[key];
+  if (!presets || value === null || value === undefined || !Number.isFinite(value)) return null;
+  let best = presets[0];
+  let bestDelta = Math.abs(presets[0].value - value);
+  for (const p of presets) {
+    const d = Math.abs(p.value - value);
+    if (d < bestDelta) { best = p; bestDelta = d; }
+  }
+  return best.label;
+}
+
 // Format a stored duration for the LOGGED display row — "7h 32m" reads
 // better than "7.5" or "452" alone.
 function formatDurationForDisplay(value: number | null | undefined, shape: 'hours-decimal' | 'minutes-int'): string {
@@ -105,6 +136,8 @@ function MetricRow({
   const isLogged = value !== null && value !== undefined;
   const shape = durationShape(String(spec.key));
   const isDuration = shape !== null;
+  const presets = PRESET_BUTTONS[String(spec.key)];
+  const isPreset = Array.isArray(presets);
   const [editing, setEditing] = useState(false);
   const [draft, setDraft] = useState<string>('');         // used for non-duration fields
   const [draftH, setDraftH] = useState<string>('');       // used for duration fields
@@ -169,11 +202,14 @@ function MetricRow({
 
   // ── LOGGED (value present, not editing) ─────────────────────────────────
   if (isLogged && !editing) {
-    // Duration fields render as "7h 32m" instead of the raw 7.5 or 452 —
-    // much more legible when you glance at the logged row.
-    const displayValue = isDuration
-      ? formatDurationForDisplay(value, shape as 'hours-decimal' | 'minutes-int')
-      : String(value);
+    // Duration fields render as "7h 32m" instead of the raw 7.5 or 452.
+    // Preset fields (stress_level) render as "Moderate" instead of "6".
+    // Otherwise show the raw number.
+    const displayValue = isPreset
+      ? (presetLabelFor(String(spec.key), value) || String(value))
+      : isDuration
+        ? formatDurationForDisplay(value, shape as 'hours-decimal' | 'minutes-int')
+        : String(value);
     return (
       <div className="flex items-center gap-3 px-3.5 py-2.5 rounded-xl bg-accent/[0.04] border border-accent/20 group">
         <Check className="w-3.5 h-3.5 text-accent shrink-0" />
@@ -189,7 +225,7 @@ function MetricRow({
         </div>
         <span className="text-sm font-mono tabular-nums text-accent shrink-0">
           {displayValue}
-          {spec.unit && !isDuration && <span className="text-[10px] text-muted ml-0.5">{spec.unit}</span>}
+          {spec.unit && !isDuration && !isPreset && <span className="text-[10px] text-muted ml-0.5">{spec.unit}</span>}
         </span>
         <button
           onClick={() => {
@@ -231,12 +267,36 @@ function MetricRow({
         {spec.hint && <p className="text-[10px] text-muted mt-0.5 leading-snug">{spec.hint}</p>}
       </div>
 
-      {/* Dual H+M inputs for duration fields; single input otherwise.
-          The `data-duration-group` attribute + relatedTarget check on blur
-          is the key UX fix: moving focus from `h` → `m` should NOT commit
-          (user is still entering the minutes). Only commit when focus
-          leaves BOTH inputs. */}
-      {isDuration ? (
+      {/* Preset buttons — stress_level. Tap saves immediately, no Log button
+          needed for these (no ambiguity, no 2-step entry). Highlighted button
+          shows the currently-logged category. */}
+      {isPreset ? (
+        <div className="flex items-center gap-1 shrink-0 flex-wrap justify-end">
+          {presets.map(p => {
+            const currentLabel = presetLabelFor(String(spec.key), value);
+            const isActive = isLogged && currentLabel === p.label;
+            return (
+              <button
+                key={p.label}
+                onClick={async () => {
+                  if (busy) return;
+                  setBusy(true);
+                  try { await onSave(p.value); setEditing(false); }
+                  finally { setBusy(false); }
+                }}
+                disabled={busy}
+                className={clsx('text-[11px] font-semibold px-2.5 py-1.5 rounded-lg transition-all border',
+                  isActive
+                    ? 'bg-accent text-black border-accent'
+                    : 'bg-background text-muted-foreground border-card-border hover:border-accent/40 hover:text-foreground',
+                  busy && 'opacity-60')}
+              >
+                {p.label}
+              </button>
+            );
+          })}
+        </div>
+      ) : isDuration ? (
         <div data-duration-group="true" className="flex items-center gap-1 shrink-0">
           <div className="relative w-14">
             <input
@@ -304,16 +364,19 @@ function MetricRow({
         </div>
       )}
 
-      <button
-        onClick={commit}
-        disabled={busy || nothingEntered}
-        className={clsx('shrink-0 text-[11px] font-semibold px-2.5 py-1.5 rounded-lg transition-all',
-          busy ? 'bg-surface-3 text-muted' :
-          nothingEntered ? 'bg-surface-3 text-muted cursor-not-allowed' :
-          'bg-accent text-black hover:bg-accent-bright')}
-      >
-        {busy ? '…' : 'Log'}
-      </button>
+      {/* Log button — hidden for preset fields (tap-to-save) */}
+      {!isPreset && (
+        <button
+          onClick={commit}
+          disabled={busy || nothingEntered}
+          className={clsx('shrink-0 text-[11px] font-semibold px-2.5 py-1.5 rounded-lg transition-all',
+            busy ? 'bg-surface-3 text-muted' :
+            nothingEntered ? 'bg-surface-3 text-muted cursor-not-allowed' :
+            'bg-accent text-black hover:bg-accent-bright')}
+        >
+          {busy ? '…' : 'Log'}
+        </button>
+      )}
     </div>
   );
 }
