@@ -51,6 +51,9 @@ alter table public.profiles add column if not exists experimental_openness text 
 alter table public.profiles add column if not exists activity_level text default 'moderate';
 alter table public.profiles add column if not exists updated_at timestamptz default now();
 alter table public.profiles add column if not exists deleted_at timestamptz;  -- soft delete
+alter table public.profiles add column if not exists referral_code text unique;   -- user's own shareable code
+alter table public.profiles add column if not exists referred_by_user_id uuid references auth.users on delete set null;
+alter table public.profiles add column if not exists referred_by_code text;       -- raw code used at signup (kept even if referrer deletes)
 
 -- ┌──────────────────────────────────────────────────────────────────────────┐
 -- │ 2. PROTOCOLS — precision bio age, aging pace, soft delete                │
@@ -215,6 +218,30 @@ create table if not exists public.compliance_logs (
 alter table public.compliance_logs add column if not exists completed_at timestamptz;
 
 -- ┌──────────────────────────────────────────────────────────────────────────┐
+-- │ 6a. OAUTH_CONNECTIONS — third-party wearable / integration tokens        │
+-- └──────────────────────────────────────────────────────────────────────────┘
+-- One row per (user, provider). Stores the OAuth access + refresh tokens for
+-- wearable integrations (Oura today; Fitbit / Garmin / WHOOP next). Tokens
+-- are sensitive — never exposed to the client; all reads happen server-side
+-- from the cron or an on-demand sync endpoint.
+create table if not exists public.oauth_connections (
+  id uuid default gen_random_uuid() primary key,
+  user_id uuid references auth.users on delete cascade not null,
+  provider text not null,               -- 'oura' / 'fitbit' / 'garmin' / …
+  access_token text not null,
+  refresh_token text,
+  token_type text default 'Bearer',
+  expires_at timestamptz,
+  scopes text,                          -- space-separated scopes granted by the user
+  provider_user_id text,                -- provider's own user id, for disambiguation
+  last_synced_at timestamptz,
+  last_sync_error text,
+  created_at timestamptz default now(),
+  updated_at timestamptz default now(),
+  unique (user_id, provider)
+);
+
+-- ┌──────────────────────────────────────────────────────────────────────────┐
 -- │ 6b. CHAT_MESSAGES — server-persisted conversation history                │
 -- └──────────────────────────────────────────────────────────────────────────┘
 -- Single-thread-per-user for the MVP. Every user turn + assistant reply is
@@ -349,12 +376,14 @@ alter table public.daily_metrics enable row level security;
 alter table public.share_links enable row level security;
 alter table public.compliance_logs enable row level security;
 alter table public.chat_messages enable row level security;
+alter table public.oauth_connections enable row level security;
 
 -- Defense in depth: force RLS even for table owner
 alter table public.profiles force row level security;
 alter table public.blood_tests force row level security;
 alter table public.protocols force row level security;
 alter table public.chat_messages force row level security;
+alter table public.oauth_connections force row level security;  -- tokens are sensitive
 
 drop policy if exists "profiles_select" on public.profiles;
 drop policy if exists "profiles_insert" on public.profiles;
@@ -418,6 +447,14 @@ create policy "compliance_own" on public.compliance_logs for all
 drop policy if exists "chat_messages_own" on public.chat_messages;
 create policy "chat_messages_own" on public.chat_messages for all
   using (auth.uid() = user_id) with check (auth.uid() = user_id);
+
+-- oauth_connections: owner can SELECT metadata (status badge in settings),
+-- but NEVER writes tokens from the client. Inserts/updates happen via service
+-- role from the callback + sync endpoints. Strict owner policy on the select
+-- side; writes require service_role, which bypasses RLS anyway.
+drop policy if exists "oauth_connections_own" on public.oauth_connections;
+create policy "oauth_connections_own" on public.oauth_connections for select
+  using (auth.uid() = user_id);
 
 -- ┌──────────────────────────────────────────────────────────────────────────┐
 -- │ 10. GRANTS                                                               │
@@ -699,6 +736,52 @@ as $$
   select count(*)::int from deleted;
 $$;
 grant execute on function public.prune_old_chat_messages(int) to service_role;
+
+-- Referral-code generator. Called from the new-user trigger so every profile
+-- gets a short, shareable code (6 upper-case base32-ish chars). Retries on
+-- collision up to 5 times; collision probability at 100k users is negligible.
+create or replace function public.generate_referral_code()
+returns text
+language plpgsql
+as $$
+declare
+  alphabet text := 'ABCDEFGHJKMNPQRSTUVWXYZ23456789';  -- drop ambiguous 0/O/1/I/L
+  code text;
+  i int;
+begin
+  for i in 1..5 loop
+    code := '';
+    for i in 1..6 loop
+      code := code || substr(alphabet, 1 + floor(random() * length(alphabet))::int, 1);
+    end loop;
+    if not exists (select 1 from public.profiles where referral_code = code) then
+      return code;
+    end if;
+  end loop;
+  -- Extremely unlikely fallback: add timestamp millis to guarantee uniqueness.
+  return code || to_char(extract(epoch from clock_timestamp()) * 1000, 'FM999999999999');
+end;
+$$;
+
+-- Backfill referral codes for any existing profile without one.
+update public.profiles
+set referral_code = public.generate_referral_code()
+where referral_code is null;
+
+-- Generate-on-insert trigger so every new signup gets a code automatically.
+create or replace function public.ensure_referral_code()
+returns trigger language plpgsql as $$
+begin
+  if new.referral_code is null then
+    new.referral_code := public.generate_referral_code();
+  end if;
+  return new;
+end;
+$$;
+
+drop trigger if exists profiles_ensure_referral_code on public.profiles;
+create trigger profiles_ensure_referral_code before insert on public.profiles
+  for each row execute procedure public.ensure_referral_code();
 
 -- ┌──────────────────────────────────────────────────────────────────────────┐
 -- │ 13. REALTIME PUBLICATION                                                 │

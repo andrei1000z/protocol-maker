@@ -5,7 +5,7 @@ import { useMyData, invalidate } from '@/lib/hooks/useApiData';
 import clsx from 'clsx';
 import {
   Share2, Download, RotateCcw, LogOut, Copy, Check, FileText, User, Heart,
-  Edit2, Save, Trash2, AlertTriangle, Target, Sparkles, X, Clock,
+  Edit2, Save, Trash2, AlertTriangle, Target, Sparkles, X, Clock, Link2, Unlink,
 } from 'lucide-react';
 
 interface ShareLinkRow {
@@ -43,6 +43,7 @@ interface Profile {
   monthly_budget_ron?: number;
   experimental_openness?: string;
   onboarding_data?: Record<string, unknown>;
+  referral_code?: string | null;
 }
 
 interface BloodTest { id: string; taken_at: string; biomarkers: unknown[]; }
@@ -189,6 +190,238 @@ function RetestUploader({ bloodTestsCount }: { bloodTestsCount: number }) {
 // ─────────────────────────────────────────────────────────────────────────────
 // Delete account confirmation modal
 // ─────────────────────────────────────────────────────────────────────────────
+// Oura Ring connection card — shows connected state, last sync timestamp,
+// any refresh error. Connect button kicks off the OAuth redirect; Sync now
+// pulls the last 14 days; Disconnect clears the stored tokens. Server
+// returns `configured:false` when OURA_CLIENT_ID isn't set in env, in which
+// case we render a neutral "coming soon" state instead of a broken button.
+function OuraConnectionCard() {
+  const [status, setStatus] = useState<{
+    configured: boolean;
+    connected: boolean;
+    lastSyncedAt: string | null;
+    lastSyncError: string | null;
+    tokenExpiresAt: string | null;
+  } | null>(null);
+  const [syncing, setSyncing] = useState(false);
+  const [banner, setBanner] = useState<{ tone: 'ok' | 'err'; msg: string } | null>(null);
+
+  const load = async () => {
+    try {
+      const res = await fetch('/api/integrations/oura');
+      if (res.ok) setStatus(await res.json());
+    } catch { /* ignore */ }
+  };
+  useEffect(() => {
+    load();
+    // Surface the OAuth callback's redirect params once, then clean the URL so
+    // a refresh doesn't re-trigger the banner.
+    if (typeof window === 'undefined') return;
+    const qs = new URLSearchParams(window.location.search);
+    if (qs.get('integration') === 'oura') {
+      if (qs.get('connected') === '1') setBanner({ tone: 'ok', msg: 'Oura connected. Your overnight readings will land here each morning.' });
+      else if (qs.get('error')) setBanner({ tone: 'err', msg: `Oura connect failed: ${qs.get('error')}` });
+      const url = new URL(window.location.href);
+      url.searchParams.delete('integration'); url.searchParams.delete('connected'); url.searchParams.delete('error');
+      window.history.replaceState({}, '', url.toString());
+    }
+  }, []);
+
+  const connect = () => {
+    // Full redirect — we'll return here via /callback → /settings?integration=oura&connected=1
+    window.location.href = '/api/integrations/oura/connect';
+  };
+  const syncNow = async () => {
+    setSyncing(true); setBanner(null);
+    try {
+      const res = await fetch('/api/integrations/oura', { method: 'POST' });
+      const j = await res.json();
+      if (!res.ok) throw new Error(j.error || `HTTP ${res.status}`);
+      setBanner({ tone: 'ok', msg: `Synced ${j.daysFetched} days · ${j.rowsWritten} rows updated` });
+      load();
+    } catch (e) {
+      setBanner({ tone: 'err', msg: e instanceof Error ? e.message : String(e) });
+    } finally { setSyncing(false); }
+  };
+  const disconnect = async () => {
+    if (!window.confirm('Disconnect Oura? Your stored tokens will be deleted; past data stays.')) return;
+    await fetch('/api/integrations/oura', { method: 'DELETE' });
+    setBanner({ tone: 'ok', msg: 'Oura disconnected.' });
+    load();
+  };
+
+  if (!status) {
+    return (
+      <SettingsCard icon={Link2} title="Wearable integrations" subtitle="Connect Oura to auto-populate your daily metrics">
+        <div className="h-8 flex items-center text-xs text-muted">Checking status…</div>
+      </SettingsCard>
+    );
+  }
+
+  if (!status.configured) {
+    return (
+      <SettingsCard icon={Link2} title="Wearable integrations" subtitle="Oura coming soon on this server">
+        <div className="rounded-xl p-4 bg-surface-2 border border-card-border">
+          <p className="text-sm">
+            <strong>Oura Ring</strong> <span className="text-muted-foreground">— ready in code, but this server doesn&apos;t have
+            the OAuth app credentials configured yet.</span>
+          </p>
+          <p className="text-[11px] text-muted mt-1.5 leading-relaxed">
+            Admin: register an app at <span className="font-mono">cloud.ouraring.com/oauth/applications</span> and set
+            <span className="font-mono"> OURA_CLIENT_ID</span> + <span className="font-mono">OURA_CLIENT_SECRET</span> in env.
+          </p>
+        </div>
+        <p className="text-[11px] text-muted-foreground mt-2">
+          Samsung Health + Apple Health aren&apos;t publicly accessible from the web — they require a native Android / iOS app. Planned for the mobile build.
+        </p>
+      </SettingsCard>
+    );
+  }
+
+  const lastSync = status.lastSyncedAt ? new Date(status.lastSyncedAt) : null;
+  const lastSyncStr = lastSync
+    ? `${Math.max(0, Math.floor((Date.now() - lastSync.getTime()) / 3600_000))}h ago`
+    : 'never';
+
+  return (
+    <SettingsCard icon={Link2} title="Wearable integrations" subtitle="Auto-sync your overnight readings">
+      <div className="rounded-xl p-4 bg-surface-2 border border-card-border space-y-3">
+        <div className="flex items-center justify-between gap-3">
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 rounded-xl bg-purple-500/10 border border-purple-500/25 flex items-center justify-center">
+              <span className="text-lg">💍</span>
+            </div>
+            <div>
+              <p className="text-sm font-semibold">Oura Ring</p>
+              <p className="text-[11px] text-muted-foreground">
+                Sleep stages, HRV, body temp, readiness, SpO₂
+              </p>
+            </div>
+          </div>
+          <span className={clsx('text-[10px] font-mono px-2 py-0.5 rounded-full border',
+            status.connected ? 'bg-accent/10 text-accent border-accent/25' : 'bg-surface-3 text-muted border-card-border')}>
+            {status.connected ? 'Connected' : 'Not connected'}
+          </span>
+        </div>
+
+        {status.connected && (
+          <div className="flex items-center gap-3 text-[11px] text-muted-foreground">
+            <span>Last sync: {lastSyncStr}</span>
+            {status.lastSyncError && (
+              <span className="inline-flex items-center gap-1 text-danger">
+                <AlertTriangle className="w-3 h-3" />
+                Sync error
+              </span>
+            )}
+          </div>
+        )}
+        {status.lastSyncError && (
+          <p className="text-[10px] text-danger/80 bg-red-500/5 border border-red-500/15 rounded-lg px-2 py-1.5">
+            {status.lastSyncError}
+          </p>
+        )}
+
+        <div className="flex gap-2 flex-wrap">
+          {!status.connected ? (
+            <button
+              onClick={connect}
+              className="inline-flex items-center gap-1.5 text-xs font-semibold px-3.5 py-2 rounded-xl bg-accent text-black hover:bg-accent-bright transition-colors"
+            >
+              <Link2 className="w-3.5 h-3.5" /> Connect Oura
+            </button>
+          ) : (
+            <>
+              <button
+                onClick={syncNow}
+                disabled={syncing}
+                className="inline-flex items-center gap-1.5 text-xs font-semibold px-3.5 py-2 rounded-xl bg-accent text-black hover:bg-accent-bright disabled:opacity-60 transition-colors"
+              >
+                {syncing ? <span className="w-3 h-3 border-2 border-black/40 border-t-black rounded-full animate-spin" /> : <RotateCcw className="w-3.5 h-3.5" />}
+                {syncing ? 'Syncing…' : 'Sync now'}
+              </button>
+              <button
+                onClick={disconnect}
+                className="inline-flex items-center gap-1.5 text-xs font-medium px-3.5 py-2 rounded-xl bg-surface-3 border border-card-border text-muted-foreground hover:text-danger hover:border-red-500/30 transition-colors"
+              >
+                <Unlink className="w-3.5 h-3.5" /> Disconnect
+              </button>
+            </>
+          )}
+        </div>
+      </div>
+
+      {banner && (
+        <p className={clsx('text-[11px] mt-2 p-2 rounded-lg border',
+          banner.tone === 'ok' ? 'bg-accent/5 text-accent border-accent/25' : 'bg-red-500/5 text-danger border-red-500/20')}>
+          {banner.msg}
+        </p>
+      )}
+
+      <p className="text-[10px] text-muted-foreground mt-2 leading-relaxed">
+        Samsung Health + Apple Health aren&apos;t available on web — they need a native Android / iOS build. On the roadmap.
+      </p>
+    </SettingsCard>
+  );
+}
+
+// Referral card — surfaces the user's personal referral code + share CTA.
+// Code is generated server-side (see scripts/upgrade.sql: ensure_referral_code
+// trigger) so by the time settings loads, profiles.referral_code is populated.
+function ReferralCard({ referralCode }: { referralCode?: string | null }) {
+  const [copied, setCopied] = useState(false);
+  if (!referralCode) {
+    return null;  // Backfilled post-migration; don't render empty state pre-migration
+  }
+  const shareUrl = typeof window !== 'undefined'
+    ? `${window.location.origin}/r/${referralCode}`
+    : `/r/${referralCode}`;
+  const shareText = `Check out Protocol — it built me a personalized longevity protocol in under a minute. Use my code ${referralCode} to skip the waitlist.`;
+
+  const copyLink = () => {
+    navigator.clipboard.writeText(shareUrl);
+    setCopied(true);
+    setTimeout(() => setCopied(false), 2000);
+  };
+
+  return (
+    <SettingsCard icon={Sparkles} title="Invite a friend" subtitle="Your referral code — share with anyone interested">
+      <div className="rounded-xl p-4 bg-gradient-to-br from-accent/[0.06] via-accent/[0.02] to-transparent border border-accent/25 space-y-3">
+        <div className="flex items-center gap-3 flex-wrap">
+          <span className="text-[10px] uppercase tracking-widest text-muted">Your code</span>
+          <code className="text-lg font-mono font-bold tracking-widest text-accent bg-accent/10 px-3 py-1 rounded-lg border border-accent/25">
+            {referralCode}
+          </code>
+        </div>
+        <div className="flex items-center gap-2">
+          <input
+            readOnly
+            value={shareUrl}
+            className="flex-1 rounded-xl bg-surface-2 border border-card-border px-3 py-2 text-xs font-mono truncate outline-none focus:border-accent"
+          />
+          <button
+            onClick={copyLink}
+            className="shrink-0 p-2 rounded-xl bg-accent text-black hover:bg-accent-bright transition-colors"
+            aria-label="Copy referral link"
+          >
+            {copied ? <Check className="w-4 h-4" /> : <Copy className="w-4 h-4" />}
+          </button>
+          <a
+            href={`https://wa.me/?text=${encodeURIComponent(shareText + ' ' + shareUrl)}`}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="shrink-0 text-xs font-medium px-3 py-2 rounded-xl bg-surface-3 border border-card-border hover:border-accent/40 text-muted-foreground hover:text-accent transition-colors"
+          >
+            WhatsApp
+          </a>
+        </div>
+        <p className="text-[11px] text-muted-foreground leading-relaxed">
+          Anyone who signs up with your link gets attributed to you. Referral rewards come with the paid tier launch.
+        </p>
+      </div>
+    </SettingsCard>
+  );
+}
+
 function DeleteAccountModal({ open, onClose, onConfirm, onExport }: { open: boolean; onClose: () => void; onConfirm: () => Promise<void>; onExport: () => Promise<void> }) {
   const [checked, setChecked] = useState(false);
   const [loading, setLoading] = useState(false);
@@ -739,6 +972,12 @@ export default function SettingsPage() {
         )}
         <RetestUploader bloodTestsCount={bloodTests.length} />
       </SettingsCard>
+
+      {/* ═══════════ WEARABLES (Oura + future) ═══════════ */}
+      <OuraConnectionCard />
+
+      {/* ═══════════ REFERRAL ═══════════ */}
+      <ReferralCard referralCode={(profile?.onboarding_data as Record<string, unknown> | undefined)?.referral_code as string | undefined ?? (myData?.profile as { referral_code?: string } | null)?.referral_code ?? null} />
 
       {/* ═══════════ SHARE PROTOCOL ═══════════ */}
       <SettingsCard icon={Share2} title="Share protocol" subtitle="Public read-only link to your diagnostic + protocol">

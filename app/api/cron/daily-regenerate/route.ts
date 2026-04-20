@@ -11,6 +11,8 @@ import { computeOrganSystems, generateTopWins, generateTopRisks, estimateBiomark
 import { buildPainPoints, buildFlexRules } from '@/lib/engine/personalization-fills';
 import { buildFallbackProtocol } from '@/lib/engine/fallback-protocol';
 import { logger } from '@/lib/logger';
+import { syncOuraForUser } from '@/lib/integrations/oura-sync';
+import { isConfigured as ouraConfigured } from '@/lib/integrations/oura';
 import type { BiomarkerValue, UserProfile } from '@/lib/types';
 
 // Mirrors the classifier in /api/generate-protocol — short codes so ops can
@@ -111,10 +113,44 @@ export async function GET(request: Request) {
     if (typeof data === 'number') chatPruned = data;
   } catch { /* function not migrated yet — ignore */ }
 
+  // Oura sync — pull yesterday + today's readings for every connected user
+  // so the regen that runs tomorrow morning sees fresh wearable data. Skipped
+  // entirely when OURA_CLIENT_ID isn't configured on this deployment.
+  const ouraStats = { attempted: 0, ok: 0, failed: 0, rowsWritten: 0 };
+  if (ouraConfigured()) {
+    try {
+      const { data: connected } = await supabase
+        .from('oauth_connections')
+        .select('user_id')
+        .eq('provider', 'oura');
+      if (Array.isArray(connected) && connected.length > 0) {
+        for (let i = 0; i < connected.length; i += BATCH_CONCURRENCY) {
+          const batch = connected.slice(i, i + BATCH_CONCURRENCY);
+          const outcomes = await Promise.allSettled(
+            batch.map(c => syncOuraForUser(supabase, c.user_id, { lookbackDays: 3 }))
+          );
+          outcomes.forEach(o => {
+            ouraStats.attempted++;
+            if (o.status === 'fulfilled' && o.value.ok) {
+              ouraStats.ok++;
+              ouraStats.rowsWritten += o.value.rowsWritten;
+            } else {
+              ouraStats.failed++;
+            }
+          });
+          if (Date.now() - startTime > 290_000) break;  // same buffer as regen loop
+        }
+      }
+    } catch (err) {
+      logger.warn('cron.oura_batch_failed', { errorMessage: err instanceof Error ? err.message : String(err) });
+    }
+  }
+
   return NextResponse.json({
     ok: true,
     ...results,
     chatMessagesPruned: chatPruned,
+    ouraSync: ouraStats,
     durationMs: Date.now() - startTime,
     ranAt: new Date().toISOString(),
   });
