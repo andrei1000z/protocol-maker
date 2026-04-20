@@ -6,6 +6,8 @@ import { describe, test, expect } from 'vitest';
 import * as oura from '@/lib/integrations/oura';
 import * as fitbit from '@/lib/integrations/fitbit';
 import * as withings from '@/lib/integrations/withings';
+import * as whoop from '@/lib/integrations/whoop';
+import * as googleFit from '@/lib/integrations/google-fit';
 
 describe('Oura provider module', () => {
   test('isConfigured returns false when env vars are missing', () => {
@@ -81,6 +83,51 @@ describe('Withings provider module', () => {
     } finally {
       if (originalId === undefined) delete process.env.WITHINGS_CLIENT_ID;
       else process.env.WITHINGS_CLIENT_ID = originalId;
+    }
+  });
+});
+
+describe('WHOOP provider module', () => {
+  test('authorize URL includes offline scope (required for refresh)', () => {
+    const originalId = process.env.WHOOP_CLIENT_ID;
+    process.env.WHOOP_CLIENT_ID = 'whoop-test';
+    try {
+      const url = whoop.buildAuthorizeUrl('whoop-state');
+      expect(url).toMatch(/whoop\.com/);
+      expect(url).toMatch(/client_id=whoop-test/);
+      expect(url).toMatch(/state=whoop-state/);
+      // offline is what gives us the refresh_token — must be in scopes.
+      const u = new URL(url);
+      const scope = u.searchParams.get('scope') || '';
+      expect(scope.split(/[\s+]+/)).toContain('offline');
+      expect(scope).toMatch(/read:recovery/);
+      expect(scope).toMatch(/read:sleep/);
+    } finally {
+      if (originalId === undefined) delete process.env.WHOOP_CLIENT_ID;
+      else process.env.WHOOP_CLIENT_ID = originalId;
+    }
+  });
+});
+
+describe('Google Fit provider module', () => {
+  test('authorize URL requests offline access + consent for refresh-token delivery', () => {
+    const originalId = process.env.GOOGLE_FIT_CLIENT_ID;
+    process.env.GOOGLE_FIT_CLIENT_ID = 'gfit-test';
+    try {
+      const url = googleFit.buildAuthorizeUrl('gfit-state');
+      expect(url).toMatch(/accounts\.google\.com/);
+      expect(url).toMatch(/access_type=offline/);
+      // prompt=consent ensures Google returns a refresh_token even on re-auth.
+      expect(url).toMatch(/prompt=consent/);
+      // Scope is a space-separated list of full URL scopes.
+      const u = new URL(url);
+      const scope = u.searchParams.get('scope') || '';
+      expect(scope).toMatch(/fitness\.activity\.read/);
+      expect(scope).toMatch(/fitness\.heart_rate\.read/);
+      expect(scope).toMatch(/fitness\.sleep\.read/);
+    } finally {
+      if (originalId === undefined) delete process.env.GOOGLE_FIT_CLIENT_ID;
+      else process.env.GOOGLE_FIT_CLIENT_ID = originalId;
     }
   });
 });

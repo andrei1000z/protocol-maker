@@ -15,6 +15,8 @@ import { syncProvider } from '@/lib/integrations/sync';
 import { isConfigured as ouraConfigured } from '@/lib/integrations/oura';
 import { isConfigured as fitbitConfigured } from '@/lib/integrations/fitbit';
 import { isConfigured as withingsConfigured } from '@/lib/integrations/withings';
+import { isConfigured as whoopConfigured } from '@/lib/integrations/whoop';
+import { isConfigured as googleFitConfigured } from '@/lib/integrations/google-fit';
 import type { ProviderKey } from '@/lib/integrations/base';
 import type { BiomarkerValue, UserProfile } from '@/lib/types';
 
@@ -122,9 +124,11 @@ export async function GET(request: Request) {
   // not matter — daily_metrics is keyed by (user, date) and merges cleanly.
   const syncStats: Record<string, { attempted: number; ok: number; failed: number; rowsWritten: number }> = {};
   const providers: Array<{ key: ProviderKey; enabled: boolean }> = [
-    { key: 'oura', enabled: ouraConfigured() },
-    { key: 'fitbit', enabled: fitbitConfigured() },
-    { key: 'withings', enabled: withingsConfigured() },
+    { key: 'oura',       enabled: ouraConfigured() },
+    { key: 'fitbit',     enabled: fitbitConfigured() },
+    { key: 'withings',   enabled: withingsConfigured() },
+    { key: 'whoop',      enabled: whoopConfigured() },
+    { key: 'google_fit', enabled: googleFitConfigured() },
   ];
 
   for (const { key: providerKey, enabled } of providers) {

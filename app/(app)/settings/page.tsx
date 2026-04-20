@@ -196,7 +196,7 @@ function RetestUploader({ bloodTestsCount }: { bloodTestsCount: number }) {
 // not-configured (admin hasn't set env vars). Reads the OAuth-callback
 // redirect params for its specific providerKey.
 interface WearableRowProps {
-  providerKey: 'oura' | 'fitbit' | 'withings';
+  providerKey: 'oura' | 'fitbit' | 'withings' | 'whoop' | 'google_fit';
   name: string;
   tagline: string;
   emoji: string;
@@ -406,6 +406,24 @@ function WearableIntegrationsCard() {
           envVar="WITHINGS_CLIENT_ID + WITHINGS_CLIENT_SECRET"
           registerUrl="https://account.withings.com/partner/dashboard_oauth2"
           syncLookbackLabel="7-day lookback"
+        />
+        <WearableRow
+          providerKey="whoop"
+          name="WHOOP"
+          tagline="Recovery, HRV (continuous overnight), strain, sleep stages, RHR"
+          emoji="🏋️"
+          accentBg="bg-amber-500/10 border-amber-500/25"
+          envVar="WHOOP_CLIENT_ID + WHOOP_CLIENT_SECRET"
+          registerUrl="https://developer.whoop.com/"
+        />
+        <WearableRow
+          providerKey="google_fit"
+          name="Google Fit"
+          tagline="Wear OS + Android watches that sync to Fit (Pixel Watch, Amazfit, MiBand via bridges)"
+          emoji="🤖"
+          accentBg="bg-blue-500/10 border-blue-500/25"
+          envVar="GOOGLE_FIT_CLIENT_ID + GOOGLE_FIT_CLIENT_SECRET"
+          registerUrl="https://console.cloud.google.com/apis/credentials"
         />
         <NativeOnlyRow
           name="Samsung Galaxy Watch / Ring / Samsung Health"

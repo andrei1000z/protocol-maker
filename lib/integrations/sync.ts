@@ -14,6 +14,8 @@ import { logger, describeError } from '@/lib/logger';
 import * as oura from './oura';
 import * as fitbit from './fitbit';
 import * as withings from './withings';
+import * as whoop from './whoop';
+import * as googleFit from './google-fit';
 
 // Refreshers aren't all compatible with base.ts's TokenResult shape, so we
 // adapt them here. Oura's shape predates the base module.
@@ -87,6 +89,8 @@ export async function syncProvider(
     };
     if (provider === 'fitbit') return fitbit.refreshAccessToken;
     if (provider === 'withings') return withings.refreshAccessToken;
+    if (provider === 'whoop') return whoop.refreshAccessToken;
+    if (provider === 'google_fit') return googleFit.refreshAccessToken;
     throw new Error(`sync not implemented for provider ${provider}`);
   })();
 
@@ -102,6 +106,8 @@ export async function syncProvider(
     if (provider === 'oura') snapshots = await oura.fetchDailySnapshots(conn.accessToken, startDate, endDate) as unknown as typeof snapshots;
     else if (provider === 'fitbit') snapshots = await fitbit.fetchDailySnapshots(conn.accessToken, startDate, endDate) as unknown as typeof snapshots;
     else if (provider === 'withings') snapshots = await withings.fetchDailySnapshots(conn.accessToken, startDate, endDate) as unknown as typeof snapshots;
+    else if (provider === 'whoop') snapshots = await whoop.fetchDailySnapshots(conn.accessToken, startDate, endDate) as unknown as typeof snapshots;
+    else if (provider === 'google_fit') snapshots = await googleFit.fetchDailySnapshots(conn.accessToken, startDate, endDate) as unknown as typeof snapshots;
   } catch (err) {
     const msg = describeError(err);
     await markSyncError(admin, userId, provider, msg);

@@ -2,14 +2,19 @@ import type { Metadata, Viewport } from "next";
 import { Inter, JetBrains_Mono } from "next/font/google";
 import { Analytics } from "@vercel/analytics/react";
 import { SWRegister } from "@/components/layout/SWRegister";
+import { InstallPrompt } from "@/components/layout/InstallPrompt";
 import { Providers } from "./providers";
 import { SITE_URL } from "@/lib/config";
+import { BIOMARKER_DB } from "@/lib/engine/biomarkers";
+import { PATTERN_COUNT } from "@/lib/engine/patterns";
 import "./globals.css";
 
 const inter = Inter({ variable: "--font-geist-sans", subsets: ["latin"] });
 const jetbrains = JetBrains_Mono({ variable: "--font-geist-mono", subsets: ["latin"] });
 const TITLE = "Protocol — AI Longevity Engine";
-const DESCRIPTION = "Your blood work. AI analysis. A longevity protocol built for YOU — not Bryan Johnson. 37 biomarkers, 12 health patterns, 8 organ systems. Personalized in 60 seconds.";
+// Counts derive from the engine so one new biomarker anywhere updates every
+// surface — old hardcoded "37 biomarkers / 12 patterns" drifted out of sync.
+const DESCRIPTION = `Your blood work. AI analysis. A longevity protocol built for YOU — not Bryan Johnson. ${BIOMARKER_DB.length} biomarkers, ${PATTERN_COUNT} health patterns, 8 organ systems. Personalized in 60 seconds.`;
 
 export const metadata: Metadata = {
   metadataBase: new URL(SITE_URL),
@@ -28,7 +33,7 @@ export const metadata: Metadata = {
   creator: "Protocol",
   publisher: "Protocol",
   category: "health",
-  manifest: "/manifest.json",
+  manifest: "/manifest.webmanifest",
   appleWebApp: {
     capable: true,
     statusBarStyle: "black-translucent",
@@ -94,14 +99,15 @@ const jsonLd = {
     priceCurrency: "USD",
   },
   featureList: [
-    "37-biomarker analysis",
+    `${BIOMARKER_DB.length}-biomarker analysis`,
     "PhenoAge biological age estimation",
     "DunedinPACE-style aging velocity",
-    "12 health pattern detection",
+    `${PATTERN_COUNT} health pattern detection`,
     "8 organ-system scoring",
     "Bryan Johnson benchmark comparison",
     "Personalized supplement stack",
     "Daily wearable metric tracking",
+    "Oura + Fitbit + Withings OAuth sync",
   ],
   screenshot: `${SITE_URL}/opengraph-image`,
 };
@@ -122,6 +128,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         </Providers>
         <Analytics />
         <SWRegister />
+        <InstallPrompt />
       </body>
     </html>
   );

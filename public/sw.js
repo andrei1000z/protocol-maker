@@ -1,6 +1,9 @@
 // Protocol AI Engine - Service Worker
-const CACHE_NAME = 'protocol-v1';
-const STATIC_CACHE = ['/', '/manifest.json'];
+// Bump CACHE_NAME on every deploy that changes cached assets so old clients
+// purge their stale caches on next activation. Manifest moved to /manifest.webmanifest
+// when we switched from public/manifest.json to app/manifest.ts.
+const CACHE_NAME = 'protocol-v2';
+const STATIC_CACHE = ['/', '/manifest.webmanifest'];
 
 self.addEventListener('install', (event) => {
   event.waitUntil(
