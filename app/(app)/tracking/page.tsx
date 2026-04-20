@@ -16,6 +16,7 @@ import {
 import { HabitsTab } from '@/components/tracking/HabitsTab';
 import { SmartLogSheet, countBucketPending, countAllPendingUpToNow, getEligibleBuckets as getEligibleBucketsFor, type TimeBucket } from '@/components/tracking/SmartLogSheet';
 import { MetricTimeline } from '@/components/tracking/MetricTimeline';
+import { useProtocolStaleness } from '@/lib/hooks/useProtocolStaleness';
 import { useDailyMetrics, useDailyMetricsRange, DailyMetrics } from '@/lib/hooks/useDailyMetrics';
 import { buildInsights, currentWorkoutStreak, loggedDaysInLastN, Insight } from '@/lib/engine/tracking-insights';
 import { SectionCard as Section, StatTile as Stat, ProgressRing } from '@/components/ui/SectionCard';
@@ -442,8 +443,47 @@ export default function TrackingPage() {
   // users expect 24h — switch to en-GB locale to avoid en-US's AM/PM.
   const clockLabel = useMemo(() => new Date(nowTick).toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' }), [nowTick]);
 
-  const { metrics: todayMetrics, save: saveMetrics } = useDailyMetrics(date);
+  const { metrics: todayMetrics, save: saveMetricsRaw } = useDailyMetrics(date);
   const { metrics: rangeMetrics } = useDailyMetricsRange(thirtyDaysAgoStr, date);
+
+  // Staleness counter — increments each time the user logs a metric so we can
+  // surface a single "Refresh protocol" button at the threshold instead of
+  // hammering /api/generate-protocol after every save. Keyed by protocol id so
+  // a fresh protocol starts the counter over. (protocolId is already
+  // computed below for the compliance API; use it via hook arg.)
+  const staleness = useProtocolStaleness(myData?.protocol?.id || null);
+  const [refreshing, setRefreshing] = useState(false);
+
+  // Wrap the save hook so every log bumps the local staleness counter.
+  // Retroactive saves (picking yesterday) still count — old data getting
+  // filled in is just as valid a signal that the protocol could be refreshed.
+  const saveMetrics = useCallback(async (updates: Partial<DailyMetrics>) => {
+    await saveMetricsRaw(updates);
+    // Only bump for actual values (not clears). Checks each field.
+    const hasValue = Object.values(updates).some(v => v !== null && v !== undefined && v !== '');
+    if (hasValue) staleness.recordLog();
+  }, [saveMetricsRaw, staleness]);
+
+  // Manual regenerate — only fires on button tap, never automatic, to respect
+  // the "optimizat sa nu consume Groq AI API tokens imediat" ask. Uses the
+  // server-side profile hydration path (Round 14) so we pass an empty body.
+  const handleRefreshProtocol = useCallback(async () => {
+    setRefreshing(true);
+    try {
+      const res = await fetch('/api/generate-protocol', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ profile: {}, biomarkers: [] }),
+      });
+      if (res.ok) {
+        staleness.reset();
+        // Hard refresh so SWR caches drop stale protocol + dashboard re-reads.
+        window.location.href = '/dashboard';
+        return;
+      }
+    } catch { /* network — stay put */ }
+    setRefreshing(false);
+  }, [staleness]);
 
   // User's personalized wake time for the FASTED group hint. Prefer the
   // onboarding-stated "ideal" wake time (what they WANT to do), fall back to
@@ -618,6 +658,27 @@ export default function TrackingPage() {
             className="ml-auto shrink-0 text-[11px] text-accent hover:underline"
           >
             Back to today
+          </button>
+        </div>
+      )}
+
+      {/* Stale-protocol banner — user has logged N metrics since last regen.
+          Manual trigger only: clicking "Refresh" fires /api/generate-protocol
+          which hydrates profile from DB + respects rate limit (3/day). Never
+          fires on every log to avoid burning Groq/Claude tokens. */}
+      {staleness.isStale && !isRetroactive && (
+        <div className="flex items-center gap-3 p-3.5 rounded-xl bg-accent/[0.06] border border-accent/25 animate-fade-in">
+          <Sparkles className="w-4 h-4 text-accent shrink-0" />
+          <p className="text-[11px] sm:text-xs leading-relaxed flex-1">
+            <span className="text-accent font-medium">{staleness.count} new readings</span>
+            <span className="text-muted-foreground"> since your protocol was generated. Refresh now to re-tune targets, or leave it — the 3 AM cron handles it overnight.</span>
+          </p>
+          <button
+            onClick={handleRefreshProtocol}
+            disabled={refreshing}
+            className="shrink-0 text-[11px] font-semibold px-3 py-1.5 rounded-lg bg-accent text-black hover:bg-accent-bright disabled:opacity-60 transition-colors"
+          >
+            {refreshing ? 'Refreshing…' : '↻ Refresh protocol'}
           </button>
         </div>
       )}

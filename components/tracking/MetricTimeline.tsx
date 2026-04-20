@@ -28,6 +28,47 @@ import {
   type FieldSpec,
 } from './SmartLogSheet';
 
+// Duration fields are stored two different ways in DailyMetrics:
+//   - as DECIMAL HOURS (sleep_hours, sleep_hours_planned) — float like 7.5
+//   - as INTEGER MINUTES (deep_sleep_min, rem_sleep_min, awake_min,
+//     active_time_min, workout_minutes, etc.) — int like 90
+// Both are nicer to edit as two boxes (Hh + Mm) than as a single opaque
+// "7.5" or "90" number. This returns how to interpret the stored value,
+// or null if it's not a duration at all.
+type DurationShape = 'hours-decimal' | 'minutes-int' | null;
+function durationShape(key: string): DurationShape {
+  if (key === 'sleep_hours' || key === 'sleep_hours_planned') return 'hours-decimal';
+  if (key.endsWith('_min') || key === 'workout_minutes') return 'minutes-int';
+  return null;
+}
+function durationToHM(value: number | null | undefined, shape: 'hours-decimal' | 'minutes-int'): { h: string; m: string } {
+  if (value === null || value === undefined || !Number.isFinite(value)) return { h: '', m: '' };
+  const totalMin = shape === 'hours-decimal' ? value * 60 : value;
+  const h = Math.floor(totalMin / 60);
+  const m = Math.round(totalMin - h * 60);
+  return { h: String(h), m: String(m) };
+}
+function hmToStored(h: string, m: string, shape: 'hours-decimal' | 'minutes-int'): number | null {
+  const hNum = h === '' ? 0 : parseInt(h, 10);
+  const mNum = m === '' ? 0 : parseInt(m, 10);
+  if (!Number.isFinite(hNum) || !Number.isFinite(mNum)) return null;
+  if (h === '' && m === '') return null;
+  const totalMin = hNum * 60 + mNum;
+  if (totalMin === 0 && h === '' && m === '') return null;
+  return shape === 'hours-decimal' ? Math.round(totalMin / 60 * 10) / 10 : totalMin;
+}
+// Format a stored duration for the LOGGED display row — "7h 32m" reads
+// better than "7.5" or "452" alone.
+function formatDurationForDisplay(value: number | null | undefined, shape: 'hours-decimal' | 'minutes-int'): string {
+  if (value === null || value === undefined || !Number.isFinite(value)) return String(value ?? '');
+  const totalMin = shape === 'hours-decimal' ? value * 60 : value;
+  const h = Math.floor(totalMin / 60);
+  const m = Math.round(totalMin - h * 60);
+  if (h === 0) return `${m}m`;
+  if (m === 0) return `${h}h`;
+  return `${h}h ${m}m`;
+}
+
 // Window metadata in display order.
 const WINDOWS: { key: TimeBucket; label: string; emoji: string; startHour: number; range: string }[] = [
   { key: 'morning', label: 'Morning', emoji: '🌅', startHour: 5,  range: '05:00–11:00' },
@@ -62,34 +103,53 @@ function MetricRow({
   onSave: (value: number | null) => Promise<void>;
 }) {
   const isLogged = value !== null && value !== undefined;
+  const shape = durationShape(String(spec.key));
+  const isDuration = shape !== null;
   const [editing, setEditing] = useState(false);
-  const [draft, setDraft] = useState<string>('');
+  const [draft, setDraft] = useState<string>('');         // used for non-duration fields
+  const [draftH, setDraftH] = useState<string>('');       // used for duration fields
+  const [draftM, setDraftM] = useState<string>('');
   const [busy, setBusy] = useState(false);
 
   const commit = useCallback(async () => {
-    // Empty string clears the field (supports unlogging). Otherwise parse
-    // as number (int or float depending on the spec) and reject NaN.
-    const trimmed = draft.trim();
     let parsed: number | null = null;
-    if (trimmed === '') {
-      parsed = null;
+    if (isDuration) {
+      // Empty both = clear the field (null). Otherwise compose from h+m.
+      if (draftH.trim() === '' && draftM.trim() === '') {
+        parsed = null;
+      } else {
+        parsed = hmToStored(draftH, draftM, shape as 'hours-decimal' | 'minutes-int');
+        if (parsed === null) return;
+      }
     } else {
-      parsed = spec.type === 'integer' ? parseInt(trimmed, 10) : parseFloat(trimmed);
-      if (!Number.isFinite(parsed)) return;
+      // Empty string clears the field (supports unlogging). Otherwise parse
+      // as number (int or float depending on the spec) and reject NaN.
+      const trimmed = draft.trim();
+      if (trimmed === '') {
+        parsed = null;
+      } else {
+        parsed = spec.type === 'integer' ? parseInt(trimmed, 10) : parseFloat(trimmed);
+        if (!Number.isFinite(parsed)) return;
+      }
     }
     setBusy(true);
     try {
       await onSave(parsed);
       setEditing(false);
       setDraft('');
+      setDraftH('');
+      setDraftM('');
     } finally {
       setBusy(false);
     }
-  }, [draft, spec.type, onSave]);
+  }, [draft, draftH, draftM, isDuration, shape, spec.type, onSave]);
 
   const onKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
     if (e.key === 'Enter') { e.preventDefault(); commit(); }
-    else if (e.key === 'Escape') { setEditing(false); setDraft(''); }
+    else if (e.key === 'Escape') {
+      setEditing(false);
+      setDraft(''); setDraftH(''); setDraftM('');
+    }
   };
 
   // ── LOCKED (future window on today's date) ──────────────────────────────
@@ -109,6 +169,11 @@ function MetricRow({
 
   // ── LOGGED (value present, not editing) ─────────────────────────────────
   if (isLogged && !editing) {
+    // Duration fields render as "7h 32m" instead of the raw 7.5 or 452 —
+    // much more legible when you glance at the logged row.
+    const displayValue = isDuration
+      ? formatDurationForDisplay(value, shape as 'hours-decimal' | 'minutes-int')
+      : String(value);
     return (
       <div className="flex items-center gap-3 px-3.5 py-2.5 rounded-xl bg-accent/[0.04] border border-accent/20 group">
         <Check className="w-3.5 h-3.5 text-accent shrink-0" />
@@ -123,11 +188,19 @@ function MetricRow({
           </div>
         </div>
         <span className="text-sm font-mono tabular-nums text-accent shrink-0">
-          {value}
-          {spec.unit && <span className="text-[10px] text-muted ml-0.5">{spec.unit}</span>}
+          {displayValue}
+          {spec.unit && !isDuration && <span className="text-[10px] text-muted ml-0.5">{spec.unit}</span>}
         </span>
         <button
-          onClick={() => { setEditing(true); setDraft(String(value)); }}
+          onClick={() => {
+            setEditing(true);
+            if (isDuration) {
+              const hm = durationToHM(value, shape as 'hours-decimal' | 'minutes-int');
+              setDraftH(hm.h); setDraftM(hm.m);
+            } else {
+              setDraft(String(value));
+            }
+          }}
           aria-label="Edit"
           className="opacity-0 group-hover:opacity-100 p-1.5 rounded-lg hover:bg-surface-3 text-muted-foreground hover:text-foreground transition-all"
         >
@@ -138,6 +211,9 @@ function MetricRow({
   }
 
   // ── EDITABLE (due/overdue/past-day empty, OR logged+editing) ────────────
+  const nothingEntered = isDuration
+    ? draftH.trim() === '' && draftM.trim() === ''
+    : draft.trim() === '';
   return (
     <div className="flex items-center gap-2 px-3.5 py-2 rounded-xl bg-surface-2 border border-card-border hover:border-accent/30 transition-colors">
       <div className="flex-1 min-w-0">
@@ -154,31 +230,72 @@ function MetricRow({
         </div>
         {spec.hint && <p className="text-[10px] text-muted mt-0.5 leading-snug">{spec.hint}</p>}
       </div>
-      <div className="relative shrink-0 w-28">
-        <input
-          type="number"
-          inputMode="decimal"
-          autoFocus={editing}
-          value={draft}
-          onChange={e => setDraft(e.target.value)}
-          onKeyDown={onKeyDown}
-          onBlur={() => { if (draft !== '' && !busy) commit(); }}
-          placeholder={isLogged ? String(value) : '—'}
-          step={spec.step || (spec.type === 'integer' ? 1 : 'any')}
-          min={spec.min}
-          max={spec.max}
-          className="w-full rounded-lg bg-background border border-card-border px-2.5 py-1.5 text-sm font-mono tabular-nums outline-none focus:border-accent transition-colors text-right"
-        />
-        {spec.unit && (
-          <span className="absolute right-2 top-1/2 -translate-y-1/2 text-[9px] text-muted pointer-events-none font-mono">{spec.unit}</span>
-        )}
-      </div>
+
+      {/* Dual H+M inputs for duration fields; single input otherwise */}
+      {isDuration ? (
+        <div className="flex items-center gap-1 shrink-0">
+          <div className="relative w-14">
+            <input
+              type="number"
+              inputMode="numeric"
+              autoFocus={editing}
+              value={draftH}
+              onChange={e => setDraftH(e.target.value)}
+              onKeyDown={onKeyDown}
+              onBlur={() => { if (!nothingEntered && !busy) commit(); }}
+              placeholder="0"
+              min={0}
+              max={24}
+              step={1}
+              className="w-full rounded-lg bg-background border border-card-border px-2 py-1.5 text-sm font-mono tabular-nums outline-none focus:border-accent transition-colors text-right pr-5"
+            />
+            <span className="absolute right-1.5 top-1/2 -translate-y-1/2 text-[9px] text-muted pointer-events-none font-mono">h</span>
+          </div>
+          <div className="relative w-14">
+            <input
+              type="number"
+              inputMode="numeric"
+              value={draftM}
+              onChange={e => setDraftM(e.target.value)}
+              onKeyDown={onKeyDown}
+              onBlur={() => { if (!nothingEntered && !busy) commit(); }}
+              placeholder="0"
+              min={0}
+              max={59}
+              step={1}
+              className="w-full rounded-lg bg-background border border-card-border px-2 py-1.5 text-sm font-mono tabular-nums outline-none focus:border-accent transition-colors text-right pr-6"
+            />
+            <span className="absolute right-1.5 top-1/2 -translate-y-1/2 text-[9px] text-muted pointer-events-none font-mono">m</span>
+          </div>
+        </div>
+      ) : (
+        <div className="relative shrink-0 w-28">
+          <input
+            type="number"
+            inputMode="decimal"
+            autoFocus={editing}
+            value={draft}
+            onChange={e => setDraft(e.target.value)}
+            onKeyDown={onKeyDown}
+            onBlur={() => { if (draft !== '' && !busy) commit(); }}
+            placeholder={isLogged ? String(value) : '—'}
+            step={spec.step || (spec.type === 'integer' ? 1 : 'any')}
+            min={spec.min}
+            max={spec.max}
+            className="w-full rounded-lg bg-background border border-card-border px-2.5 py-1.5 text-sm font-mono tabular-nums outline-none focus:border-accent transition-colors text-right"
+          />
+          {spec.unit && (
+            <span className="absolute right-2 top-1/2 -translate-y-1/2 text-[9px] text-muted pointer-events-none font-mono">{spec.unit}</span>
+          )}
+        </div>
+      )}
+
       <button
         onClick={commit}
-        disabled={busy || draft.trim() === ''}
+        disabled={busy || nothingEntered}
         className={clsx('shrink-0 text-[11px] font-semibold px-2.5 py-1.5 rounded-lg transition-all',
           busy ? 'bg-surface-3 text-muted' :
-          draft.trim() === '' ? 'bg-surface-3 text-muted cursor-not-allowed' :
+          nothingEntered ? 'bg-surface-3 text-muted cursor-not-allowed' :
           'bg-accent text-black hover:bg-accent-bright')}
       >
         {busy ? '…' : 'Log'}
