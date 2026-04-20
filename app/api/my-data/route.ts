@@ -44,13 +44,21 @@ export async function GET(request: Request) {
 
     // Full export — every user-owned row across the app. No caching: this is
     // a one-shot download the user intentionally triggered.
-    const [dailyMetricsRes, complianceRes, shareLinksRes, protocolHistoryRes] = await Promise.all([
+    const [dailyMetricsRes, complianceRes, shareLinksRes, protocolHistoryRes, chatMessagesRes] = await Promise.all([
       supabase.from('daily_metrics').select('*').eq('user_id', user.id).order('date', { ascending: false }),
       supabase.from('compliance_logs').select('*').eq('user_id', user.id).order('date', { ascending: false }),
       supabase.from('share_links').select('*').eq('user_id', user.id),
       supabase.from('protocols').select('id, created_at, longevity_score, biological_age_decimal, aging_pace, model_used, generation_source')
         .eq('user_id', user.id).is('deleted_at', null).order('created_at', { ascending: false }),
+      // chat_messages table is newer — if the export runs before migration,
+      // PostgREST returns a "relation does not exist" error. Swallow that to
+      // keep the export usable; any real error still surfaces.
+      supabase.from('chat_messages').select('role, content, model, created_at').eq('user_id', user.id).order('created_at', { ascending: false }),
     ]);
+
+    const chatMessages = chatMessagesRes.error && /does not exist|relation.*chat_messages/i.test(chatMessagesRes.error.message)
+      ? []
+      : (chatMessagesRes.data || []);
 
     return NextResponse.json(
       {
@@ -59,9 +67,10 @@ export async function GET(request: Request) {
         complianceLogs:  complianceRes.data      || [],
         shareLinks:      shareLinksRes.data      || [],
         protocolHistory: protocolHistoryRes.data || [],
+        chatMessages,
         exportedAt: new Date().toISOString(),
         exportedForUserId: user.id,
-        gdprNotice: 'This archive contains all personal data we store for your account. Under GDPR Article 15 you have the right to access, correct, or delete any of it — contact support or use Delete Account in Settings.',
+        gdprNotice: 'This archive contains all personal data we store for your account. Chat messages are auto-purged after 90 days; everything else is retained until you delete your account. Under GDPR Article 15 you have the right to access, correct, or delete any of it — use Delete Account in Settings.',
       },
       { headers: { 'Cache-Control': 'private, no-store' } }
     );

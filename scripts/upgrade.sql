@@ -215,6 +215,23 @@ create table if not exists public.compliance_logs (
 alter table public.compliance_logs add column if not exists completed_at timestamptz;
 
 -- ┌──────────────────────────────────────────────────────────────────────────┐
+-- │ 6b. CHAT_MESSAGES — server-persisted conversation history                │
+-- └──────────────────────────────────────────────────────────────────────────┘
+-- Single-thread-per-user for the MVP. Every user turn + assistant reply is
+-- appended, so a refresh doesn't wipe the context (the previous localStorage-
+-- only path lost everything on first reload). Retention handled by a cron
+-- cleanup task — any row older than 90 days is purged to keep the table lean
+-- and avoid surprising GDPR obligations on unlimited data hoarding.
+create table if not exists public.chat_messages (
+  id uuid default gen_random_uuid() primary key,
+  user_id uuid references auth.users on delete cascade not null,
+  role text not null check (role in ('user', 'assistant')),
+  content text not null,
+  model text,                  -- 'claude-sonnet-4-5' / 'llama-3.3-70b' / null for user turns
+  created_at timestamptz default now()
+);
+
+-- ┌──────────────────────────────────────────────────────────────────────────┐
 -- │ 7. CHECK CONSTRAINTS — add as NOT VALID, then VALIDATE (non-blocking)    │
 -- └──────────────────────────────────────────────────────────────────────────┘
 -- Each constraint wrapped in DO block so it's idempotent (skips if exists).
@@ -318,6 +335,10 @@ create index if not exists idx_daily_metrics_habits on public.daily_metrics usin
 
 create index if not exists idx_share_links_slug on public.share_links(slug);
 
+-- Recent-first load for the chat page — last N messages per user.
+create index if not exists idx_chat_messages_user_created
+  on public.chat_messages(user_id, created_at desc);
+
 -- ┌──────────────────────────────────────────────────────────────────────────┐
 -- │ 9. RLS — enable + (re)create policies                                    │
 -- └──────────────────────────────────────────────────────────────────────────┘
@@ -327,11 +348,13 @@ alter table public.protocols enable row level security;
 alter table public.daily_metrics enable row level security;
 alter table public.share_links enable row level security;
 alter table public.compliance_logs enable row level security;
+alter table public.chat_messages enable row level security;
 
 -- Defense in depth: force RLS even for table owner
 alter table public.profiles force row level security;
 alter table public.blood_tests force row level security;
 alter table public.protocols force row level security;
+alter table public.chat_messages force row level security;
 
 drop policy if exists "profiles_select" on public.profiles;
 drop policy if exists "profiles_insert" on public.profiles;
@@ -390,6 +413,10 @@ drop policy if exists "compliance_insert" on public.compliance_logs;
 drop policy if exists "compliance_update" on public.compliance_logs;
 drop policy if exists "compliance_upsert" on public.compliance_logs;
 create policy "compliance_own" on public.compliance_logs for all
+  using (auth.uid() = user_id) with check (auth.uid() = user_id);
+
+drop policy if exists "chat_messages_own" on public.chat_messages;
+create policy "chat_messages_own" on public.chat_messages for all
   using (auth.uid() = user_id) with check (auth.uid() = user_id);
 
 -- ┌──────────────────────────────────────────────────────────────────────────┐
@@ -654,6 +681,24 @@ begin
 end;
 $$;
 grant execute on function public.apply_protocol_adjust(uuid, text, jsonb) to authenticated;
+
+-- 90-day retention on chat history. Keeps the table lean + matches what we
+-- tell users in /api/my-data?full=1 so we don't quietly hoard indefinitely.
+-- Called from the daily cron; returns the deleted row count for observability.
+create or replace function public.prune_old_chat_messages(p_days int default 90)
+returns integer
+language sql
+security definer
+set search_path = public
+as $$
+  with deleted as (
+    delete from public.chat_messages
+    where created_at < now() - (p_days || ' days')::interval
+    returning 1
+  )
+  select count(*)::int from deleted;
+$$;
+grant execute on function public.prune_old_chat_messages(int) to service_role;
 
 -- ┌──────────────────────────────────────────────────────────────────────────┐
 -- │ 13. REALTIME PUBLICATION                                                 │

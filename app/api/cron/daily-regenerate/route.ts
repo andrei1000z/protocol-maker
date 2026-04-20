@@ -102,9 +102,19 @@ export async function GET(request: Request) {
     }
   }
 
+  // Retention housekeeping — prune chat messages older than 90 days. Called
+  // inside the daily cron so it piggy-backs on an already-scheduled run
+  // instead of needing its own trigger. Silent on pre-migration DBs.
+  let chatPruned: number | null = null;
+  try {
+    const { data } = await supabase.rpc('prune_old_chat_messages', { p_days: 90 });
+    if (typeof data === 'number') chatPruned = data;
+  } catch { /* function not migrated yet — ignore */ }
+
   return NextResponse.json({
     ok: true,
     ...results,
+    chatMessagesPruned: chatPruned,
     durationMs: Date.now() - startTime,
     ranAt: new Date().toISOString(),
   });

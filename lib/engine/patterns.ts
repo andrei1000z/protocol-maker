@@ -180,6 +180,22 @@ const PATTERNS: PatternRule[] = [
 // source of truth (don't hardcode "12 patterns" in UI copy).
 export const PATTERN_COUNT = PATTERNS.length;
 
+// Descriptive-only view of PATTERNS (name / description / recommendations)
+// stripped of the `check` fn so it serializes. Used by the SEO pages under
+// /patterns/[slug]. Slug derived from name via URL-safe lowercase+dashes.
+export function slugifyPatternName(name: string): string {
+  return name.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '');
+}
+export const PATTERN_REFERENCE = PATTERNS.map(p => ({
+  name: p.name,
+  slug: slugifyPatternName(p.name),
+  description: p.description,
+  recommendations: p.recommendations,
+}));
+export function getPatternRef(slug: string) {
+  return PATTERN_REFERENCE.find(p => p.slug === slug);
+}
+
 // ─────────────────────────────────────────────────────────────────────────────
 // Exclusion layer — prevents the AI from being fed redundant overlapping
 // patterns. Without this, a user with HbA1c 5.8 + TG 160 + HDL 38 would get

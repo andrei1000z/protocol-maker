@@ -307,6 +307,7 @@ ${context}`;
 // ─────────────────────────────────────────────────────────────────────────────
 async function streamResponse(
   userId: string,
+  supabase: Awaited<ReturnType<typeof createClient>>,
   cachedPersona: string,
   userContext: string,
   messages: ChatMessage[],
@@ -319,6 +320,7 @@ async function streamResponse(
       let model = 'none';
       let outcome: 'ok' | 'failed' | 'no_provider' = 'no_provider';
       let charsStreamed = 0;
+      let assistantText = '';
       try {
         if (process.env.ANTHROPIC_API_KEY) {
           model = 'claude-sonnet-4-5';
@@ -338,6 +340,7 @@ async function streamResponse(
           for await (const chunk of stream) {
             if (chunk.type === 'content_block_delta' && chunk.delta.type === 'text_delta') {
               controller.enqueue(encoder.encode(chunk.delta.text));
+              assistantText += chunk.delta.text;
               charsStreamed += chunk.delta.text.length;
             }
           }
@@ -360,7 +363,11 @@ async function streamResponse(
           });
           for await (const chunk of completion) {
             const text = chunk.choices[0]?.delta?.content;
-            if (text) { controller.enqueue(encoder.encode(text)); charsStreamed += text.length; }
+            if (text) {
+              controller.enqueue(encoder.encode(text));
+              assistantText += text;
+              charsStreamed += text.length;
+            }
           }
           outcome = 'ok';
         } else {
@@ -376,7 +383,12 @@ async function streamResponse(
         });
         controller.enqueue(encoder.encode(`\n\n⚠️ Error: ${err instanceof Error ? err.message : String(err)}`));
       } finally {
-        if (outcome === 'ok') {
+        // Persist the assistant reply if we streamed at least one full turn.
+        // Failures still log, but we don't store half-replies — the user will
+        // retry and a complete reply comes out of the next call.
+        if (outcome === 'ok' && assistantText.trim().length > 0) {
+          persistChatMessage(supabase, userId, 'assistant', assistantText, model)
+            .catch(err => logger.warn('chat.persist_failed', { userId, role: 'assistant', errorMessage: describeError(err) }));
           logger.info('chat.stream_done', {
             userId, model,
             latencyMs: Date.now() - startMs,
@@ -387,6 +399,27 @@ async function streamResponse(
         controller.close();
       }
     },
+  });
+}
+
+// Fire-and-forget persist of a single message. Called after stream completes
+// so a slow DB doesn't slow down the user's reply; errors are logged, not
+// returned. If the table doesn't exist yet (pre-migration), we swallow the
+// error so chat keeps working with localStorage-only fallback.
+async function persistChatMessage(
+  supabase: Awaited<ReturnType<typeof createClient>>,
+  userId: string,
+  role: 'user' | 'assistant',
+  content: string,
+  model: string | null,
+): Promise<void> {
+  // Cap stored content at 24k chars — an outlier reply shouldn't balloon the row.
+  const clipped = content.length > 24_000 ? content.slice(0, 24_000) + '… [truncated]' : content;
+  await supabase.from('chat_messages').insert({
+    user_id: userId,
+    role,
+    content: clipped,
+    model: model && model !== 'none' ? model : null,
   });
 }
 
@@ -412,9 +445,17 @@ export async function POST(request: Request) {
     const { context } = await buildContext(supabase, user.id);
     const userContext = buildChatUserContext(context);
 
+    // Persist the latest user turn before we start streaming. If the stream
+    // crashes half-way we still have the user's question on file for retry.
+    const lastUserMsg = [...body.messages].reverse().find(m => m.role === 'user');
+    if (lastUserMsg?.content) {
+      persistChatMessage(supabase, user.id, 'user', lastUserMsg.content, null)
+        .catch(err => logger.warn('chat.persist_failed', { userId: user.id, role: 'user', errorMessage: describeError(err) }));
+    }
+
     // Streaming response (default)
     if (body.stream !== false) {
-      const stream = await streamResponse(user.id, CHAT_CACHED_PERSONA, userContext, body.messages);
+      const stream = await streamResponse(user.id, supabase, CHAT_CACHED_PERSONA, userContext, body.messages);
       return new Response(stream, {
         headers: {
           'Content-Type': 'text/plain; charset=utf-8',
@@ -426,7 +467,9 @@ export async function POST(request: Request) {
 
     // Non-streaming fallback path (for older clients)
     let reply = '';
+    let model: string | null = null;
     if (process.env.ANTHROPIC_API_KEY) {
+      model = 'claude-sonnet-4-5';
       const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
       const response = await anthropic.messages.create({
         model: 'claude-sonnet-4-5',
@@ -439,6 +482,7 @@ export async function POST(request: Request) {
       });
       reply = response.content[0]?.type === 'text' ? response.content[0].text : '';
     } else if (process.env.GROQ_API_KEY) {
+      model = 'llama-3.3-70b-versatile';
       const groq = new Groq({ apiKey: process.env.GROQ_API_KEY });
       const completion = await groq.chat.completions.create({
         model: 'llama-3.3-70b-versatile',
@@ -450,9 +494,63 @@ export async function POST(request: Request) {
     } else {
       return NextResponse.json({ error: 'No AI provider configured' }, { status: 500 });
     }
+    if (reply.trim().length > 0) {
+      persistChatMessage(supabase, user.id, 'assistant', reply, model)
+        .catch(err => logger.warn('chat.persist_failed', { userId: user.id, role: 'assistant', errorMessage: describeError(err) }));
+    }
     return NextResponse.json({ reply });
   } catch (err) {
     logger.error('chat.handler_failed', { errorMessage: describeError(err) });
     return NextResponse.json({ error: err instanceof Error ? err.message : String(err) }, { status: 500 });
+  }
+}
+
+// GET /api/chat → last 50 messages for this user, oldest-first so the client
+// can render without reversing. Empty array if table isn't migrated yet or
+// the user has no history — chat page falls back to localStorage / greeting.
+export async function GET() {
+  try {
+    const supabase = await createClient();
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) return NextResponse.json({ error: 'Not authenticated' }, { status: 401 });
+
+    const { data, error } = await supabase
+      .from('chat_messages')
+      .select('role, content, created_at')
+      .eq('user_id', user.id)
+      .order('created_at', { ascending: false })
+      .limit(50);
+
+    if (error) {
+      // Pre-migration: table doesn't exist. Return empty history so the chat
+      // page degrades gracefully to its localStorage path.
+      if (/does not exist|relation.*chat_messages/i.test(error.message)) {
+        return NextResponse.json({ messages: [], reason: 'pre_migration' });
+      }
+      return NextResponse.json({ error: error.message }, { status: 500 });
+    }
+    // Reverse so oldest comes first in the returned array (chronological).
+    return NextResponse.json({ messages: (data || []).slice().reverse() });
+  } catch (err) {
+    return NextResponse.json({ error: describeError(err) }, { status: 500 });
+  }
+}
+
+// DELETE /api/chat → clear the user's chat history. Invoked from the
+// conversation "Clear" button so server state stays in sync with client
+// localStorage wipe.
+export async function DELETE() {
+  try {
+    const supabase = await createClient();
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) return NextResponse.json({ error: 'Not authenticated' }, { status: 401 });
+
+    const { error } = await supabase.from('chat_messages').delete().eq('user_id', user.id);
+    if (error && !/does not exist|relation.*chat_messages/i.test(error.message)) {
+      return NextResponse.json({ error: error.message }, { status: 500 });
+    }
+    return NextResponse.json({ ok: true });
+  } catch (err) {
+    return NextResponse.json({ error: describeError(err) }, { status: 500 });
   }
 }

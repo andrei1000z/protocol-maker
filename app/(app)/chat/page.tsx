@@ -284,15 +284,33 @@ export default function ChatPage() {
     };
   })() : null;
 
-  // Load persisted conversation
+  // Load persisted conversation. Server-side chat_messages is the source of
+  // truth when the table exists; localStorage is a fallback for the pre-
+  // migration window + offline / first-paint speed (renders instantly while
+  // the network call completes in the background).
   useEffect(() => {
     try {
       const stored = localStorage.getItem(STORAGE_KEY);
       if (stored) setMessages(JSON.parse(stored));
     } catch { /* ignore */ }
+
+    // Fetch server history. If it's non-empty and newer than whatever
+    // localStorage had, replace — last writer wins so multi-device stays in sync.
+    (async () => {
+      try {
+        const res = await fetch('/api/chat');
+        if (!res.ok) return;
+        const j = await res.json() as { messages?: Array<{ role: 'user' | 'assistant'; content: string; created_at: string }> };
+        if (!Array.isArray(j.messages) || j.messages.length === 0) return;
+        const srv: Message[] = j.messages.map(m => ({ role: m.role, content: m.content }));
+        setMessages(srv);
+        try { localStorage.setItem(STORAGE_KEY, JSON.stringify(srv)); } catch { /* ignore */ }
+      } catch { /* network — stay on localStorage copy */ }
+    })();
   }, []);
 
-  // Persist on change
+  // Persist on change — localStorage only; server persistence happens inside
+  // the /api/chat POST after each streamed reply lands.
   useEffect(() => {
     try {
       if (messages.length > 0) localStorage.setItem(STORAGE_KEY, JSON.stringify(messages));
@@ -388,6 +406,9 @@ export default function ChatPage() {
   const clearConversation = () => {
     setMessages([]);
     try { localStorage.removeItem(STORAGE_KEY); } catch { /* ignore */ }
+    // Fire-and-forget server clear — matches what the user expects when they
+    // hit Clear, keeps history consistent across devices.
+    fetch('/api/chat', { method: 'DELETE' }).catch(() => { /* ignore */ });
   };
 
   const suggestions = buildSuggestions(ctx);
