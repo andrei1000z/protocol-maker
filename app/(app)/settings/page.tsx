@@ -190,51 +190,57 @@ function RetestUploader({ bloodTestsCount }: { bloodTestsCount: number }) {
 // ─────────────────────────────────────────────────────────────────────────────
 // Delete account confirmation modal
 // ─────────────────────────────────────────────────────────────────────────────
-// Oura Ring connection card — shows connected state, last sync timestamp,
-// any refresh error. Connect button kicks off the OAuth redirect; Sync now
-// pulls the last 14 days; Disconnect clears the stored tokens. Server
-// returns `configured:false` when OURA_CLIENT_ID isn't set in env, in which
-// case we render a neutral "coming soon" state instead of a broken button.
-function OuraConnectionCard() {
+// Shared wearable-provider row — one per OAuth integration we ship. Status
+// / connect / sync / disconnect all hit /api/integrations/[providerKey].
+// Handles three states: configured+connected, configured-not-connected,
+// not-configured (admin hasn't set env vars). Reads the OAuth-callback
+// redirect params for its specific providerKey.
+interface WearableRowProps {
+  providerKey: 'oura' | 'fitbit' | 'withings';
+  name: string;
+  tagline: string;
+  emoji: string;
+  accentBg: string;      // e.g. 'bg-purple-500/10 border-purple-500/25'
+  envVar: string;        // first env var name, for the "configure in env" hint
+  registerUrl: string;
+  syncLookbackLabel?: string;
+}
+function WearableRow({ providerKey, name, tagline, emoji, accentBg, envVar, registerUrl, syncLookbackLabel }: WearableRowProps) {
   const [status, setStatus] = useState<{
     configured: boolean;
     connected: boolean;
     lastSyncedAt: string | null;
     lastSyncError: string | null;
-    tokenExpiresAt: string | null;
   } | null>(null);
   const [syncing, setSyncing] = useState(false);
   const [banner, setBanner] = useState<{ tone: 'ok' | 'err'; msg: string } | null>(null);
 
   const load = async () => {
     try {
-      const res = await fetch('/api/integrations/oura');
+      const res = await fetch(`/api/integrations/${providerKey}`);
       if (res.ok) setStatus(await res.json());
     } catch { /* ignore */ }
   };
+
   useEffect(() => {
     load();
-    // Surface the OAuth callback's redirect params once, then clean the URL so
-    // a refresh doesn't re-trigger the banner.
     if (typeof window === 'undefined') return;
     const qs = new URLSearchParams(window.location.search);
-    if (qs.get('integration') === 'oura') {
-      if (qs.get('connected') === '1') setBanner({ tone: 'ok', msg: 'Oura connected. Your overnight readings will land here each morning.' });
-      else if (qs.get('error')) setBanner({ tone: 'err', msg: `Oura connect failed: ${qs.get('error')}` });
+    if (qs.get('integration') === providerKey) {
+      if (qs.get('connected') === '1') setBanner({ tone: 'ok', msg: `${name} connected. Next morning's readings land automatically.` });
+      else if (qs.get('error')) setBanner({ tone: 'err', msg: `${name} connect failed: ${qs.get('error')}` });
       const url = new URL(window.location.href);
       url.searchParams.delete('integration'); url.searchParams.delete('connected'); url.searchParams.delete('error');
       window.history.replaceState({}, '', url.toString());
     }
-  }, []);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [providerKey]);
 
-  const connect = () => {
-    // Full redirect — we'll return here via /callback → /settings?integration=oura&connected=1
-    window.location.href = '/api/integrations/oura/connect';
-  };
+  const connect = () => { window.location.href = `/api/integrations/${providerKey}/connect`; };
   const syncNow = async () => {
     setSyncing(true); setBanner(null);
     try {
-      const res = await fetch('/api/integrations/oura', { method: 'POST' });
+      const res = await fetch(`/api/integrations/${providerKey}`, { method: 'POST' });
       const j = await res.json();
       if (!res.ok) throw new Error(j.error || `HTTP ${res.status}`);
       setBanner({ tone: 'ok', msg: `Synced ${j.daysFetched} days · ${j.rowsWritten} rows updated` });
@@ -244,90 +250,74 @@ function OuraConnectionCard() {
     } finally { setSyncing(false); }
   };
   const disconnect = async () => {
-    if (!window.confirm('Disconnect Oura? Your stored tokens will be deleted; past data stays.')) return;
-    await fetch('/api/integrations/oura', { method: 'DELETE' });
-    setBanner({ tone: 'ok', msg: 'Oura disconnected.' });
+    if (!window.confirm(`Disconnect ${name}? Your stored tokens will be deleted; past data stays.`)) return;
+    await fetch(`/api/integrations/${providerKey}`, { method: 'DELETE' });
+    setBanner({ tone: 'ok', msg: `${name} disconnected.` });
     load();
   };
 
-  if (!status) {
-    return (
-      <SettingsCard icon={Link2} title="Wearable integrations" subtitle="Connect Oura to auto-populate your daily metrics">
-        <div className="h-8 flex items-center text-xs text-muted">Checking status…</div>
-      </SettingsCard>
-    );
-  }
+  const loading = !status;
+  const configured = status?.configured;
+  const connected = status?.connected;
 
-  if (!status.configured) {
-    return (
-      <SettingsCard icon={Link2} title="Wearable integrations" subtitle="Oura coming soon on this server">
-        <div className="rounded-xl p-4 bg-surface-2 border border-card-border">
-          <p className="text-sm">
-            <strong>Oura Ring</strong> <span className="text-muted-foreground">— ready in code, but this server doesn&apos;t have
-            the OAuth app credentials configured yet.</span>
-          </p>
-          <p className="text-[11px] text-muted mt-1.5 leading-relaxed">
-            Admin: register an app at <span className="font-mono">cloud.ouraring.com/oauth/applications</span> and set
-            <span className="font-mono"> OURA_CLIENT_ID</span> + <span className="font-mono">OURA_CLIENT_SECRET</span> in env.
-          </p>
-        </div>
-        <p className="text-[11px] text-muted-foreground mt-2">
-          Samsung Health + Apple Health aren&apos;t publicly accessible from the web — they require a native Android / iOS app. Planned for the mobile build.
-        </p>
-      </SettingsCard>
-    );
-  }
-
-  const lastSync = status.lastSyncedAt ? new Date(status.lastSyncedAt) : null;
+  const lastSync = status?.lastSyncedAt ? new Date(status.lastSyncedAt) : null;
   const lastSyncStr = lastSync
     ? `${Math.max(0, Math.floor((Date.now() - lastSync.getTime()) / 3600_000))}h ago`
     : 'never';
 
   return (
-    <SettingsCard icon={Link2} title="Wearable integrations" subtitle="Auto-sync your overnight readings">
-      <div className="rounded-xl p-4 bg-surface-2 border border-card-border space-y-3">
-        <div className="flex items-center justify-between gap-3">
-          <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-xl bg-purple-500/10 border border-purple-500/25 flex items-center justify-center">
-              <span className="text-lg">💍</span>
-            </div>
-            <div>
-              <p className="text-sm font-semibold">Oura Ring</p>
-              <p className="text-[11px] text-muted-foreground">
-                Sleep stages, HRV, body temp, readiness, SpO₂
-              </p>
-            </div>
+    <div className="rounded-xl p-4 bg-surface-2 border border-card-border space-y-3">
+      <div className="flex items-center justify-between gap-3">
+        <div className="flex items-center gap-3 min-w-0">
+          <div className={clsx('w-10 h-10 rounded-xl border flex items-center justify-center shrink-0', accentBg)}>
+            <span className="text-lg">{emoji}</span>
           </div>
-          <span className={clsx('text-[10px] font-mono px-2 py-0.5 rounded-full border',
-            status.connected ? 'bg-accent/10 text-accent border-accent/25' : 'bg-surface-3 text-muted border-card-border')}>
-            {status.connected ? 'Connected' : 'Not connected'}
-          </span>
+          <div className="min-w-0">
+            <p className="text-sm font-semibold">{name}</p>
+            <p className="text-[11px] text-muted-foreground truncate">{tagline}</p>
+          </div>
         </div>
+        <span className={clsx('text-[10px] font-mono px-2 py-0.5 rounded-full border shrink-0',
+          loading ? 'bg-surface-3 text-muted border-card-border'
+          : !configured ? 'bg-surface-3 text-muted border-card-border'
+          : connected ? 'bg-accent/10 text-accent border-accent/25'
+          : 'bg-surface-3 text-muted border-card-border')}>
+          {loading ? '…' : !configured ? 'Not configured' : connected ? 'Connected' : 'Not connected'}
+        </span>
+      </div>
 
-        {status.connected && (
-          <div className="flex items-center gap-3 text-[11px] text-muted-foreground">
-            <span>Last sync: {lastSyncStr}</span>
-            {status.lastSyncError && (
-              <span className="inline-flex items-center gap-1 text-danger">
-                <AlertTriangle className="w-3 h-3" />
-                Sync error
-              </span>
-            )}
-          </div>
-        )}
-        {status.lastSyncError && (
-          <p className="text-[10px] text-danger/80 bg-red-500/5 border border-red-500/15 rounded-lg px-2 py-1.5">
-            {status.lastSyncError}
-          </p>
-        )}
+      {configured && connected && (
+        <div className="flex items-center gap-3 text-[11px] text-muted-foreground">
+          <span>Last sync: {lastSyncStr}{syncLookbackLabel ? ` · ${syncLookbackLabel}` : ''}</span>
+          {status?.lastSyncError && (
+            <span className="inline-flex items-center gap-1 text-danger">
+              <AlertTriangle className="w-3 h-3" /> Sync error
+            </span>
+          )}
+        </div>
+      )}
+      {configured && status?.lastSyncError && (
+        <p className="text-[10px] text-danger/80 bg-red-500/5 border border-red-500/15 rounded-lg px-2 py-1.5">
+          {status.lastSyncError}
+        </p>
+      )}
 
+      {configured === false && (
+        <p className="text-[11px] text-muted-foreground leading-relaxed">
+          This server doesn&apos;t have the OAuth credentials yet. Admin: register at{' '}
+          <a href={registerUrl} target="_blank" rel="noopener noreferrer" className="text-accent hover:underline font-mono">{registerUrl.replace(/^https?:\/\//, '')}</a>
+          {' '}and set <span className="font-mono">{envVar}</span> in env.
+        </p>
+      )}
+
+      {configured && (
         <div className="flex gap-2 flex-wrap">
-          {!status.connected ? (
+          {!connected ? (
             <button
               onClick={connect}
               className="inline-flex items-center gap-1.5 text-xs font-semibold px-3.5 py-2 rounded-xl bg-accent text-black hover:bg-accent-bright transition-colors"
             >
-              <Link2 className="w-3.5 h-3.5" /> Connect Oura
+              <Link2 className="w-3.5 h-3.5" /> Connect {name.split(' ')[0]}
             </button>
           ) : (
             <>
@@ -348,18 +338,88 @@ function OuraConnectionCard() {
             </>
           )}
         </div>
-      </div>
+      )}
 
       {banner && (
-        <p className={clsx('text-[11px] mt-2 p-2 rounded-lg border',
+        <p className={clsx('text-[11px] p-2 rounded-lg border',
           banner.tone === 'ok' ? 'bg-accent/5 text-accent border-accent/25' : 'bg-red-500/5 text-danger border-red-500/20')}>
           {banner.msg}
         </p>
       )}
+    </div>
+  );
+}
 
-      <p className="text-[10px] text-muted-foreground mt-2 leading-relaxed">
-        Samsung Health + Apple Health aren&apos;t available on web — they need a native Android / iOS build. On the roadmap.
-      </p>
+// Samsung Health + Apple HealthKit — these genuinely don't have web OAuth.
+// Render a transparent "native-only" row so users don't wonder why they're
+// missing. Includes Google Fit as the escape hatch (Samsung Galaxy Watch data
+// can flow Samsung Health → Health Connect → Google Fit → our API).
+function NativeOnlyRow({ name, emoji, accentBg, note }: { name: string; emoji: string; accentBg: string; note: string }) {
+  return (
+    <div className="rounded-xl p-4 bg-surface-2/50 border border-card-border border-dashed space-y-2">
+      <div className="flex items-center justify-between gap-3">
+        <div className="flex items-center gap-3 min-w-0">
+          <div className={clsx('w-10 h-10 rounded-xl border flex items-center justify-center shrink-0 opacity-70', accentBg)}>
+            <span className="text-lg">{emoji}</span>
+          </div>
+          <div className="min-w-0">
+            <p className="text-sm font-semibold">{name}</p>
+            <p className="text-[11px] text-muted-foreground truncate">{note}</p>
+          </div>
+        </div>
+        <span className="text-[10px] font-mono px-2 py-0.5 rounded-full border bg-surface-3 text-muted border-card-border shrink-0">
+          Mobile only
+        </span>
+      </div>
+    </div>
+  );
+}
+
+function WearableIntegrationsCard() {
+  return (
+    <SettingsCard icon={Link2} title="Wearable integrations" subtitle="Auto-sync your daily metrics from connected devices">
+      <div className="space-y-2.5">
+        <WearableRow
+          providerKey="oura"
+          name="Oura Ring"
+          tagline="Sleep stages, HRV, body temp, readiness, SpO₂"
+          emoji="💍"
+          accentBg="bg-purple-500/10 border-purple-500/25"
+          envVar="OURA_CLIENT_ID + OURA_CLIENT_SECRET"
+          registerUrl="https://cloud.ouraring.com/oauth/applications"
+        />
+        <WearableRow
+          providerKey="fitbit"
+          name="Fitbit"
+          tagline="Activity, sleep, heart rate, SpO₂, skin temp — Charge / Sense / Versa / Pixel Watch"
+          emoji="⌚"
+          accentBg="bg-cyan-500/10 border-cyan-500/25"
+          envVar="FITBIT_CLIENT_ID + FITBIT_CLIENT_SECRET"
+          registerUrl="https://dev.fitbit.com/apps/new"
+        />
+        <WearableRow
+          providerKey="withings"
+          name="Withings"
+          tagline="Smart scale body comp (fat %, muscle, water, bone, BMR) + ScanWatch"
+          emoji="⚖️"
+          accentBg="bg-emerald-500/10 border-emerald-500/25"
+          envVar="WITHINGS_CLIENT_ID + WITHINGS_CLIENT_SECRET"
+          registerUrl="https://account.withings.com/partner/dashboard_oauth2"
+          syncLookbackLabel="7-day lookback"
+        />
+        <NativeOnlyRow
+          name="Samsung Galaxy Watch / Ring / Samsung Health"
+          emoji="📱"
+          accentBg="bg-blue-500/10 border-blue-500/25"
+          note="No web OAuth — Samsung Health is Android-only. Coming in the mobile app."
+        />
+        <NativeOnlyRow
+          name="Apple Watch / Apple Health"
+          emoji="🍎"
+          accentBg="bg-gray-500/10 border-gray-500/25"
+          note="Apple HealthKit is iOS-only. Coming in the mobile app."
+        />
+      </div>
     </SettingsCard>
   );
 }
@@ -973,8 +1033,8 @@ export default function SettingsPage() {
         <RetestUploader bloodTestsCount={bloodTests.length} />
       </SettingsCard>
 
-      {/* ═══════════ WEARABLES (Oura + future) ═══════════ */}
-      <OuraConnectionCard />
+      {/* ═══════════ WEARABLES — Oura, Fitbit, Withings + native-only notices ═══════════ */}
+      <WearableIntegrationsCard />
 
       {/* ═══════════ REFERRAL ═══════════ */}
       <ReferralCard referralCode={(profile?.onboarding_data as Record<string, unknown> | undefined)?.referral_code as string | undefined ?? (myData?.profile as { referral_code?: string } | null)?.referral_code ?? null} />

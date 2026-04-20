@@ -11,8 +11,11 @@ import { computeOrganSystems, generateTopWins, generateTopRisks, estimateBiomark
 import { buildPainPoints, buildFlexRules } from '@/lib/engine/personalization-fills';
 import { buildFallbackProtocol } from '@/lib/engine/fallback-protocol';
 import { logger } from '@/lib/logger';
-import { syncOuraForUser } from '@/lib/integrations/oura-sync';
+import { syncProvider } from '@/lib/integrations/sync';
 import { isConfigured as ouraConfigured } from '@/lib/integrations/oura';
+import { isConfigured as fitbitConfigured } from '@/lib/integrations/fitbit';
+import { isConfigured as withingsConfigured } from '@/lib/integrations/withings';
+import type { ProviderKey } from '@/lib/integrations/base';
 import type { BiomarkerValue, UserProfile } from '@/lib/types';
 
 // Mirrors the classifier in /api/generate-protocol — short codes so ops can
@@ -113,36 +116,51 @@ export async function GET(request: Request) {
     if (typeof data === 'number') chatPruned = data;
   } catch { /* function not migrated yet — ignore */ }
 
-  // Oura sync — pull yesterday + today's readings for every connected user
-  // so the regen that runs tomorrow morning sees fresh wearable data. Skipped
-  // entirely when OURA_CLIENT_ID isn't configured on this deployment.
-  const ouraStats = { attempted: 0, ok: 0, failed: 0, rowsWritten: 0 };
-  if (ouraConfigured()) {
+  // Wearable sync — pull recent data for every connected user across every
+  // configured provider so tomorrow morning's regen sees fresh readings.
+  // Providers without env credentials are silently skipped. Loop order does
+  // not matter — daily_metrics is keyed by (user, date) and merges cleanly.
+  const syncStats: Record<string, { attempted: number; ok: number; failed: number; rowsWritten: number }> = {};
+  const providers: Array<{ key: ProviderKey; enabled: boolean }> = [
+    { key: 'oura', enabled: ouraConfigured() },
+    { key: 'fitbit', enabled: fitbitConfigured() },
+    { key: 'withings', enabled: withingsConfigured() },
+  ];
+
+  for (const { key: providerKey, enabled } of providers) {
+    if (!enabled) continue;
+    const stats = { attempted: 0, ok: 0, failed: 0, rowsWritten: 0 };
+    syncStats[providerKey] = stats;
     try {
       const { data: connected } = await supabase
         .from('oauth_connections')
         .select('user_id')
-        .eq('provider', 'oura');
-      if (Array.isArray(connected) && connected.length > 0) {
-        for (let i = 0; i < connected.length; i += BATCH_CONCURRENCY) {
-          const batch = connected.slice(i, i + BATCH_CONCURRENCY);
-          const outcomes = await Promise.allSettled(
-            batch.map(c => syncOuraForUser(supabase, c.user_id, { lookbackDays: 3 }))
-          );
-          outcomes.forEach(o => {
-            ouraStats.attempted++;
-            if (o.status === 'fulfilled' && o.value.ok) {
-              ouraStats.ok++;
-              ouraStats.rowsWritten += o.value.rowsWritten;
-            } else {
-              ouraStats.failed++;
-            }
-          });
-          if (Date.now() - startTime > 290_000) break;  // same buffer as regen loop
-        }
+        .eq('provider', providerKey);
+      if (!Array.isArray(connected) || connected.length === 0) continue;
+
+      // Withings wants a longer lookback — scale weigh-ins are sparse.
+      const lookbackDays = providerKey === 'withings' ? 7 : 3;
+
+      for (let i = 0; i < connected.length; i += BATCH_CONCURRENCY) {
+        if (Date.now() - startTime > 290_000) break;
+        const batch = connected.slice(i, i + BATCH_CONCURRENCY);
+        const outcomes = await Promise.allSettled(
+          batch.map(c => syncProvider(supabase, c.user_id, providerKey, { lookbackDays }))
+        );
+        outcomes.forEach(o => {
+          stats.attempted++;
+          if (o.status === 'fulfilled' && o.value.ok) {
+            stats.ok++;
+            stats.rowsWritten += o.value.rowsWritten;
+          } else {
+            stats.failed++;
+          }
+        });
       }
     } catch (err) {
-      logger.warn('cron.oura_batch_failed', { errorMessage: err instanceof Error ? err.message : String(err) });
+      logger.warn(`cron.${providerKey}_batch_failed`, {
+        errorMessage: err instanceof Error ? err.message : String(err),
+      });
     }
   }
 
@@ -150,7 +168,7 @@ export async function GET(request: Request) {
     ok: true,
     ...results,
     chatMessagesPruned: chatPruned,
-    ouraSync: ouraStats,
+    wearableSync: syncStats,
     durationMs: Date.now() - startTime,
     ranAt: new Date().toISOString(),
   });
