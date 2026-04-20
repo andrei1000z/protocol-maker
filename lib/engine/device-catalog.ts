@@ -694,11 +694,11 @@ export const CAPABILITY_TO_COLUMNS: Record<MetricCapability, string[]> = {
   sleep_stages:     ['deep_sleep_min', 'light_sleep_min', 'rem_sleep_min', 'awake_min'],
   sleep_score:      ['sleep_score', 'sleep_hours'],
   blood_oxygen:     ['blood_oxygen_avg_sleep'],
-  skin_temp:        ['skin_temp_deviation'],
+  skin_temp:        ['skin_temp_deviation', 'skin_temp_deviation_min', 'skin_temp_deviation_max'],
   steps:            ['steps'],
   active_time:      ['active_time_min'],
   vo2max:           [],
-  stress:           ['stress_level'],
+  stress:           ['stress_level', 'stress_level_avg', 'stress_bedtime'],
   ecg:              [],
   body_battery:     ['energy_score'],
   respiration_rate: ['avg_respiratory_rate'],
@@ -717,10 +717,10 @@ export const CAPABILITY_TO_COLUMNS: Record<MetricCapability, string[]> = {
 export const EQUIPMENT_TO_COLUMNS: Record<string, string[]> = {
   bathroom_scale:              ['weight_kg'],
   // Smart scales unlock the full morning-fasted composition suite
-  smart_scale:                 ['weight_kg', 'body_fat_pct', 'muscle_mass_kg', 'visceral_fat', 'body_water_pct', 'bone_mass_kg', 'bmr_kcal'],
+  smart_scale:                 ['weight_kg', 'body_fat_pct', 'muscle_mass_kg', 'visceral_fat', 'body_water_pct', 'bone_mass_kg', 'bmr_kcal', 'body_score'],
   bp_monitor:                  ['bp_systolic_morning', 'bp_diastolic_morning', 'bp_systolic_evening', 'bp_diastolic_evening'],
   // Body thermometer unlocks BOTH basal body temp AND skin temp deviation
-  body_thermometer:            ['basal_body_temp_c', 'skin_temp_deviation'],
+  body_thermometer:            ['basal_body_temp_c', 'skin_temp_deviation', 'skin_temp_deviation_min', 'skin_temp_deviation_max'],
   continuous_glucose_monitor:  [],
   glucose_meter:               [],
   pulse_oximeter:              ['blood_oxygen_avg_sleep'],

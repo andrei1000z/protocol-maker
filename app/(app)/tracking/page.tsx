@@ -667,12 +667,19 @@ export default function TrackingPage() {
           which hydrates profile from DB + respects rate limit (3/day). Never
           fires on every log to avoid burning Groq/Claude tokens. */}
       {staleness.isStale && !isRetroactive && (
-        <div className="flex items-center gap-3 p-3.5 rounded-xl bg-accent/[0.06] border border-accent/25 animate-fade-in">
-          <Sparkles className="w-4 h-4 text-accent shrink-0" />
-          <p className="text-[11px] sm:text-xs leading-relaxed flex-1">
-            <span className="text-accent font-medium">{staleness.count} new readings</span>
-            <span className="text-muted-foreground"> since your protocol was generated. Refresh now to re-tune targets, or leave it — the 3 AM cron handles it overnight.</span>
-          </p>
+        <div className="flex items-start gap-3 p-3.5 rounded-xl bg-accent/[0.06] border border-accent/25 animate-fade-in">
+          <Sparkles className="w-4 h-4 text-accent shrink-0 mt-0.5" />
+          <div className="flex-1 space-y-1">
+            <p className="text-[11px] sm:text-xs leading-relaxed">
+              <span className="text-accent font-medium">{staleness.count} new readings</span>
+              <span className="text-muted-foreground"> since your protocol was generated. Refreshing will re-run the full analysis: longevity score, biological age, aging speed (using your real HRV / RHR / sleep trend), organ systems, nutrition targets and supplement timing.</span>
+            </p>
+            {refreshing && (
+              <p className="text-[10px] text-accent font-mono animate-pulse">
+                Re-analyzing last 30 days of data + regenerating protocol…
+              </p>
+            )}
+          </div>
           <button
             onClick={handleRefreshProtocol}
             disabled={refreshing}

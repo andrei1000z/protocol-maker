@@ -356,7 +356,11 @@ export function buildMasterPromptV2(
   patterns: DetectedPattern[],
   biomarkerRefs: BiomarkerReference[],
   longevityScore: number,
-  biologicalAge: number
+  biologicalAge: number,
+  // Optional — one-paragraph summary of the user's last 30 days of
+  // wearable/self-log data. Injected verbatim under "RECENT SIGNAL DATA"
+  // so Claude can reason about actual trajectory, not just profile claims.
+  recentSignalsSummary?: string
 ): string {
   const bmi = profile.weightKg / ((profile.heightCm / 100) ** 2);
   const bmiCategory = bmi < 18.5 ? 'underweight' : bmi < 25 ? 'normal' : bmi < 30 ? 'overweight' : 'obese';
@@ -680,6 +684,17 @@ CONSTRAINTS:
 Chronological age: ${profile.age}
 Our baseline biological age: ${biologicalAge.toFixed(1)} years (decimal = use 1 decimal place in output)
 Our baseline longevity score: ${longevityScore}/100
+${recentSignalsSummary ? `
+═══ RECENT SIGNAL DATA (last 30 days — treat as ground truth, not claims) ═══
+${recentSignalsSummary}
+The aging velocity, biological age, and longevity score above ARE ALREADY refined
+using this wearable/self-log data. Honor the trajectory: if resting HR is below
+age-expected, cardiovascular age IS lower — reflect that in organ scores & wins.
+If sleep is inconsistent (σ > 1h), that IS aging the user faster regardless of
+profile claims — call it out as a top risk. Use the ACTUAL averages above in
+your topWins/topRisks bullets (e.g. "Your 52 ms average HRV sits above the
+typical 41 ms for your age — keep guarding this").
+` : ''}
 
 You are expected to produce your OWN best estimate based on ALL available data.
 Stay within ±3 years of our baseline UNLESS you have specific biomarkers or conditions that justify larger adjustment. Explain your reasoning implicitly in topWins/topRisks.

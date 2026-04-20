@@ -123,59 +123,76 @@ function personalizeGroupTitle(title: string, wakeTime?: string): string {
 // Single metric row — input, logged value, or locked state
 // ─────────────────────────────────────────────────────────────────────────────
 function MetricRow({
-  spec, value, deviceSource, isManual, locked, unlockAt, onSave,
+  spec, value, rangeMin, rangeMax, deviceSource, isManual, locked, unlockAt, onSave,
 }: {
   spec: FieldSpec;
   value: number | null | undefined;
+  rangeMin?: number | null;              // only used when spec.rangeKeys is set
+  rangeMax?: number | null;
   deviceSource?: string;   // "Oura Ring 4" or "manual" — omitted when no sources given
   isManual: boolean;
   locked: boolean;
   unlockAt?: string;       // "17:00" when locked
-  onSave: (value: number | null) => Promise<void>;
+  onSave: (patch: Partial<DailyMetrics>) => Promise<void>;
 }) {
-  const isLogged = value !== null && value !== undefined;
+  const isRange = Array.isArray(spec.rangeKeys);
+  const isLogged = isRange
+    ? (rangeMin !== null && rangeMin !== undefined) || (rangeMax !== null && rangeMax !== undefined)
+    : value !== null && value !== undefined;
   const shape = durationShape(String(spec.key));
-  const isDuration = shape !== null;
+  const isDuration = !isRange && shape !== null;
   const presets = PRESET_BUTTONS[String(spec.key)];
-  const isPreset = Array.isArray(presets);
+  const isPreset = !isRange && Array.isArray(presets);
   const [editing, setEditing] = useState(false);
-  const [draft, setDraft] = useState<string>('');         // used for non-duration fields
-  const [draftH, setDraftH] = useState<string>('');       // used for duration fields
+  const [draft, setDraft] = useState<string>('');         // non-duration single fields
+  const [draftH, setDraftH] = useState<string>('');       // duration fields
   const [draftM, setDraftM] = useState<string>('');
+  const [draftMin, setDraftMin] = useState<string>('');   // range fields
+  const [draftMax, setDraftMax] = useState<string>('');
   const [busy, setBusy] = useState(false);
 
   const commit = useCallback(async () => {
-    let parsed: number | null = null;
-    if (isDuration) {
-      // Empty both = clear the field (null). Otherwise compose from h+m.
-      if (draftH.trim() === '' && draftM.trim() === '') {
-        parsed = null;
-      } else {
+    let patch: Partial<DailyMetrics> = {};
+    if (isRange && spec.rangeKeys) {
+      const [kMin, kMax] = spec.rangeKeys;
+      const parseOne = (raw: string): number | null => {
+        const t = raw.trim();
+        if (t === '') return null;
+        const n = spec.type === 'integer' ? parseInt(t, 10) : parseFloat(t);
+        return Number.isFinite(n) ? n : null;
+      };
+      const minVal = parseOne(draftMin);
+      const maxVal = parseOne(draftMax);
+      // Both empty → nothing to do.
+      if (draftMin.trim() === '' && draftMax.trim() === '') return;
+      patch = { [kMin]: minVal, [kMax]: maxVal } as Partial<DailyMetrics>;
+    } else if (isDuration) {
+      let parsed: number | null;
+      if (draftH.trim() === '' && draftM.trim() === '') parsed = null;
+      else {
         parsed = hmToStored(draftH, draftM, shape as 'hours-decimal' | 'minutes-int');
         if (parsed === null) return;
       }
+      patch = { [spec.key]: parsed } as Partial<DailyMetrics>;
     } else {
-      // Empty string clears the field (supports unlogging). Otherwise parse
-      // as number (int or float depending on the spec) and reject NaN.
       const trimmed = draft.trim();
-      if (trimmed === '') {
-        parsed = null;
-      } else {
+      let parsed: number | null;
+      if (trimmed === '') parsed = null;
+      else {
         parsed = spec.type === 'integer' ? parseInt(trimmed, 10) : parseFloat(trimmed);
         if (!Number.isFinite(parsed)) return;
       }
+      patch = { [spec.key]: parsed } as Partial<DailyMetrics>;
     }
     setBusy(true);
     try {
-      await onSave(parsed);
+      await onSave(patch);
       setEditing(false);
-      setDraft('');
-      setDraftH('');
-      setDraftM('');
+      setDraft(''); setDraftH(''); setDraftM(''); setDraftMin(''); setDraftMax('');
     } finally {
       setBusy(false);
     }
-  }, [draft, draftH, draftM, isDuration, shape, spec.type, onSave]);
+  }, [draft, draftH, draftM, draftMin, draftMax, isRange, isDuration, shape, spec.key, spec.type, spec.rangeKeys, onSave]);
 
   const onKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
     if (e.key === 'Enter') { e.preventDefault(); commit(); }
@@ -204,12 +221,19 @@ function MetricRow({
   if (isLogged && !editing) {
     // Duration fields render as "7h 32m" instead of the raw 7.5 or 452.
     // Preset fields (stress_level) render as "Moderate" instead of "6".
+    // Range fields render as "−0.2 → +0.4".
     // Otherwise show the raw number.
-    const displayValue = isPreset
-      ? (presetLabelFor(String(spec.key), value) || String(value))
-      : isDuration
-        ? formatDurationForDisplay(value, shape as 'hours-decimal' | 'minutes-int')
-        : String(value);
+    const fmtNum = (n: number | null | undefined) => {
+      if (n === null || n === undefined || !Number.isFinite(n)) return '—';
+      return n > 0 ? `+${n}` : String(n);
+    };
+    const displayValue = isRange
+      ? `${fmtNum(rangeMin)} → ${fmtNum(rangeMax)}`
+      : isPreset
+        ? (presetLabelFor(String(spec.key), value) || String(value))
+        : isDuration
+          ? formatDurationForDisplay(value, shape as 'hours-decimal' | 'minutes-int')
+          : String(value);
     return (
       <div className="flex items-center gap-3 px-3.5 py-2.5 rounded-xl bg-accent/[0.04] border border-accent/20 group">
         <Check className="w-3.5 h-3.5 text-accent shrink-0" />
@@ -230,7 +254,10 @@ function MetricRow({
         <button
           onClick={() => {
             setEditing(true);
-            if (isDuration) {
+            if (isRange) {
+              setDraftMin(rangeMin !== null && rangeMin !== undefined ? String(rangeMin) : '');
+              setDraftMax(rangeMax !== null && rangeMax !== undefined ? String(rangeMax) : '');
+            } else if (isDuration) {
               const hm = durationToHM(value, shape as 'hours-decimal' | 'minutes-int');
               setDraftH(hm.h); setDraftM(hm.m);
             } else {
@@ -247,9 +274,11 @@ function MetricRow({
   }
 
   // ── EDITABLE (due/overdue/past-day empty, OR logged+editing) ────────────
-  const nothingEntered = isDuration
-    ? draftH.trim() === '' && draftM.trim() === ''
-    : draft.trim() === '';
+  const nothingEntered = isRange
+    ? draftMin.trim() === '' && draftMax.trim() === ''
+    : isDuration
+      ? draftH.trim() === '' && draftM.trim() === ''
+      : draft.trim() === '';
   return (
     <div className="flex items-center gap-2 px-3.5 py-2 rounded-xl bg-surface-2 border border-card-border hover:border-accent/30 transition-colors">
       <div className="flex-1 min-w-0">
@@ -281,7 +310,7 @@ function MetricRow({
                 onClick={async () => {
                   if (busy) return;
                   setBusy(true);
-                  try { await onSave(p.value); setEditing(false); }
+                  try { await onSave({ [spec.key]: p.value } as Partial<DailyMetrics>); setEditing(false); }
                   finally { setBusy(false); }
                 }}
                 disabled={busy}
@@ -295,6 +324,52 @@ function MetricRow({
               </button>
             );
           })}
+        </div>
+      ) : isRange ? (
+        <div data-duration-group="true" className="flex items-center gap-1 shrink-0">
+          <div className="relative w-16">
+            <input
+              type="number"
+              inputMode="decimal"
+              autoFocus={editing}
+              value={draftMin}
+              onChange={e => setDraftMin(e.target.value)}
+              onKeyDown={onKeyDown}
+              onBlur={(e) => {
+                const next = e.relatedTarget as HTMLElement | null;
+                if (next && next.closest('[data-duration-group="true"]')) return;
+                if (!nothingEntered && !busy) commit();
+              }}
+              placeholder={spec.rangeLabels?.[0] ?? 'min'}
+              step={spec.step || (spec.type === 'integer' ? 1 : 'any')}
+              min={spec.min}
+              max={spec.max}
+              className="w-full rounded-lg bg-background border border-card-border px-2 py-1.5 text-sm font-mono tabular-nums outline-none focus:border-accent transition-colors text-right"
+            />
+          </div>
+          <span className="text-muted-foreground text-sm">→</span>
+          <div className="relative w-16">
+            <input
+              type="number"
+              inputMode="decimal"
+              value={draftMax}
+              onChange={e => setDraftMax(e.target.value)}
+              onKeyDown={onKeyDown}
+              onBlur={(e) => {
+                const next = e.relatedTarget as HTMLElement | null;
+                if (next && next.closest('[data-duration-group="true"]')) return;
+                if (!nothingEntered && !busy) commit();
+              }}
+              placeholder={spec.rangeLabels?.[1] ?? 'max'}
+              step={spec.step || (spec.type === 'integer' ? 1 : 'any')}
+              min={spec.min}
+              max={spec.max}
+              className="w-full rounded-lg bg-background border border-card-border px-2 py-1.5 text-sm font-mono tabular-nums outline-none focus:border-accent transition-colors text-right"
+            />
+          </div>
+          {spec.unit && (
+            <span className="text-[9px] text-muted pointer-events-none font-mono">{spec.unit}</span>
+          )}
         </div>
       ) : isDuration ? (
         <div data-duration-group="true" className="flex items-center gap-1 shrink-0">
@@ -397,10 +472,10 @@ export function MetricTimeline({
   const now = new Date();
   const nowHour = now.getHours();
 
-  // Save a single field immediately (row-level "Log" button). Returns promise
-  // so the row can show a spinner + disable during the roundtrip.
-  const saveField = useCallback(async (key: keyof DailyMetrics, value: number | null) => {
-    await onSave({ [key]: value } as Partial<DailyMetrics>);
+  // Save a partial patch immediately (row-level "Log" button). Range fields
+  // send both columns at once. Returns promise so the row can show a spinner.
+  const savePatch = useCallback(async (patch: Partial<DailyMetrics>) => {
+    await onSave(patch);
   }, [onSave]);
 
   // Compute which windows are unlocked right now. Past date → all 4.
@@ -423,6 +498,12 @@ export function MetricTimeline({
       const locked = !unlockedWindows.has(w.key);
       const totalFields = groups.reduce((s, g) => s + g.fields.length, 0);
       const loggedCount = groups.reduce((sum, g) => sum + g.fields.filter(f => {
+        if (f.rangeKeys) {
+          // A range counts as logged if either endpoint is filled.
+          const a = metrics[f.rangeKeys[0]];
+          const b = metrics[f.rangeKeys[1]];
+          return (a !== null && a !== undefined && a !== '') || (b !== null && b !== undefined && b !== '');
+        }
         const v = metrics[f.key];
         return v !== null && v !== undefined && v !== '';
       }).length, 0);
@@ -487,6 +568,8 @@ export function MetricTimeline({
                   <div className="space-y-1">
                     {group.fields.map(spec => {
                       const value = metrics[spec.key] as number | null | undefined;
+                      const rangeMin = spec.rangeKeys ? metrics[spec.rangeKeys[0]] as number | null | undefined : undefined;
+                      const rangeMax = spec.rangeKeys ? metrics[spec.rangeKeys[1]] as number | null | undefined : undefined;
                       const sources = deviceSources?.[String(spec.key)] || [];
                       const nonManualSource = sources.find(s => s !== 'manual');
                       const isManualOnly = sources.length > 0 && !nonManualSource;
@@ -495,11 +578,13 @@ export function MetricTimeline({
                           key={String(spec.key)}
                           spec={spec}
                           value={value}
+                          rangeMin={rangeMin}
+                          rangeMax={rangeMax}
                           deviceSource={nonManualSource}
                           isManual={isManualOnly}
                           locked={locked}
                           unlockAt={unlockAt}
-                          onSave={(v) => saveField(spec.key, v)}
+                          onSave={savePatch}
                         />
                       );
                     })}

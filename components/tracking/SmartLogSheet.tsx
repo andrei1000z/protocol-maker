@@ -44,6 +44,11 @@ export interface FieldSpec {
   max?: number;
   step?: number;
   type?: 'number' | 'integer';
+  // When present, this is a composite "range" field rendered as two inputs.
+  // Stored values go to both `rangeKeys` columns; `key` is kept only for
+  // device-source lookup (so filter pretending the primary column covers it).
+  rangeKeys?: [keyof DailyMetrics, keyof DailyMetrics];
+  rangeLabels?: [string, string];   // e.g. ["Lowest", "Highest"]
 }
 
 export type GroupDef = { title: string; fields: FieldSpec[] };
@@ -62,6 +67,7 @@ export const BUCKET_GROUPS: Record<TimeBucket, GroupDef[]> = {
       { key: 'bone_mass_kg', label: 'Bone mass', unit: 'kg', min: 1, max: 10, step: 0.1 },
       { key: 'bmr_kcal', label: 'BMR (estimate)', unit: 'kcal', min: 800, max: 3500, type: 'integer' },
       { key: 'basal_body_temp_c', label: 'Basal body temp', unit: '°C', min: 34, max: 39, step: 0.01, hint: 'Oral/forehead — cleanest metabolic signal' },
+      { key: 'body_score', label: 'Body score', unit: '/100', min: 0, max: 100, type: 'integer', hint: 'Smart-scale composite (Withings / Renpho / Xiaomi)' },
       { key: 'antioxidant_index', label: 'Antioxidants (Veggie Meter)', unit: '/100', min: 0, max: 100, type: 'integer', hint: 'Skin carotenoids — before coffee' },
       { key: 'resting_hr', label: 'Resting HR', unit: 'bpm', min: 20, max: 220, type: 'integer', hint: 'Right after waking, before standing' },
       { key: 'bp_systolic_morning', label: 'BP systolic', unit: 'mmHg', min: 60, max: 250, type: 'integer' },
@@ -83,7 +89,10 @@ export const BUCKET_GROUPS: Record<TimeBucket, GroupDef[]> = {
       { key: 'hrv_sleep_avg', label: 'HRV during sleep', unit: 'ms', min: 0, max: 250, type: 'integer' },
       { key: 'blood_oxygen_avg_sleep', label: 'Blood O₂ avg', unit: '%', min: 70, max: 100, step: 0.1 },
       { key: 'avg_respiratory_rate', label: 'Avg respiratory rate', unit: '/min', min: 5, max: 30, step: 0.1 },
-      { key: 'skin_temp_deviation', label: 'Skin temp deviation', unit: '°C', min: -3, max: 3, step: 0.1, hint: 'Range: −0.5 to +0.5 normal. Above +0.5 = possible cycle / fever / overtraining. Below −0.5 = cold exposure / deep recovery.' },
+      { key: 'skin_temp_deviation_min', label: 'Skin temp deviation range', unit: '°C', min: -3, max: 3, step: 0.1,
+        hint: 'Two readings — lowest & highest delta vs 30-day baseline. Normal band: −0.5 to +0.5 °C.',
+        rangeKeys: ['skin_temp_deviation_min', 'skin_temp_deviation_max'],
+        rangeLabels: ['Lowest Δ', 'Highest Δ'] },
     ]},
     { title: '🔋 How you feel', fields: [
       { key: 'energy_score', label: 'Energy score (watch)', unit: '/100', min: 0, max: 100, type: 'integer' },
@@ -130,7 +139,7 @@ export const BUCKET_GROUPS: Record<TimeBucket, GroupDef[]> = {
       { key: 'ages_index', label: 'AGEs index', unit: '', min: 0, max: 5, step: 0.01, hint: 'Advanced Glycation End products' },
     ]},
     { title: '🧠 End-of-day', fields: [
-      { key: 'stress_level', label: 'Stress (avg day)', unit: '/10', min: 1, max: 10, type: 'integer' },
+      { key: 'stress_level_avg', label: 'Stress (avg day)', unit: '/10', min: 1, max: 10, type: 'integer' },
       { key: 'energy', label: 'Energy end-of-day', unit: '/10', min: 1, max: 10, type: 'integer' },
       { key: 'mood', label: 'Overall mood', unit: '/10', min: 1, max: 10, type: 'integer' },
     ]},
@@ -138,7 +147,7 @@ export const BUCKET_GROUPS: Record<TimeBucket, GroupDef[]> = {
   night: [
     { title: '🌙 Wind-down', fields: [
       { key: 'sleep_hours_planned', label: 'Hours planned tonight', unit: 'h', min: 0, max: 15, step: 0.5 },
-      { key: 'stress_level', label: 'Stress before bed', unit: '/10', min: 1, max: 10, type: 'integer' },
+      { key: 'stress_bedtime', label: 'Stress before bed', unit: '/10', min: 1, max: 10, type: 'integer' },
       { key: 'mood', label: 'Mood before bed', unit: '/10', min: 1, max: 10, type: 'integer' },
     ]},
     { title: '📊 Day recap', fields: [
@@ -163,6 +172,19 @@ const BUCKET_LABELS: Record<TimeBucket, { title: string; subtitle: string; emoji
 function countPending(group: GroupDef, metrics: DailyMetrics, local: Partial<DailyMetrics>, deviceSources?: Record<string, string[]>): number {
   return group.fields.filter(f => {
     if (deviceSources && !(deviceSources[String(f.key)]?.length)) return false;
+    // Range fields: counts as filled if EITHER endpoint is non-empty (local or metrics).
+    if (f.rangeKeys) {
+      const [kMin, kMax] = f.rangeKeys;
+      const hasLocal = (k: keyof DailyMetrics) => {
+        const v = local[k];
+        return v !== null && v !== undefined && v !== '';
+      };
+      const hasStored = (k: keyof DailyMetrics) => {
+        const v = metrics[k];
+        return v !== null && v !== undefined && v !== '';
+      };
+      return !(hasLocal(kMin) || hasLocal(kMax) || hasStored(kMin) || hasStored(kMax));
+    }
     const localVal = local[f.key];
     if (localVal !== null && localVal !== undefined && localVal !== '') return false;
     const v = metrics[f.key];
@@ -409,10 +431,15 @@ export function SmartLogSheet({ open, onClose, metrics, onSave, deviceSources, m
                     </div>
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                       {group.fields.map(spec => {
-                        const value = getValue(spec.key);
                         const sources = deviceSources?.[String(spec.key)] || [];
                         const deviceSource = sources.find(s => s !== 'manual');
-                        const isFilled = value !== '' && value !== '0';  // 0 is valid; only truly-empty is "unfilled"
+                        const isRange = Array.isArray(spec.rangeKeys);
+                        const value = isRange ? '' : getValue(spec.key);
+                        const minVal = isRange ? getValue(spec.rangeKeys![0]) : '';
+                        const maxVal = isRange ? getValue(spec.rangeKeys![1]) : '';
+                        const isFilled = isRange
+                          ? (minVal !== '' || maxVal !== '')
+                          : (value !== '' && value !== '0');
                         return (
                           <div key={String(spec.key)} className="space-y-1.5">
                             <label className="block text-xs text-muted-foreground">
@@ -430,25 +457,56 @@ export function SmartLogSheet({ open, onClose, metrics, onSave, deviceSources, m
                               </span>
                               {spec.hint && <span className="block text-[10px] text-muted mt-0.5">{spec.hint}</span>}
                             </label>
-                            <div className="relative">
-                              <input
-                                type="number"
-                                inputMode="decimal"
-                                value={value}
-                                onChange={e => setField(spec.key, e.target.value, spec)}
-                                min={spec.min}
-                                max={spec.max}
-                                step={spec.step || (spec.type === 'integer' ? 1 : 'any')}
-                                placeholder="—"
-                                className={clsx(
-                                  'w-full rounded-xl bg-surface-2 border px-3.5 py-2.5 text-sm font-mono tabular-nums outline-none focus:border-accent transition-colors placeholder:text-muted/50',
-                                  isFilled ? 'border-accent/30' : 'border-card-border',
+                            {isRange ? (
+                              <div className="flex items-center gap-2">
+                                <div className="relative flex-1">
+                                  <input
+                                    type="number" inputMode="decimal"
+                                    value={minVal}
+                                    onChange={e => setField(spec.rangeKeys![0], e.target.value, spec)}
+                                    min={spec.min} max={spec.max}
+                                    step={spec.step || (spec.type === 'integer' ? 1 : 'any')}
+                                    placeholder={spec.rangeLabels?.[0] ?? 'min'}
+                                    className="w-full rounded-xl bg-surface-2 border border-card-border px-3 py-2.5 text-sm font-mono tabular-nums outline-none focus:border-accent transition-colors placeholder:text-muted/50"
+                                  />
+                                </div>
+                                <span className="text-muted-foreground text-sm">→</span>
+                                <div className="relative flex-1">
+                                  <input
+                                    type="number" inputMode="decimal"
+                                    value={maxVal}
+                                    onChange={e => setField(spec.rangeKeys![1], e.target.value, spec)}
+                                    min={spec.min} max={spec.max}
+                                    step={spec.step || (spec.type === 'integer' ? 1 : 'any')}
+                                    placeholder={spec.rangeLabels?.[1] ?? 'max'}
+                                    className="w-full rounded-xl bg-surface-2 border border-card-border px-3 py-2.5 text-sm font-mono tabular-nums outline-none focus:border-accent transition-colors placeholder:text-muted/50"
+                                  />
+                                </div>
+                                {spec.unit && (
+                                  <span className="text-[10px] text-muted pointer-events-none">{spec.unit}</span>
                                 )}
-                              />
-                              {spec.unit && (
-                                <span className="absolute right-3.5 top-1/2 -translate-y-1/2 text-[10px] text-muted pointer-events-none">{spec.unit}</span>
-                              )}
-                            </div>
+                              </div>
+                            ) : (
+                              <div className="relative">
+                                <input
+                                  type="number"
+                                  inputMode="decimal"
+                                  value={value}
+                                  onChange={e => setField(spec.key, e.target.value, spec)}
+                                  min={spec.min}
+                                  max={spec.max}
+                                  step={spec.step || (spec.type === 'integer' ? 1 : 'any')}
+                                  placeholder="—"
+                                  className={clsx(
+                                    'w-full rounded-xl bg-surface-2 border px-3.5 py-2.5 text-sm font-mono tabular-nums outline-none focus:border-accent transition-colors placeholder:text-muted/50',
+                                    isFilled ? 'border-accent/30' : 'border-card-border',
+                                  )}
+                                />
+                                {spec.unit && (
+                                  <span className="absolute right-3.5 top-1/2 -translate-y-1/2 text-[10px] text-muted pointer-events-none">{spec.unit}</span>
+                                )}
+                              </div>
+                            )}
                           </div>
                         );
                       })}

@@ -6,6 +6,7 @@ import { classifyAll, calculateLongevityScore, estimateBiologicalAge, estimateAg
 import { detectPatterns } from '@/lib/engine/patterns';
 import { BIOMARKER_DB } from '@/lib/engine/biomarkers';
 import { buildMasterPromptV2, CACHEABLE_SYSTEM_PREFIX } from '@/lib/engine/master-prompt';
+import { summarizeRecentMetrics, refineAgingPace, refineBiologicalAge, refineLongevityScore, describeRecentSignals, type RecentMetricRow } from '@/lib/engine/wearable-refinement';
 import { computeOrganSystems, generateTopWins, generateTopRisks, estimateBiomarkers, buildBryanSummary } from '@/lib/engine/lifestyle-diagnostics';
 import { buildPainPoints, buildFlexRules } from '@/lib/engine/personalization-fills';
 import { buildFallbackProtocol } from '@/lib/engine/fallback-protocol';
@@ -198,15 +199,27 @@ async function regenerateForUser(userId: string): Promise<{ skipped?: boolean; s
 
   const classified = classifyAll(biomarkerValues);
   const patterns = detectPatterns(classified);
-  const longevityScore = calculateLongevityScore(classified, mergedProfile);
-  const biologicalAge = estimateBiologicalAge(mergedProfile, classified);
-  const agingPace = estimateAgingPace(mergedProfile, classified);
+  const baseLongevityScore = calculateLongevityScore(classified, mergedProfile);
+  const baseBiologicalAge = estimateBiologicalAge(mergedProfile, classified);
+  const baseAgingPace = estimateAgingPace(mergedProfile, classified);
   const chronoAge = Number(mergedProfile.age) || 35;
+
+  // Refine baselines with the last 30 days of daily_metrics we already loaded
+  // above (metricsRes.data). Keeps aging speed / bio age anchored to REAL data
+  // — not just the profile snapshot captured at onboarding.
+  const recentSignals = summarizeRecentMetrics(
+    (metricsRes.data || []) as RecentMetricRow[],
+    { age: chronoAge, sex: String(mergedProfile.sex || 'male') }
+  );
+  const longevityScore = refineLongevityScore(baseLongevityScore, recentSignals);
+  const biologicalAge = refineBiologicalAge(baseBiologicalAge, chronoAge, recentSignals);
+  const agingPace = refineAgingPace(baseAgingPace, recentSignals);
+  const recentSignalsSummary = describeRecentSignals(recentSignals);
 
   // Try AI, fall back deterministically so the cron never crashes a user
   let protocolJson: Record<string, unknown>;
   let modelUsed = 'fallback';
-  const prompt = buildMasterPromptV2(mergedProfile as UserProfile, classified, patterns, BIOMARKER_DB, longevityScore, biologicalAge);
+  const prompt = buildMasterPromptV2(mergedProfile as UserProfile, classified, patterns, BIOMARKER_DB, longevityScore, biologicalAge, recentSignalsSummary);
 
   try {
     if (process.env.ANTHROPIC_API_KEY) {

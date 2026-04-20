@@ -4,6 +4,7 @@ import Groq from 'groq-sdk';
 import Anthropic from '@anthropic-ai/sdk';
 import { z } from 'zod';
 import { classifyAll, calculateLongevityScore, estimateBiologicalAge, estimateAgingPace } from '@/lib/engine/classifier';
+import { summarizeRecentMetrics, refineAgingPace, refineBiologicalAge, refineLongevityScore, describeRecentSignals, type RecentMetricRow } from '@/lib/engine/wearable-refinement';
 import { computeOrganSystems, generateTopWins, generateTopRisks, estimateBiomarkers, buildBryanSummary } from '@/lib/engine/lifestyle-diagnostics';
 import { buildPainPoints, buildFlexRules } from '@/lib/engine/personalization-fills';
 import { detectPatterns } from '@/lib/engine/patterns';
@@ -116,10 +117,33 @@ export async function POST(request: Request) {
     // Local classification (instant, never fails)
     const classified = classifyAll(biomarkerValues);
     const patterns = detectPatterns(classified);
-    const longevityScore = calculateLongevityScore(classified, profile);
-    const biologicalAge = estimateBiologicalAge(profile, classified);
-    const agingPace = estimateAgingPace(profile, classified);
+    const baselineLongevityScore = calculateLongevityScore(classified, profile);
+    const baselineBiologicalAge = estimateBiologicalAge(profile, classified);
+    const baselineAgingPace = estimateAgingPace(profile, classified);
     const chronoAge = Number(profile.age) || 35;
+
+    // ── Fetch last 30 days of daily_metrics so we can refine the baselines with
+    // real wearable/self-log signal. Aging pace should be REAL — a user with
+    // elite resting HR + HRV + consistent sleep shouldn't get the same pace as
+    // one who only filled out the onboarding form. Failure to read metrics
+    // never blocks generation; we just fall back to the profile-only estimates.
+    let recentMetrics: RecentMetricRow[] = [];
+    try {
+      const cutoff = new Date(); cutoff.setDate(cutoff.getDate() - 30);
+      const cutoffStr = cutoff.toISOString().slice(0, 10);
+      const { data: rows } = await supabase.from('daily_metrics')
+        .select('resting_hr, hrv, hrv_sleep_avg, sleep_hours, sleep_score, steps, active_time_min, stress_level, stress_level_avg, bp_systolic_morning, body_fat_pct, body_score')
+        .eq('user_id', user.id)
+        .gte('date', cutoffStr)
+        .order('date', { ascending: false })
+        .limit(60);
+      if (Array.isArray(rows)) recentMetrics = rows as RecentMetricRow[];
+    } catch { /* no metrics → refinement is a no-op */ }
+
+    const recentSignals = summarizeRecentMetrics(recentMetrics, { age: chronoAge, sex: String(profile.sex || 'male') });
+    const longevityScore = refineLongevityScore(baselineLongevityScore, recentSignals);
+    const biologicalAge = refineBiologicalAge(baselineBiologicalAge, chronoAge, recentSignals);
+    const agingPace = refineAgingPace(baselineAgingPace, recentSignals);
 
     // Adherence score — 30-day compliance % calculated via existing SQL function
     // (get_adherence_rate was added in scripts/upgrade.sql). Snapshot at generation
@@ -144,7 +168,8 @@ export async function POST(request: Request) {
     let modelUsed = 'llama-3.3-70b-versatile';
     let aiError: string | null = null;
 
-    const prompt = buildMasterPromptV2(profile, classified, patterns, BIOMARKER_DB, longevityScore, biologicalAge);
+    const recentSignalsSummary = describeRecentSignals(recentSignals);
+    const prompt = buildMasterPromptV2(profile, classified, patterns, BIOMARKER_DB, longevityScore, biologicalAge, recentSignalsSummary);
 
     // Try Claude Opus first (best medical reasoning), fallback to Groq, then deterministic
     try {

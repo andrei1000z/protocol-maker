@@ -16,7 +16,9 @@ export interface DailyMetrics {
   workout_done?: boolean;
   workout_minutes?: number | null;
   workout_intensity?: string | null;
-  stress_level?: number | null;
+  stress_level?: number | null;          // midday snapshot — "right now"
+  stress_level_avg?: number | null;      // evening self-report — avg across the day
+  stress_bedtime?: number | null;        // night self-report — right before bed
   habits_completed?: string[];
   notes?: string | null;
 
@@ -29,6 +31,8 @@ export interface DailyMetrics {
   awake_min?: number | null;
   blood_oxygen_avg_sleep?: number | null;
   skin_temp_deviation?: number | null;
+  skin_temp_deviation_min?: number | null;    // lowest delta vs 30d avg
+  skin_temp_deviation_max?: number | null;    // highest delta vs 30d avg
   hrv_sleep_avg?: number | null;
   bp_systolic_morning?: number | null;
   bp_diastolic_morning?: number | null;
@@ -55,6 +59,7 @@ export interface DailyMetrics {
   bone_mass_kg?: number | null;           // smart scale
   bmr_kcal?: number | null;               // smart scale (estimate)
   basal_body_temp_c?: number | null;      // oral/forehead thermometer on waking
+  body_score?: number | null;             // smart scale composite 0-100 (Withings / Renpho / Xiaomi)
 }
 
 interface SingleResponse { metrics: DailyMetrics | null; }

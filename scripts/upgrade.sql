@@ -109,7 +109,9 @@ alter table public.daily_metrics add column if not exists light_sleep_min intege
 alter table public.daily_metrics add column if not exists rem_sleep_min integer;
 alter table public.daily_metrics add column if not exists awake_min integer;
 alter table public.daily_metrics add column if not exists blood_oxygen_avg_sleep real;    -- SpO2 % during sleep
-alter table public.daily_metrics add column if not exists skin_temp_deviation real;       -- °C vs recent avg
+alter table public.daily_metrics add column if not exists skin_temp_deviation real;       -- °C vs recent avg (single-reading fallback)
+alter table public.daily_metrics add column if not exists skin_temp_deviation_min real;   -- °C lowest delta vs recent avg
+alter table public.daily_metrics add column if not exists skin_temp_deviation_max real;   -- °C highest delta vs recent avg
 alter table public.daily_metrics add column if not exists hrv_sleep_avg integer;          -- HRV during sleep
 alter table public.daily_metrics add column if not exists bp_systolic_morning integer;
 alter table public.daily_metrics add column if not exists bp_diastolic_morning integer;
@@ -134,6 +136,9 @@ alter table public.daily_metrics add column if not exists body_water_pct real;  
 alter table public.daily_metrics add column if not exists bone_mass_kg real;              -- smart scale
 alter table public.daily_metrics add column if not exists bmr_kcal integer;               -- smart scale estimate
 alter table public.daily_metrics add column if not exists basal_body_temp_c real;         -- oral/forehead thermometer on waking
+alter table public.daily_metrics add column if not exists body_score integer;             -- smart scale composite 0-100 (Withings/Renpho/Xiaomi)
+alter table public.daily_metrics add column if not exists stress_level_avg integer;       -- evening self-report — avg stress across the day
+alter table public.daily_metrics add column if not exists stress_bedtime integer;         -- night self-report — stress right before bed
 
 -- Range constraints — silent skip if data violates (NOT VALID + VALIDATE pattern)
 do $$ begin
