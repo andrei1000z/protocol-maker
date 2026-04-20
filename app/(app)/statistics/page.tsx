@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useMemo } from 'react';
-import { useStatistics } from '@/lib/hooks/useApiData';
+import { useStatistics, useProtocolHistory } from '@/lib/hooks/useApiData';
 import clsx from 'clsx';
 import {
   LineChart, Line, ResponsiveContainer, XAxis, YAxis, CartesianGrid, Tooltip, ReferenceLine,
@@ -153,10 +153,15 @@ function fmtValue(n: number, def: MetricDef): string {
 }
 
 function fmtDate(iso: string): string {
-  return new Date(iso).toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+  return new Date(iso).toLocaleDateString('ro-RO', { month: 'short', day: 'numeric' });
 }
 
-function MetricChart({ def, series }: { def: MetricDef; series: { date: string; value: number }[] }) {
+// Protocol-version marker — vertical rule on the chart at each regen date,
+// labeled "v2", "v3", etc. Makes it visible that a trend shift coincided with
+// a new protocol instead of reading as organic user change.
+interface ProtocolMarker { date: string; version: number; source: string | null; }
+
+function MetricChart({ def, series, protocolMarkers }: { def: MetricDef; series: { date: string; value: number }[]; protocolMarkers: ProtocolMarker[]; }) {
   const improvement = computeImprovement(series, def);
   const unitSuffix = def.unit ? ` ${def.unit}` : '';
 
@@ -238,6 +243,38 @@ function MetricChart({ def, series }: { def: MetricDef; series: { date: string; 
               {def.direction === 'target' && def.target !== undefined && (
                 <ReferenceLine y={def.target} stroke="#34d399" strokeDasharray="3 3" strokeOpacity={0.4} />
               )}
+              {/* Vertical markers at each protocol regen date that falls within
+                  the visible series. Skip v1 — its "start" has no "before" to
+                  compare against, so the line adds noise without signal. */}
+              {protocolMarkers
+                .filter(m => m.version > 1)
+                .map(m => {
+                  // Find the closest series date (series dates may not exactly
+                  // match the protocol created_at timestamp)
+                  const targetMs = new Date(m.date).getTime();
+                  const closest = series.reduce((best, s) => {
+                    const d = Math.abs(new Date(s.date).getTime() - targetMs);
+                    return d < best.d ? { d, date: s.date } : best;
+                  }, { d: Infinity, date: '' });
+                  if (!closest.date) return null;
+                  // Only draw if the regen date is within the chart window
+                  if (Math.abs(new Date(closest.date).getTime() - targetMs) > 14 * 86400000) return null;
+                  return (
+                    <ReferenceLine
+                      key={`v${m.version}`}
+                      x={fmtDate(closest.date)}
+                      stroke="#60a5fa"
+                      strokeDasharray="2 3"
+                      strokeOpacity={0.55}
+                      label={{
+                        value: `v${m.version}`,
+                        fontSize: 9,
+                        fill: '#60a5fa',
+                        position: 'insideTop',
+                      }}
+                    />
+                  );
+                })}
               <Line
                 type="monotone"
                 dataKey="value"
@@ -266,9 +303,19 @@ function MetricChart({ def, series }: { def: MetricDef; series: { date: string; 
 // ─────────────────────────────────────────────────────────────────────────────
 export default function StatisticsPage() {
   const { data: stats, isLoading: loading } = useStatistics();
+  const { data: historyData } = useProtocolHistory();
   const metrics = (stats?.metrics as MetricRow[] | undefined) ?? [];
   const protocolStartedAt = stats?.protocolStartedAt ?? null;
   const [activeCategory, setActiveCategory] = useState<string>('all');
+
+  // Map each protocol to a version number (v1, v2, …) in chronological order.
+  // Used to mark regen dates on every MetricChart so the user can see which
+  // movements on the trendline coincide with a protocol change vs organic drift.
+  const protocolMarkers = useMemo<ProtocolMarker[]>(() => {
+    const rows = (historyData?.protocols ?? []) as Array<{ created_at: string; generation_source: string | null }>;
+    const ordered = [...rows].sort((a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime());
+    return ordered.map((p, i) => ({ date: p.created_at, version: i + 1, source: p.generation_source }));
+  }, [historyData]);
 
   // Filter metrics to only those with ≥1 data point, grouped by category
   const metricsWithData = useMemo(() => {
@@ -462,7 +509,7 @@ export default function StatisticsPage() {
             <Section key={category.key} icon={category.icon} title={category.label} subtitle={category.desc}>
               <div className="grid grid-cols-1 lg:grid-cols-2 gap-3">
                 {list.map(m => (
-                  <MetricChart key={m.def.key} def={m.def} series={m.series} />
+                  <MetricChart key={m.def.key} def={m.def} series={m.series} protocolMarkers={protocolMarkers} />
                 ))}
               </div>
             </Section>
@@ -471,7 +518,7 @@ export default function StatisticsPage() {
 
       {metricsWithData.length > 0 && protocolStartedAt && (
         <p className="text-[11px] text-center text-muted pt-2">
-          Protocol started {new Date(protocolStartedAt).toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })} · data before that date is excluded from &ldquo;since start&rdquo; comparisons.
+          Protocol started {new Date(protocolStartedAt).toLocaleDateString('ro-RO', { month: 'long', day: 'numeric', year: 'numeric' })} · data before that date is excluded from &ldquo;since start&rdquo; comparisons.
         </p>
       )}
     </div>

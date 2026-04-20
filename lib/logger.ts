@@ -17,8 +17,11 @@
 //   logger.warn('cron.user_skipped',   { userId, reason: 'inactive_7d' });
 //   logger.info('protocol.generated',  { userId, durationMs, source: 'claude' });
 //
-// Sentry integration: when SENTRY_DSN is set, errors are also sent to Sentry
-// (lazy import — zero overhead if not configured).
+// Log sink: Vercel Functions ship console.* to its log stream, which is
+// easy to tail in the dashboard and cheap to forward to Logtail / Datadog /
+// Better Stack via Vercel Log Drains. No third-party SDK is wired here
+// intentionally — when we want Sentry or similar, add it here and keep the
+// redaction step above intact.
 
 type LogLevel = 'debug' | 'info' | 'warn' | 'error';
 

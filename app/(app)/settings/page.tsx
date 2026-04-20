@@ -194,6 +194,40 @@ function DeleteAccountModal({ open, onClose, onConfirm, onExport }: { open: bool
   const [loading, setLoading] = useState(false);
   const [exported, setExported] = useState(false);
   const [error, setError] = useState('');
+  const dialogRef = useRef<HTMLDivElement>(null);
+  const prevFocusRef = useRef<HTMLElement | null>(null);
+
+  // Focus trap + ESC-to-close + restore focus on close. Without this, tab
+  // cycles through the page behind the overlay and ESC does nothing —
+  // accessibility + keyboard-user frustration issue on a destructive action.
+  useEffect(() => {
+    if (!open) return;
+    prevFocusRef.current = document.activeElement as HTMLElement | null;
+
+    const dialog = dialogRef.current;
+    // Move focus into the dialog on open
+    const focusable = () =>
+      dialog?.querySelectorAll<HTMLElement>(
+        'a[href], button:not([disabled]), textarea, input:not([disabled]), select, [tabindex]:not([tabindex="-1"])'
+      );
+    setTimeout(() => focusable()?.[0]?.focus(), 0);
+
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === 'Escape' && !loading) { e.preventDefault(); onClose(); return; }
+      if (e.key !== 'Tab') return;
+      const items = focusable();
+      if (!items || items.length === 0) return;
+      const first = items[0];
+      const last = items[items.length - 1];
+      if (e.shiftKey && document.activeElement === first) { last.focus(); e.preventDefault(); }
+      else if (!e.shiftKey && document.activeElement === last) { first.focus(); e.preventDefault(); }
+    };
+    document.addEventListener('keydown', onKey);
+    return () => {
+      document.removeEventListener('keydown', onKey);
+      prevFocusRef.current?.focus();
+    };
+  }, [open, loading, onClose]);
 
   if (!open) return null;
 
@@ -209,15 +243,25 @@ function DeleteAccountModal({ open, onClose, onConfirm, onExport }: { open: bool
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center animate-fade-in" onClick={loading ? undefined : onClose}>
+    <div
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="delete-account-title"
+      className="fixed inset-0 z-50 flex items-end sm:items-center justify-center animate-fade-in"
+      onClick={loading ? undefined : onClose}
+    >
       <div className="absolute inset-0 bg-black/80 backdrop-blur-sm" />
-      <div className="relative glass-card rounded-t-3xl sm:rounded-3xl w-full sm:max-w-md mx-0 sm:mx-4 overflow-hidden animate-fade-in-up" onClick={e => e.stopPropagation()}>
+      <div
+        ref={dialogRef}
+        className="relative glass-card rounded-t-3xl sm:rounded-3xl w-full sm:max-w-md mx-0 sm:mx-4 overflow-hidden animate-fade-in-up"
+        onClick={e => e.stopPropagation()}
+      >
         <div className="p-6 sm:p-7 space-y-5">
           <div className="w-12 h-12 rounded-2xl bg-red-500/10 border border-red-500/30 flex items-center justify-center">
             <AlertTriangle className="w-6 h-6 text-danger" />
           </div>
           <div>
-            <h2 className="text-xl font-semibold tracking-tight">Delete your account?</h2>
+            <h2 id="delete-account-title" className="text-xl font-semibold tracking-tight">Delete your account?</h2>
             <p className="text-sm text-muted-foreground mt-2 leading-relaxed">
               This is <strong className="text-foreground">permanent</strong>. Your account, profile, protocols, blood work, tracking history, and shared links will all be gone. We can&apos;t recover them.
             </p>
@@ -504,7 +548,7 @@ export default function SettingsPage() {
         <SettingsCard
           icon={User}
           title={name}
-          subtitle={birthDate ? `Born ${new Date(birthDate).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}` : (country || city) ? [city, country].filter(Boolean).join(', ') : 'Profile overview'}
+          subtitle={birthDate ? `Born ${new Date(birthDate).toLocaleDateString('ro-RO', { month: 'short', day: 'numeric', year: 'numeric' })}` : (country || city) ? [city, country].filter(Boolean).join(', ') : 'Profile overview'}
           action={editing ? (
             <div className="flex gap-2">
               <button onClick={() => setEditing(false)} className="text-xs px-3 py-1.5 rounded-lg bg-surface-3 text-muted-foreground hover:text-foreground transition-colors">Cancel</button>
@@ -563,7 +607,7 @@ export default function SettingsPage() {
 
               {(birthDate || country || city || profile.ethnicity || wearable) && (
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                  <Pair label="Birth date" value={birthDate && new Date(birthDate).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })} />
+                  <Pair label="Birth date" value={birthDate && new Date(birthDate).toLocaleDateString('ro-RO', { month: 'short', day: 'numeric', year: 'numeric' })} />
                   <Pair label="Ethnicity" value={profile.ethnicity && <span className="capitalize">{profile.ethnicity.replace('_', ' ')}</span>} />
                   <Pair label="Location" value={[city, country].filter(Boolean).join(', ') || null} />
                   <Pair label="Wearable" value={wearable !== 'none' ? wearable : null} />
@@ -686,7 +730,7 @@ export default function SettingsPage() {
                   <FileText className="w-4 h-4 text-muted-foreground" />
                 </div>
                 <div className="flex-1 min-w-0">
-                  <p className="text-sm font-medium">{new Date(test.taken_at).toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' })}</p>
+                  <p className="text-sm font-medium">{new Date(test.taken_at).toLocaleDateString('ro-RO', { year: 'numeric', month: 'long', day: 'numeric' })}</p>
                   <p className="text-[11px] text-muted-foreground">{Array.isArray(test.biomarkers) ? test.biomarkers.length : 0} biomarkers measured</p>
                 </div>
               </div>

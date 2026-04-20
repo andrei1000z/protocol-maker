@@ -923,7 +923,7 @@ export default function OnboardingPage() {
           {STEPS.map((s, i) => (
             <div key={s} className="flex-1 flex flex-col items-center gap-1">
               <div className={clsx('h-1 w-full rounded-full transition-all', i <= step ? 'bg-accent' : 'bg-card-border')} />
-              <span className={clsx('text-[9px]', i <= step ? 'text-accent' : 'text-muted')}>{s}</span>
+              <span className={clsx('text-[10px]', i <= step ? 'text-accent' : 'text-muted')}>{s}</span>
             </div>
           ))}
         </div>
@@ -947,7 +947,7 @@ export default function OnboardingPage() {
               <div>
                 <label className="text-xs text-muted-foreground">Age <span className="text-accent">*</span></label>
                 <input type="number" value={age} onChange={e => setAge(e.target.value)} placeholder="25" className="w-full mt-1 rounded-xl bg-card border border-card-border px-3 py-2.5 text-sm outline-none focus:border-accent font-mono" />
-                <p className="text-[9px] text-muted mt-1">Or choose birth date below for precision</p>
+                <p className="text-[10px] text-muted mt-1">Or choose birth date below for precision</p>
               </div>
               <div className="col-span-2">
                 <label className="text-xs text-muted-foreground">Birth date (optional — more precise than age alone)</label>
@@ -956,19 +956,19 @@ export default function OnboardingPage() {
               <div>
                 <label className="text-xs text-muted-foreground">Height (cm) <span className="text-accent">*</span></label>
                 <input type="number" value={heightCm} onChange={e => setHeightCm(e.target.value)} placeholder="180" className="w-full mt-1 rounded-xl bg-card border border-card-border px-3 py-2.5 text-sm outline-none focus:border-accent font-mono" />
-                <p className="text-[9px] text-muted mt-1">Recommended: measure now for accuracy</p>
+                <p className="text-[10px] text-muted mt-1">Recommended: measure now for accuracy</p>
               </div>
               <div>
                 <label className="text-xs text-muted-foreground">Weight (kg) <span className="text-accent">*</span></label>
                 <input type="number" step="0.1" value={weightKg} onChange={e => setWeightKg(e.target.value)} placeholder="80" className="w-full mt-1 rounded-xl bg-card border border-card-border px-3 py-2.5 text-sm outline-none focus:border-accent font-mono" />
-                <p className="text-[9px] text-muted mt-1">Recommended: weigh now, morning, no clothes</p>
+                <p className="text-[10px] text-muted mt-1">Recommended: weigh now, morning, no clothes</p>
               </div>
             </div>
 
             <div>
               <label className="text-xs text-muted-foreground mb-2 block">Activity Level: <span className="text-accent font-medium">{activityLabels[activityLevel]}</span></label>
               <input type="range" min={0} max={4} value={activityLevel} onChange={e => setActivityLevel(parseInt(e.target.value))} className="w-full h-2 bg-card-border rounded-lg appearance-none cursor-pointer accent-[#34d399]" />
-              <div className="flex justify-between text-[9px] text-muted mt-1">{activityLabels.map(l => <span key={l}>{l}</span>)}</div>
+              <div className="flex justify-between text-[10px] text-muted mt-1">{activityLabels.map(l => <span key={l}>{l}</span>)}</div>
             </div>
 
             {/* ═══════════ WEARABLES — separate smartwatch + smart ring questions ═══════════ */}

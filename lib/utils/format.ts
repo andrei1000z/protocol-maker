@@ -1,15 +1,22 @@
+// Locale used for all user-facing date / number formatting. The product ships
+// with EN UI but targets a Romanian audience (RON pricing, eMAG links), so
+// numbers use RO grouping ("1 234,5") and dates use DD-MMM-YYYY which reads
+// cleanly to both EN and RO speakers ("15 Apr 2026"). Swap to a user-profile
+// pref later if we ever want a true locale toggle.
+const LOCALE = 'ro-RO';
+
 export function formatDate(date: string | Date): string {
   const d = typeof date === 'string' ? new Date(date) : date;
-  return d.toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' });
+  return d.toLocaleDateString(LOCALE, { year: 'numeric', month: 'short', day: 'numeric' });
 }
 
 export function formatDateShort(date: string | Date): string {
   const d = typeof date === 'string' ? new Date(date) : date;
-  return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+  return d.toLocaleDateString(LOCALE, { month: 'short', day: 'numeric' });
 }
 
 export function formatNumber(n: number, decimals = 0): string {
-  return n.toLocaleString('en-US', { minimumFractionDigits: decimals, maximumFractionDigits: decimals });
+  return n.toLocaleString(LOCALE, { minimumFractionDigits: decimals, maximumFractionDigits: decimals });
 }
 
 export function formatCurrency(amount: number, currency = 'RON'): string {

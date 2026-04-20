@@ -4,6 +4,7 @@
 // AI prompt enforces. Keep this file in sync with master-prompt.ts expectations.
 import { BIOMARKER_DB } from './biomarkers';
 import { buildPainPoints, buildFlexRules } from './personalization-fills';
+import { checkInteractions } from './interactions';
 import type { BiomarkerValue, UserProfile } from '@/lib/types';
 
 export function buildFallbackProtocol(
@@ -659,6 +660,50 @@ function buildFallbackSupplements(profile: UserProfile, classified: BiomarkerVal
       priority: 'OPTIONAL',
       emagSearchQuery: cs,
     });
+  }
+
+  // Enrich each supplement with medication-specific interactions from the
+  // shared interactions DB. On the AI path these are usually populated by
+  // Claude; when we're on the fallback path we surface them deterministically
+  // so a user on warfarin + Omega-3 still sees the bleeding-risk warning.
+  const meds = (profile.medications || []).map(m => ({ name: m?.name || '' })).filter(m => m.name);
+  if (meds.length > 0) {
+    for (const sup of stack) {
+      const name = (sup.name as string) || '';
+      if (!name) continue;
+      const hits = checkInteractions([name], meds);
+      if (hits.length === 0) continue;
+      const existing = Array.isArray(sup.interactions) ? (sup.interactions as string[]) : [];
+      // Format: "[severity] vs medication — description"
+      const extra = hits.map(h => {
+        const badge = h.severity === 'severe' ? '⚠ SEVERE' : h.severity === 'moderate' ? '⚠ MODERATE' : 'MILD';
+        return `${badge} vs ${h.drug} — ${h.description}`;
+      });
+      // Dedupe — if AI-style text already covers the same drug/severity, skip.
+      const seen = new Set(existing.map(e => e.toLowerCase()));
+      sup.interactions = [...existing, ...extra.filter(e => !seen.has(e.toLowerCase()))];
+    }
+  }
+
+  // Cross-supplement spacing warnings — things that are ALWAYS true regardless
+  // of medications. Pattern matches supplement names rather than requiring an
+  // explicit per-entry string.
+  const spacingPairs: Array<{ a: RegExp; b: RegExp; note: string }> = [
+    { a: /magnesium/i, b: /calcium/i, note: 'Space 2h+ apart from calcium — compete for absorption.' },
+    { a: /iron/i,      b: /calcium/i, note: 'Take iron 2h+ apart from calcium, coffee, tea — blocks absorption.' },
+    { a: /zinc/i,      b: /copper/i,  note: 'High zinc depletes copper if taken long-term — add 2mg copper if stacking >30mg zinc daily.' },
+  ];
+  const stackNames = stack.map(s => String(s.name));
+  for (const sup of stack) {
+    const nm = String(sup.name);
+    for (const rule of spacingPairs) {
+      if (!rule.a.test(nm)) continue;
+      const hasPartner = stackNames.some(n => n !== nm && rule.b.test(n));
+      if (!hasPartner) continue;
+      const existing = Array.isArray(sup.interactions) ? (sup.interactions as string[]) : [];
+      if (existing.some(e => e.includes(rule.note.slice(0, 20)))) continue;
+      sup.interactions = [...existing, rule.note];
+    }
   }
 
   return stack;

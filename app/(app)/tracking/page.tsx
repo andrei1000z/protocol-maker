@@ -82,7 +82,7 @@ function WeeklyBar({ data }: { data: { day: string; pct: number }[] }) {
                 title={`${d.day}: ${d.pct}%`}
               />
               {d.pct >= 30 && (
-                <span className="absolute bottom-1 left-0 right-0 text-center text-[9px] font-mono text-black/80 font-semibold">
+                <span className="absolute bottom-1 left-0 right-0 text-center text-[10px] font-mono text-black/80 font-semibold">
                   {d.pct}
                 </span>
               )}
@@ -198,10 +198,10 @@ function DeviceRow({ icon, label, caption, columns, metrics, onOpenLog, tone = '
       </div>
       <div className="flex flex-wrap gap-1">
         {shown.map(s => (
-          <span key={s} className="text-[9px] px-1.5 py-0.5 rounded bg-surface-3 text-muted-foreground">{s}</span>
+          <span key={s} className="text-[10px] px-1.5 py-0.5 rounded bg-surface-3 text-muted-foreground">{s}</span>
         ))}
         {columns.length > 6 && (
-          <span className="text-[9px] px-1.5 py-0.5 rounded bg-surface-3 text-muted-foreground">+{columns.length - 6} more</span>
+          <span className="text-[10px] px-1.5 py-0.5 rounded bg-surface-3 text-muted-foreground">+{columns.length - 6} more</span>
         )}
       </div>
     </button>
@@ -394,7 +394,7 @@ export default function TrackingPage() {
       const label = isToday
         ? 'Today'
         : i === 1 ? 'Yesterday'
-        : d.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' });
+        : d.toLocaleDateString('ro-RO', { weekday: 'short', month: 'short', day: 'numeric' });
       out.push({ iso, label, isToday });
     }
     return out;
@@ -501,8 +501,8 @@ export default function TrackingPage() {
     if (date === todayIso) return '';
     const d = new Date(date + 'T12:00:00');
     const isYesterday = date === new Date(Date.now() - 864e5).toISOString().slice(0, 10);
-    const pretty = d.toLocaleDateString('en-US', { weekday: 'long', month: 'short', day: 'numeric' });
-    return isYesterday ? `yesterday (${d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })})` : pretty;
+    const pretty = d.toLocaleDateString('ro-RO', { weekday: 'long', month: 'short', day: 'numeric' });
+    return isYesterday ? `yesterday (${d.toLocaleDateString('ro-RO', { month: 'short', day: 'numeric' })})` : pretty;
   }, [date, todayIso]);
 
   // Build compliance checklist whenever protocol or today's logs change
@@ -618,8 +618,8 @@ export default function TrackingPage() {
 
   // Day label (uses selected `date`, not necessarily today)
   const selectedDate = new Date(date + 'T12:00:00');
-  const weekday = selectedDate.toLocaleDateString('en-US', { weekday: 'long' });
-  const dateStr = selectedDate.toLocaleDateString('en-US', { month: 'long', day: 'numeric' });
+  const weekday = selectedDate.toLocaleDateString('ro-RO', { weekday: 'long' });
+  const dateStr = selectedDate.toLocaleDateString('ro-RO', { month: 'long', day: 'numeric' });
 
   return (
     <div className="max-w-3xl mx-auto px-4 sm:px-6 py-6 sm:py-8 space-y-5">
@@ -726,7 +726,7 @@ export default function TrackingPage() {
           {/* 30-day heatmap */}
           <Section icon={ClipboardCheck} title="Last 30 days" subtitle={`Averaged ${monthlyAvg}% completion`}>
             <Heatmap30 data={monthData} />
-            <div className="flex items-center justify-end gap-2 mt-3 text-[9px] text-muted">
+            <div className="flex items-center justify-end gap-2 mt-3 text-[10px] text-muted">
               Less
               <div className="flex gap-0.5">
                 <div className="w-2.5 h-2.5 rounded-[2px] bg-surface-3" />
@@ -779,7 +779,7 @@ export default function TrackingPage() {
                             {item.name}
                           </span>
                           {pillTone && !item.completed && (
-                            <span className={clsx('text-[9px] font-semibold uppercase tracking-wider px-2 py-0.5 rounded-full border shrink-0', pillTone)}>
+                            <span className={clsx('text-[10px] font-semibold uppercase tracking-wider px-2 py-0.5 rounded-full border shrink-0', pillTone)}>
                               {prio}
                             </span>
                           )}
@@ -837,8 +837,8 @@ export default function TrackingPage() {
                         'bg-surface-2 border-card-border')}
                     >
                       <span className="text-2xl">{a.icon}</span>
-                      <span className="text-[9px] text-center leading-tight text-foreground/90 font-medium">{a.name}</span>
-                      <span className="absolute top-1 right-1 text-[9px] text-muted opacity-0 group-hover:opacity-100 transition-opacity">share</span>
+                      <span className="text-[10px] text-center leading-tight text-foreground/90 font-medium">{a.name}</span>
+                      <span className="absolute top-1 right-1 text-[10px] text-muted opacity-0 group-hover:opacity-100 transition-opacity">share</span>
                     </button>
                   ))}
                 </div>
@@ -854,7 +854,7 @@ export default function TrackingPage() {
                     className="aspect-square rounded-xl border border-card-border bg-surface-2/50 flex flex-col items-center justify-center gap-1 p-2 opacity-40 hover:opacity-70 transition-opacity"
                   >
                     <span className="text-2xl grayscale">{a.icon}</span>
-                    <span className="text-[9px] text-center leading-tight text-muted font-medium">{a.name}</span>
+                    <span className="text-[10px] text-center leading-tight text-muted font-medium">{a.name}</span>
                   </div>
                 ))}
               </div>

@@ -103,7 +103,7 @@ export default async function SharePage({ params }: { params: Promise<{ slug: st
                 <div className="flex items-center gap-2">
                   <span className="text-base font-bold font-mono">{b.value as number}</span>
                   <span className="text-[10px] text-muted">{b.unit as string}</span>
-                  <span className="text-[9px] font-mono px-2 py-0.5 rounded-full bg-accent/10 text-accent">{b.classification as string}</span>
+                  <span className="text-[10px] font-mono px-2 py-0.5 rounded-full bg-accent/10 text-accent">{b.classification as string}</span>
                 </div>
               </div>
             ))}

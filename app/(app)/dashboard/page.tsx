@@ -9,9 +9,19 @@ import { useMyData, useProtocolDiff } from '@/lib/hooks/useApiData';
 import { SAMPLE_PROTOCOL, SAMPLE_LONGEVITY_SCORE, SAMPLE_BIO_AGE } from '@/lib/engine/sample-protocol';
 import { BRYAN } from '@/lib/engine/bryan-constants';
 import clsx from 'clsx';
-import {
-  Radar, RadarChart, PolarGrid, PolarAngleAxis, ResponsiveContainer,
-} from 'recharts';
+import dynamic from 'next/dynamic';
+
+// Radar chart lives in its own file + loads lazily on the client — keeps
+// recharts (~150 KB) out of the critical-path bundle. Dashboard renders
+// everything else immediately; the radar fades in once the chunk arrives.
+const OrganRadar = dynamic(() => import('@/components/dashboard/OrganRadar'), {
+  ssr: false,
+  loading: () => (
+    <div className="h-[300px] flex items-center justify-center">
+      <div className="w-8 h-8 border-2 border-accent/30 border-t-accent rounded-full animate-spin" />
+    </div>
+  ),
+});
 
 const TOC_ITEMS = [
   { id: 'diagnostic', label: 'Diagnostic', icon: '🎯' },
@@ -188,7 +198,7 @@ function CronRegenBanner({ createdAt, protocolId }: { createdAt: string; protoco
 
 function Badge({ classification }: { classification: Classification }) {
   return (
-    <span className={clsx('text-[9px] font-mono px-2 py-0.5 rounded-full border', getClassificationBg(classification), getClassificationColor(classification))}>
+    <span className={clsx('text-[10px] font-mono px-2 py-0.5 rounded-full border', getClassificationBg(classification), getClassificationColor(classification))}>
       {classification.replace('_', ' ')}
     </span>
   );
@@ -509,7 +519,7 @@ export default function DashboardPage() {
               <p className="text-xs font-semibold text-accent uppercase tracking-wider">Top Wins</p>
             </div>
             <ul className="space-y-2">
-              {(diag?.topWins || []).slice(0, 4).map((w, i) => (
+              {(diag?.topWins || []).slice(0, 6).map((w, i) => (
                 <li key={i} className="text-sm text-foreground/90 leading-snug flex gap-2">
                   <span className="text-accent shrink-0 mt-0.5">✓</span>
                   <span>{w}</span>
@@ -523,7 +533,7 @@ export default function DashboardPage() {
               <p className="text-xs font-semibold text-danger uppercase tracking-wider">Top Risks</p>
             </div>
             <ul className="space-y-2">
-              {(diag?.topRisks || []).slice(0, 4).map((r, i) => (
+              {(diag?.topRisks || []).slice(0, 6).map((r, i) => (
                 <li key={i} className="text-sm text-foreground/90 leading-snug flex gap-2">
                   <span className="text-danger shrink-0 mt-0.5">!</span>
                   <span>{r}</span>
@@ -665,14 +675,12 @@ export default function DashboardPage() {
       <Section id="organs" title="Organ Systems" icon="🫀" subtitle="Eight body systems scored independently. Each score blends your lifestyle inputs with matching biomarkers, then the AI surfaces what's pulling each system up + down + the highest-ROI lever.">
         {/* Radar overview */}
         {radarData.length > 0 && (
-          <div className="rounded-2xl bg-surface-2 border border-card-border p-4 -mx-1">
-            <ResponsiveContainer width="100%" height={300}>
-              <RadarChart data={radarData}>
-                <PolarGrid stroke="#1d2128" />
-                <PolarAngleAxis dataKey="name" tick={{ fontSize: 11, fill: '#9ca3af' }} />
-                <Radar dataKey="score" stroke="#34d399" fill="#34d399" fillOpacity={0.18} strokeWidth={2.5} />
-              </RadarChart>
-            </ResponsiveContainer>
+          <div
+            role="img"
+            aria-label={`Organ system scores: ${radarData.map(r => `${r.name} ${r.score}`).join(', ')}`}
+            className="rounded-2xl bg-surface-2 border border-card-border p-4 -mx-1"
+          >
+            <OrganRadar data={radarData} />
           </div>
         )}
 
@@ -697,7 +705,7 @@ export default function DashboardPage() {
 
                   {(sys.drivers || []).length > 0 && (
                     <div>
-                      <p className="text-[9px] uppercase tracking-widest text-accent mb-1">Pulling it UP</p>
+                      <p className="text-[10px] uppercase tracking-widest text-accent mb-1">Pulling it UP</p>
                       <ul className="space-y-1">
                         {sys.drivers.slice(0, 3).map((d, i) => (
                           <li key={i} className="text-[11px] text-foreground/80 leading-snug flex gap-1.5">
@@ -710,7 +718,7 @@ export default function DashboardPage() {
 
                   {(sys.dragAnchors || []).length > 0 && (
                     <div>
-                      <p className="text-[9px] uppercase tracking-widest text-amber-400 mb-1">Dragging it DOWN</p>
+                      <p className="text-[10px] uppercase tracking-widest text-amber-400 mb-1">Dragging it DOWN</p>
                       <ul className="space-y-1">
                         {sys.dragAnchors.slice(0, 3).map((d, i) => (
                           <li key={i} className="text-[11px] text-foreground/80 leading-snug flex gap-1.5">
@@ -723,7 +731,7 @@ export default function DashboardPage() {
 
                   {sys.topLever && (
                     <div className="pt-2 border-t border-card-border">
-                      <p className="text-[9px] uppercase tracking-widest text-accent mb-1">Highest-ROI move (12wk)</p>
+                      <p className="text-[10px] uppercase tracking-widest text-accent mb-1">Highest-ROI move (12wk)</p>
                       <p className="text-[12px] text-foreground/95 leading-snug">{sys.topLever}</p>
                     </div>
                   )}
@@ -741,7 +749,7 @@ export default function DashboardPage() {
                   <div className="flex items-baseline justify-between gap-3 mb-1.5">
                     <div className="flex items-center gap-1.5">
                       <p className="text-sm font-semibold">{sys.label}</p>
-                      {sys.estimated && <span className="text-[9px] px-1.5 py-0.5 rounded bg-surface-3 text-muted uppercase tracking-wider">est.</span>}
+                      {sys.estimated && <span className="text-[10px] px-1.5 py-0.5 rounded bg-surface-3 text-muted uppercase tracking-wider">est.</span>}
                     </div>
                     <span className={clsx('text-2xl font-bold font-mono tabular-nums', scoreColor)}>{sys.score}</span>
                   </div>
@@ -760,7 +768,7 @@ export default function DashboardPage() {
                   )}
                   {sys.improvers.length > 0 && (
                     <div className="pt-2 border-t border-card-border">
-                      <p className="text-[9px] uppercase tracking-widest text-accent mb-1">Next move</p>
+                      <p className="text-[10px] uppercase tracking-widest text-accent mb-1">Next move</p>
                       <p className="text-[11px] text-foreground/90 leading-snug">{sys.improvers[0]}</p>
                     </div>
                   )}
@@ -805,7 +813,7 @@ export default function DashboardPage() {
                 </div>
                 <div className="flex flex-col items-center">
                   <div className="w-px h-4 bg-card-border" />
-                  <p className="text-[9px] text-muted uppercase tracking-widest py-1 shrink-0">{label}</p>
+                  <p className="text-[10px] text-muted uppercase tracking-widest py-1 shrink-0">{label}</p>
                   <div className="w-px h-4 bg-card-border" />
                 </div>
                 <div className="text-left">
@@ -925,13 +933,13 @@ export default function DashboardPage() {
                     <div className="mt-3 pt-3 border-t border-card-border space-y-2">
                       {c.whyTheGapExistsForYou && (
                         <div>
-                          <p className="text-[9px] uppercase tracking-widest text-muted mb-1">Why this gap exists for YOU</p>
+                          <p className="text-[10px] uppercase tracking-widest text-muted mb-1">Why this gap exists for YOU</p>
                           <p className="text-[12px] text-foreground/85 leading-relaxed">{c.whyTheGapExistsForYou}</p>
                         </div>
                       )}
                       {c.closeTheGapAction && (
                         <div>
-                          <p className="text-[9px] uppercase tracking-widest text-accent mb-1">Close the gap</p>
+                          <p className="text-[10px] uppercase tracking-widest text-accent mb-1">Close the gap</p>
                           <p className="text-[12px] text-foreground/90 leading-relaxed">{c.closeTheGapAction}</p>
                         </div>
                       )}
@@ -998,7 +1006,7 @@ export default function DashboardPage() {
                     <div className="flex items-center justify-between gap-3">
                       <div className="flex items-center gap-2.5 flex-1 min-w-0">
                         <p className="text-sm font-semibold truncate">{e.shortName}</p>
-                        <span className={clsx('text-[9px] font-medium px-2 py-0.5 rounded-full', pillClass)}>
+                        <span className={clsx('text-[10px] font-medium px-2 py-0.5 rounded-full', pillClass)}>
                           {e.expectedClassification.replace('likely_', '~ ').toUpperCase()}
                         </span>
                       </div>
@@ -1060,19 +1068,19 @@ export default function DashboardPage() {
           <div className="grid grid-cols-4 gap-2 sm:gap-3">
             <div className="metric-tile text-center">
               <p className="text-xl sm:text-2xl font-bold font-mono tabular-nums">{p.nutrition.dailyCalories}</p>
-              <p className="text-[9px] text-muted uppercase tracking-widest mt-1">kcal/day</p>
+              <p className="text-[10px] text-muted uppercase tracking-widest mt-1">kcal/day</p>
             </div>
             <div className="metric-tile text-center">
               <p className="text-xl sm:text-2xl font-bold font-mono tabular-nums text-red-400">{p.nutrition.macros?.protein}<span className="text-xs text-muted">g</span></p>
-              <p className="text-[9px] text-muted uppercase tracking-widest mt-1">Protein</p>
+              <p className="text-[10px] text-muted uppercase tracking-widest mt-1">Protein</p>
             </div>
             <div className="metric-tile text-center">
               <p className="text-xl sm:text-2xl font-bold font-mono tabular-nums text-blue-400">{p.nutrition.macros?.carbs}<span className="text-xs text-muted">g</span></p>
-              <p className="text-[9px] text-muted uppercase tracking-widest mt-1">Carbs</p>
+              <p className="text-[10px] text-muted uppercase tracking-widest mt-1">Carbs</p>
             </div>
             <div className="metric-tile text-center">
               <p className="text-xl sm:text-2xl font-bold font-mono tabular-nums text-amber-400">{p.nutrition.macros?.fat}<span className="text-xs text-muted">g</span></p>
-              <p className="text-[9px] text-muted uppercase tracking-widest mt-1">Fats</p>
+              <p className="text-[10px] text-muted uppercase tracking-widest mt-1">Fats</p>
             </div>
           </div>
 
@@ -1096,7 +1104,7 @@ export default function DashboardPage() {
                   { label: 'Water MIN', val: p.nutrition.dailyMaximums.water_ml_min, unit: 'ml', tone: 'accent' as const },
                 ].map(({ label, val, unit, tone }) => val !== undefined && (
                   <div key={label} className="rounded-xl bg-surface-2 border border-card-border p-3 text-center">
-                    <p className="text-[9px] uppercase tracking-widest text-muted">{label}</p>
+                    <p className="text-[10px] uppercase tracking-widest text-muted">{label}</p>
                     <p className={clsx('text-lg font-bold font-mono tabular-nums mt-1', tone === 'danger' ? 'text-danger' : tone === 'warning' ? 'text-warning' : 'text-accent')}>
                       {val}<span className="text-[10px] text-muted ml-0.5">{unit}</span>
                     </p>
@@ -1131,12 +1139,12 @@ export default function DashboardPage() {
                           <p className="text-[11px] text-muted-foreground leading-snug mb-2.5">{opt.description}</p>
                           {/* Macro chips */}
                           <div className="flex flex-wrap gap-1 mb-2">
-                            <span className="text-[9px] px-1.5 py-0.5 rounded bg-red-500/10 text-red-400 font-mono">P {opt.protein_g}g</span>
-                            <span className="text-[9px] px-1.5 py-0.5 rounded bg-blue-500/10 text-blue-400 font-mono">C {opt.carbs_g}g</span>
-                            <span className="text-[9px] px-1.5 py-0.5 rounded bg-amber-500/10 text-amber-400 font-mono">F {opt.fat_g}g</span>
-                            {opt.fiber_g !== undefined && <span className="text-[9px] px-1.5 py-0.5 rounded bg-accent/10 text-accent font-mono">Fiber {opt.fiber_g}g</span>}
-                            {opt.sugar_g !== undefined && <span className="text-[9px] px-1.5 py-0.5 rounded bg-surface-3 text-muted-foreground font-mono">Sugar {opt.sugar_g}g</span>}
-                            {opt.sodium_mg !== undefined && <span className="text-[9px] px-1.5 py-0.5 rounded bg-surface-3 text-muted-foreground font-mono">Na {opt.sodium_mg}mg</span>}
+                            <span className="text-[10px] px-1.5 py-0.5 rounded bg-red-500/10 text-red-400 font-mono">P {opt.protein_g}g</span>
+                            <span className="text-[10px] px-1.5 py-0.5 rounded bg-blue-500/10 text-blue-400 font-mono">C {opt.carbs_g}g</span>
+                            <span className="text-[10px] px-1.5 py-0.5 rounded bg-amber-500/10 text-amber-400 font-mono">F {opt.fat_g}g</span>
+                            {opt.fiber_g !== undefined && <span className="text-[10px] px-1.5 py-0.5 rounded bg-accent/10 text-accent font-mono">Fiber {opt.fiber_g}g</span>}
+                            {opt.sugar_g !== undefined && <span className="text-[10px] px-1.5 py-0.5 rounded bg-surface-3 text-muted-foreground font-mono">Sugar {opt.sugar_g}g</span>}
+                            {opt.sodium_mg !== undefined && <span className="text-[10px] px-1.5 py-0.5 rounded bg-surface-3 text-muted-foreground font-mono">Na {opt.sodium_mg}mg</span>}
                           </div>
                           {opt.ingredients && opt.ingredients.length > 0 && (
                             <p className="text-[10px] text-muted-foreground leading-snug pt-2 border-t border-card-border">
@@ -1147,7 +1155,7 @@ export default function DashboardPage() {
                             <p className="text-[10px] text-accent/90 mt-1.5 leading-snug">→ {opt.whyForYou}</p>
                           )}
                           {opt.prepMinutes !== undefined && (
-                            <p className="text-[9px] text-muted mt-1">⏱️ {opt.prepMinutes} min prep</p>
+                            <p className="text-[10px] text-muted mt-1">⏱️ {opt.prepMinutes} min prep</p>
                           )}
                         </div>
                       ))}
@@ -1198,15 +1206,15 @@ export default function DashboardPage() {
           <div className="grid grid-cols-3 gap-2 sm:gap-3">
             <div className="metric-tile text-center">
               <p className="text-xl font-bold font-mono tabular-nums">{p.supplements.length}</p>
-              <p className="text-[9px] text-muted uppercase tracking-widest mt-1">In stack</p>
+              <p className="text-[10px] text-muted uppercase tracking-widest mt-1">In stack</p>
             </div>
             <div className="metric-tile text-center">
               <p className="text-xl font-bold font-mono tabular-nums text-accent">{p.supplements.filter(s => s.alreadyTaking).length}</p>
-              <p className="text-[9px] text-muted uppercase tracking-widest mt-1">You take</p>
+              <p className="text-[10px] text-muted uppercase tracking-widest mt-1">You take</p>
             </div>
             <div className="metric-tile text-center">
               <p className="text-xl font-bold font-mono tabular-nums text-accent">{totalSupCost}<span className="text-xs text-muted ml-1">RON/mo</span></p>
-              <p className="text-[9px] text-muted uppercase tracking-widest mt-1">Est. cost</p>
+              <p className="text-[10px] text-muted uppercase tracking-widest mt-1">Est. cost</p>
             </div>
           </div>
 
@@ -1269,7 +1277,7 @@ export default function DashboardPage() {
                             <div className="flex items-center gap-2 flex-wrap">
                               <p className="text-sm font-semibold leading-tight">{s.name}</p>
                               {s.alreadyTaking && (
-                                <span className="text-[9px] uppercase tracking-wider px-2 py-0.5 rounded-full bg-accent/15 text-accent border border-accent/30 font-medium">
+                                <span className="text-[10px] uppercase tracking-wider px-2 py-0.5 rounded-full bg-accent/15 text-accent border border-accent/30 font-medium">
                                   ✓ in your stack
                                 </span>
                               )}
@@ -1282,7 +1290,7 @@ export default function DashboardPage() {
                               {s.anchorMeal === 'none (empty stomach)' && <> · <span className="text-amber-400/80">empty stomach</span></>}
                             </p>
                           </div>
-                          <span className={clsx('text-[9px] font-mono px-2 py-0.5 rounded-full shrink-0',
+                          <span className={clsx('text-[10px] font-mono px-2 py-0.5 rounded-full shrink-0',
                             s.priority === 'MUST' ? 'pill-optimal' :
                             s.priority === 'STRONG' ? 'bg-blue-500/15 text-blue-400 border border-blue-500/25' :
                             'bg-surface-3 text-muted border border-card-border')}>
@@ -1423,7 +1431,7 @@ export default function DashboardPage() {
 
               {PHASES.filter(ph => (grouped[ph.key] || []).length > 0).map(ph => (
                 <div key={ph.key} className="space-y-1.5">
-                  <p className="text-[11px] font-semibold text-accent uppercase tracking-widest sticky top-[3.5rem] bg-background/90 backdrop-blur-sm py-1 z-10">
+                  <p className="text-[11px] font-semibold text-accent uppercase tracking-widest sticky bg-background/90 backdrop-blur-sm py-1 z-10" style={{ top: 'var(--header-h, 3.5rem)' }}>
                     {ph.label}
                   </p>
                   {(grouped[ph.key] || []).map((item, i) => {
@@ -1484,15 +1492,15 @@ export default function DashboardPage() {
           <div className="grid grid-cols-3 gap-2 sm:gap-3">
             <div className="metric-tile text-center">
               <p className="text-xl font-bold font-mono tabular-nums text-accent">{p.exercise.zone2Target}<span className="text-xs text-muted ml-1">min</span></p>
-              <p className="text-[9px] text-muted uppercase tracking-widest mt-1">Zone 2 / week</p>
+              <p className="text-[10px] text-muted uppercase tracking-widest mt-1">Zone 2 / week</p>
             </div>
             <div className="metric-tile text-center">
               <p className="text-xl font-bold font-mono tabular-nums text-accent">{p.exercise.strengthSessions}<span className="text-xs text-muted ml-1">×</span></p>
-              <p className="text-[9px] text-muted uppercase tracking-widest mt-1">Strength / week</p>
+              <p className="text-[10px] text-muted uppercase tracking-widest mt-1">Strength / week</p>
             </div>
             <div className="metric-tile text-center">
               <p className="text-xl font-bold font-mono tabular-nums text-accent">{p.exercise.dailyStepsTarget?.toLocaleString() ?? '8,000'}</p>
-              <p className="text-[9px] text-muted uppercase tracking-widest mt-1">Steps / day</p>
+              <p className="text-[10px] text-muted uppercase tracking-widest mt-1">Steps / day</p>
             </div>
           </div>
 
@@ -1697,7 +1705,7 @@ export default function DashboardPage() {
               <p className="text-xs text-accent font-medium mb-1">{cat.category}</p>
               {cat.tips.map((t, j) => (
                 <div key={j} className="flex items-start gap-2 mb-1.5">
-                  <span className={clsx('text-[9px] px-1.5 py-0.5 rounded shrink-0 mt-0.5',
+                  <span className={clsx('text-[10px] px-1.5 py-0.5 rounded shrink-0 mt-0.5',
                     t.difficulty === 'easy' ? 'bg-accent/20 text-accent' : t.difficulty === 'medium' ? 'bg-amber-500/20 text-amber-400' : 'bg-red-500/20 text-red-400'
                   )}>{t.difficulty}</span>
                   <div>
@@ -1770,7 +1778,7 @@ export default function DashboardPage() {
                     <div className="flex flex-wrap gap-1.5 pt-1">
                       <span className="text-[10px] text-muted">Track via:</span>
                       {pp.supportingBiomarkers.map(bm => (
-                        <span key={bm} className="text-[9px] font-mono px-2 py-0.5 rounded-full bg-surface-3 text-muted-foreground border border-card-border">
+                        <span key={bm} className="text-[10px] font-mono px-2 py-0.5 rounded-full bg-surface-3 text-muted-foreground border border-card-border">
                           {bm}
                         </span>
                       ))}

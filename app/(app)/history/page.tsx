@@ -57,7 +57,7 @@ export default function HistoryPage() {
   // Derived data — protocol timeline chart
   const protocolChartData = useMemo(() =>
     protocols.map(p => ({
-      date: new Date(p.created_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric' }),
+      date: new Date(p.created_at).toLocaleDateString('ro-RO', { month: 'short', day: 'numeric' }),
       score: p.longevity_score,
       bioAge: p.biological_age_decimal ?? p.biological_age,
       pace: p.aging_pace,
@@ -168,7 +168,7 @@ export default function HistoryPage() {
       {/* Medical print-mode header — only visible when printing */}
       <div className="hidden print:block">
         <h1 className="text-2xl font-bold">Protocol — Patient History Report</h1>
-        <p className="text-xs mt-1">Generated {new Date().toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' })} · Protocol-tawny.vercel.app</p>
+        <p className="text-xs mt-1">Generated {new Date().toLocaleDateString('ro-RO', { year: 'numeric', month: 'long', day: 'numeric' })} · Protocol-tawny.vercel.app</p>
         <p className="text-[10px] mt-2 text-gray-600">
           This report is generated from user-entered data and AI-derived analysis.
           It is <strong>not a medical diagnosis</strong>. Reference ranges follow longevity-optimal bands
@@ -418,6 +418,23 @@ export default function HistoryPage() {
         );
       })()}
 
+      {/* Blood test sub-empty — shown when user has at least a protocol but
+          no blood work yet. The top-level empty state only fires when both
+          lists are empty, so this catches the "onboarded lifestyle-only" case. */}
+      {tests.length === 0 && protocols.length > 0 && (
+        <Section icon={FileText} title="Blood tests" subtitle="Upload lab work to unlock biomarker-driven recommendations">
+          <div className="rounded-2xl border border-dashed border-card-border bg-surface-2/40 p-6 text-center space-y-3">
+            <p className="text-sm font-medium">No blood tests on file yet</p>
+            <p className="text-[11px] text-muted-foreground max-w-sm mx-auto leading-relaxed">
+              Your protocol is running on lifestyle signal only. Add one panel (Synevo / Regina Maria / Medlife) and the AI picks up 20-30 more adjustments you can&apos;t see without bloodwork.
+            </p>
+            <a href="/settings" className="inline-block px-4 py-2 rounded-xl bg-accent text-black text-xs font-semibold hover:bg-accent-bright transition-colors">
+              Upload test (Settings)
+            </a>
+          </div>
+        </Section>
+      )}
+
       {/* Blood test list */}
       {tests.length > 0 && (
         <Section
@@ -444,7 +461,7 @@ export default function HistoryPage() {
                   </div>
                   <div className="flex-1 min-w-0">
                     <p className="text-sm font-medium truncate">
-                      {new Date(test.taken_at).toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' })}
+                      {new Date(test.taken_at).toLocaleDateString('ro-RO', { year: 'numeric', month: 'long', day: 'numeric' })}
                     </p>
                     <p className="text-[11px] text-muted-foreground">{test.biomarkers.length} biomarkers</p>
                   </div>
@@ -477,7 +494,7 @@ export default function HistoryPage() {
           <Section
             icon={GitCompareArrows}
             title="Test comparison"
-            subtitle={`${new Date(test1.taken_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })} → ${new Date(test2.taken_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}`}
+            subtitle={`${new Date(test1.taken_at).toLocaleDateString('ro-RO', { month: 'short', day: 'numeric', year: 'numeric' })} → ${new Date(test2.taken_at).toLocaleDateString('ro-RO', { month: 'short', day: 'numeric', year: 'numeric' })}`}
           >
             <div className="grid grid-cols-3 gap-2 mb-2">
               <Stat label="Improved" value={improvedCount} tone="accent" />
@@ -530,11 +547,11 @@ export default function HistoryPage() {
               return (
                 <div key={p.id} className="flex items-center gap-3 p-3 rounded-xl bg-surface-2 border border-card-border">
                   <div className="w-10 h-10 rounded-lg bg-surface-3 flex items-center justify-center shrink-0">
-                    <span className="text-[9px] font-mono uppercase tracking-wider text-muted-foreground">{p.generation_source?.slice(0, 4) || 'prot'}</span>
+                    <span className="text-[10px] font-mono uppercase tracking-wider text-muted-foreground">{p.generation_source?.slice(0, 4) || 'prot'}</span>
                   </div>
                   <div className="flex-1 min-w-0">
                     <p className="text-sm font-medium truncate">
-                      {new Date(p.created_at).toLocaleString('en-US', { month: 'short', day: 'numeric', year: 'numeric', hour: '2-digit', minute: '2-digit' })}
+                      {new Date(p.created_at).toLocaleString('ro-RO', { month: 'short', day: 'numeric', year: 'numeric', hour: '2-digit', minute: '2-digit' })}
                     </p>
                     <div className="flex items-center gap-2 text-[11px] text-muted-foreground mt-0.5">
                       {p.longevity_score !== null && <span>Score <span className="text-accent font-mono">{p.longevity_score}</span></span>}

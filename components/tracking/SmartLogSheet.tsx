@@ -342,12 +342,12 @@ export function SmartLogSheet({ open, onClose, metrics, onSave, deviceSources, m
                 {isFullDay ? (dateLabel || 'past day') : timeLabel}
               </span>
               {isFullDay && (
-                <span className="inline-flex items-center gap-1 text-[9px] uppercase tracking-widest px-2 py-0.5 rounded-full bg-amber-500/10 text-amber-400 border border-amber-500/25 font-semibold">
+                <span className="inline-flex items-center gap-1 text-[10px] uppercase tracking-widest px-2 py-0.5 rounded-full bg-amber-500/10 text-amber-400 border border-amber-500/25 font-semibold">
                   <AlertCircle className="w-2.5 h-2.5" /> Past day
                 </span>
               )}
               {isRecap && !isFullDay && (
-                <span className="inline-flex items-center gap-1 text-[9px] uppercase tracking-widest px-2 py-0.5 rounded-full bg-accent/10 text-accent border border-accent/25 font-semibold">
+                <span className="inline-flex items-center gap-1 text-[10px] uppercase tracking-widest px-2 py-0.5 rounded-full bg-accent/10 text-accent border border-accent/25 font-semibold">
                   <Zap className="w-2.5 h-2.5" /> Recap mode
                 </span>
               )}
@@ -406,10 +406,10 @@ export function SmartLogSheet({ open, onClose, metrics, onSave, deviceSources, m
                       {meta.title}
                     </span>
                     {isCurrentBucket && !isFullDay && (
-                      <span className="text-[9px] uppercase tracking-widest text-accent/80 font-mono">now</span>
+                      <span className="text-[10px] uppercase tracking-widest text-accent/80 font-mono">now</span>
                     )}
                     {!isCurrentBucket && !isFullDay && (
-                      <span className="inline-flex items-center gap-1 text-[9px] uppercase tracking-widest px-1.5 py-0.5 rounded bg-amber-500/10 text-amber-400 border border-amber-500/25 font-medium">
+                      <span className="inline-flex items-center gap-1 text-[10px] uppercase tracking-widest px-1.5 py-0.5 rounded bg-amber-500/10 text-amber-400 border border-amber-500/25 font-medium">
                         <AlertCircle className="w-2.5 h-2.5" /> earlier — catch up
                       </span>
                     )}
@@ -425,8 +425,8 @@ export function SmartLogSheet({ open, onClose, metrics, onSave, deviceSources, m
                       <p className="text-[10px] uppercase tracking-widest text-accent font-mono">{group.title}</p>
                       {(() => {
                         const pending = countPending(group, metrics, local, deviceSources);
-                        if (pending === 0) return <span className="text-[9px] text-accent">✓ complete</span>;
-                        return <span className="text-[9px] text-muted font-mono">{pending} blank</span>;
+                        if (pending === 0) return <span className="text-[10px] text-accent">✓ complete</span>;
+                        return <span className="text-[10px] text-muted font-mono">{pending} blank</span>;
                       })()}
                     </div>
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
@@ -446,12 +446,12 @@ export function SmartLogSheet({ open, onClose, metrics, onSave, deviceSources, m
                               <span className="flex items-center gap-1.5 flex-wrap">
                                 <span>{spec.label}</span>
                                 {deviceSource && (
-                                  <span className="inline-flex items-center gap-0.5 text-[9px] px-1.5 py-0.5 rounded bg-accent/10 border border-accent/20 text-accent font-medium uppercase tracking-wider">
+                                  <span className="inline-flex items-center gap-0.5 text-[10px] px-1.5 py-0.5 rounded bg-accent/10 border border-accent/20 text-accent font-medium uppercase tracking-wider">
                                     ⌚ {deviceSource}
                                   </span>
                                 )}
                                 {!deviceSource && sources.includes('manual') && (
-                                  <span className="inline-flex items-center gap-0.5 text-[9px] px-1.5 py-0.5 rounded bg-surface-3 text-muted uppercase tracking-wider">manual</span>
+                                  <span className="inline-flex items-center gap-0.5 text-[10px] px-1.5 py-0.5 rounded bg-surface-3 text-muted uppercase tracking-wider">manual</span>
                                 )}
                                 {isFilled && <Check className="w-3 h-3 text-accent shrink-0" />}
                               </span>

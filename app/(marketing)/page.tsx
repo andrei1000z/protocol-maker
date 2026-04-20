@@ -25,7 +25,7 @@ function BiomarkerDemo() {
             <div className="flex items-center gap-2">
               <span className="text-xl font-bold font-mono text-accent">{val}</span>
               <span className="text-[10px] text-muted">{b.unit}</span>
-              <span className={`text-[9px] font-mono px-2 py-0.5 rounded-full ${isOptimal ? 'bg-accent/20 text-accent' : 'bg-amber-500/20 text-amber-400'}`}>
+              <span className={`text-[10px] font-mono px-2 py-0.5 rounded-full ${isOptimal ? 'bg-accent/20 text-accent' : 'bg-amber-500/20 text-amber-400'}`}>
                 {isOptimal ? 'OPTIMAL' : 'SUBOPTIMAL'}
               </span>
             </div>
