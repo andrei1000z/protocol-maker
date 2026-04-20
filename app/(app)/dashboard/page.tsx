@@ -454,7 +454,16 @@ export default function DashboardPage() {
       <div id="diagnostic" className="hero-card rounded-3xl p-8 scroll-mt-20 animate-fade-in-up relative overflow-hidden">
         <div className="flex items-start justify-between gap-4 mb-8">
           <div>
-            <p className="text-[10px] uppercase tracking-[0.2em] text-muted mb-2">Longevity Protocol</p>
+            <div className="flex items-center gap-2 mb-2 flex-wrap">
+              <p className="text-[10px] uppercase tracking-[0.2em] text-muted">Longevity Protocol</p>
+              {/* Visible positioning chip — makes it unambiguous that the
+                  scores/bio-age/aging-pace below are lifestyle-optimization
+                  targets, not clinical diagnoses. Legal footer lives at the
+                  bottom; this is the version your users actually see. */}
+              <span className="inline-flex items-center gap-1 text-[10px] px-2 py-0.5 rounded-full bg-accent/10 border border-accent/25 text-accent font-medium">
+                Preventive optimization · not medical advice
+              </span>
+            </div>
             <h1 className="text-3xl font-semibold tracking-tight">Your diagnostic</h1>
             {diag?.summary && <p className="text-sm text-muted-foreground mt-3 max-w-xl leading-relaxed">{diag.summary}</p>}
           </div>
@@ -477,7 +486,7 @@ export default function DashboardPage() {
               <div>
                 <p className="text-[10px] uppercase tracking-widest text-muted">Longevity</p>
                 <p className="text-sm font-medium text-foreground mt-0.5">Score</p>
-                <p className="text-[11px] text-muted-foreground mt-1.5 leading-tight">{longevityScore >= 85 ? 'Elite tier' : longevityScore >= 70 ? 'Above average' : longevityScore >= 55 ? 'Room to improve' : 'Needs attention'}</p>
+                <p className="text-[11px] text-muted-foreground mt-1.5 leading-tight">{longevityScore >= 85 ? 'Top tier' : longevityScore >= 70 ? 'Above average' : longevityScore >= 55 ? 'Room to improve' : 'Needs attention'}</p>
               </div>
             </div>
           </div>

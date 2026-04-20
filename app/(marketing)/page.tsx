@@ -9,7 +9,12 @@ const HABIT_COUNT = DAILY_HABITS.length;
 import { ArrowRight, Sparkles, Activity, Target, FileText, Zap, Brain, Heart, Shield } from 'lucide-react';
 
 function BiomarkerDemo() {
-  const demoMarkers = BIOMARKER_DB.filter(b => b.bryanJohnsonValue !== undefined).slice(0, 8);
+  // Show up to 12 of Bryan's known values — covers the canonical panel
+  // (lipids + glucose + inflammation + hormones + liver + kidney + vitamins)
+  // without overflowing the grid on desktop. Fallback: if <12 have his values
+  // (e.g. BIOMARKER_DB pruned), show whatever exists.
+  const withBryan = BIOMARKER_DB.filter(b => b.bryanJohnsonValue !== undefined);
+  const demoMarkers = withBryan.slice(0, 12);
   return (
     <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
       {demoMarkers.map((b, i) => {

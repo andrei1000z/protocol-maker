@@ -113,9 +113,11 @@ export default function LoginPage() {
         {/* Branding */}
         <div className="text-center space-y-3">
           <Link href="/" className="inline-block">
-            <h1 className="text-4xl font-bold tracking-tight">
+            {/* Brand mark — landing page already owns the canonical H1 for SEO,
+                so login uses a styled <p> to avoid two H1s in a two-page SPA flow. */}
+            <p className="text-4xl font-bold tracking-tight">
               <span className="text-accent">Protocol</span>
-            </h1>
+            </p>
           </Link>
           <p className="text-sm text-muted-foreground max-w-xs mx-auto">
             AI-powered longevity protocols calibrated to <span className="text-foreground">your</span> biomarkers.
