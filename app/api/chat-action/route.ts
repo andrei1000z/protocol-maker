@@ -15,22 +15,23 @@ export const runtime = 'nodejs';
 // ─────────────────────────────────────────────────────────────────────────────
 // Action schemas — each maps to one DB write. Keep these tight.
 // ─────────────────────────────────────────────────────────────────────────────
+// Direct columns on profiles that chat can mutate. Narrow by design — writes
+// outside this set (ages, medication arrays, etc.) need a full regen flow.
+const PROFILE_DIRECT_KEYS = new Set([
+  'height_cm', 'weight_kg', 'activity_level', 'sleep_hours_avg',
+  'cardio_minutes_per_week', 'strength_sessions_per_week',
+  'alcohol_drinks_per_week', 'caffeine_mg_per_day', 'smoker',
+]);
+
+// Passthrough schema — accepts any key, then the handler partitions into
+// direct-column writes (when the key is in PROFILE_DIRECT_KEYS) vs. an
+// onboarding_data jsonb merge (everything else, including AI-invented keys
+// like goal_weight_kg / targetSleepHours / idealBodyFatPct). Prevents
+// 'Invalid action' rejections every time the AI proposes a new field name.
 const UpdateProfileSchema = z.object({
   type: z.literal('update_profile'),
-  payload: z.object({
-    // Only these top-level columns are mutable from chat. Adding more requires explicit allowlist.
-    height_cm: z.number().int().min(50).max(260).optional(),
-    weight_kg: z.number().min(20).max(400).optional(),
-    activity_level: z.number().int().min(0).max(4).optional(),
-    sleep_hours_avg: z.number().min(0).max(14).optional(),
-    cardio_minutes_per_week: z.number().int().min(0).max(2000).optional(),
-    strength_sessions_per_week: z.number().int().min(0).max(14).optional(),
-    alcohol_drinks_per_week: z.number().int().min(0).max(60).optional(),
-    caffeine_mg_per_day: z.number().int().min(0).max(2000).optional(),
-    smoker: z.boolean().optional(),
-    // Onboarding-data merge: nested fields the AI commonly needs to touch
-    onboarding_data_patch: z.record(z.string(), z.unknown()).optional(),
-  }).refine(o => Object.keys(o).length > 0, 'must change at least one field'),
+  payload: z.record(z.string(), z.unknown())
+    .refine(o => Object.keys(o).length > 0, 'must change at least one field'),
 });
 
 const LogMetricSchema = z.object({
@@ -154,34 +155,81 @@ export async function POST(request: Request) {
     const action = parsed.data;
 
     if (action.type === 'update_profile') {
-      const { onboarding_data_patch, ...directFields } = action.payload;
+      // Partition: keys that match a known profiles column go in directFields,
+      // everything else (including explicit 'onboarding_data_patch' nested by
+      // the AI) gets merged into odPatch. Applies per-field range sanity on
+      // the direct columns so a hallucinated weight=5000 doesn't land in DB.
+      const raw = action.payload;
+      const directFields: Record<string, unknown> = {};
+      const odPatch: Record<string, unknown> = {};
+
+      // If the AI nested under onboarding_data_patch explicitly, unwrap it.
+      const nestedPatch = raw.onboarding_data_patch;
+      if (nestedPatch && typeof nestedPatch === 'object' && !Array.isArray(nestedPatch)) {
+        for (const [k, v] of Object.entries(nestedPatch as Record<string, unknown>)) odPatch[k] = v;
+      }
+
+      for (const [k, v] of Object.entries(raw)) {
+        if (k === 'onboarding_data_patch') continue;
+        if (PROFILE_DIRECT_KEYS.has(k)) {
+          directFields[k] = v;
+        } else {
+          // AI-invented field — store in jsonb so it's preserved + visible in
+          // the next prompt (the master prompt serializes onboardingData).
+          odPatch[k] = v;
+        }
+      }
+
+      // Sanity-bound direct fields. Any value outside the bound goes to odPatch
+      // as a "claimed_..." key so we preserve the signal without corrupting the
+      // typed column. Silent out-of-bound is worse than explicit annotation.
+      const checkBound = (key: string, val: unknown, min: number, max: number, int = false): number | null => {
+        const n = typeof val === 'number' ? val : Number(val);
+        if (!Number.isFinite(n)) return null;
+        if (int && !Number.isInteger(n)) return null;
+        if (n < min || n > max) return null;
+        return n;
+      };
+      const bounded: Record<string, unknown> = {};
+      if ('height_cm' in directFields)                  bounded.height_cm                  = checkBound('height_cm', directFields.height_cm, 50, 260, true);
+      if ('weight_kg' in directFields)                  bounded.weight_kg                  = checkBound('weight_kg', directFields.weight_kg, 20, 400);
+      if ('activity_level' in directFields)             bounded.activity_level             = checkBound('activity_level', directFields.activity_level, 0, 4, true);
+      if ('sleep_hours_avg' in directFields)            bounded.sleep_hours_avg            = checkBound('sleep_hours_avg', directFields.sleep_hours_avg, 0, 14);
+      if ('cardio_minutes_per_week' in directFields)    bounded.cardio_minutes_per_week    = checkBound('cardio_minutes_per_week', directFields.cardio_minutes_per_week, 0, 2000, true);
+      if ('strength_sessions_per_week' in directFields) bounded.strength_sessions_per_week = checkBound('strength_sessions_per_week', directFields.strength_sessions_per_week, 0, 14, true);
+      if ('alcohol_drinks_per_week' in directFields)    bounded.alcohol_drinks_per_week    = checkBound('alcohol_drinks_per_week', directFields.alcohol_drinks_per_week, 0, 60, true);
+      if ('caffeine_mg_per_day' in directFields)        bounded.caffeine_mg_per_day        = checkBound('caffeine_mg_per_day', directFields.caffeine_mg_per_day, 0, 2000, true);
+      if ('smoker' in directFields)                     bounded.smoker                     = typeof directFields.smoker === 'boolean' ? directFields.smoker : null;
 
       // Atomic RPC — applies only non-null args via COALESCE and merges the
       // onboarding_data jsonb server-side. No read-before-write, so this can
       // safely race against cron or another tab without losing writes.
       const { error } = await supabase.rpc('apply_profile_patch', {
         p_user_id: user.id,
-        p_height_cm: directFields.height_cm ?? null,
-        p_weight_kg: directFields.weight_kg ?? null,
-        p_activity_level: directFields.activity_level ?? null,
-        p_sleep_hours_avg: directFields.sleep_hours_avg ?? null,
-        p_cardio_minutes_per_week: directFields.cardio_minutes_per_week ?? null,
-        p_strength_sessions_per_week: directFields.strength_sessions_per_week ?? null,
-        p_alcohol_drinks_per_week: directFields.alcohol_drinks_per_week ?? null,
-        p_caffeine_mg_per_day: directFields.caffeine_mg_per_day ?? null,
-        p_smoker: directFields.smoker ?? null,
-        p_od_patch: onboarding_data_patch ?? {},
+        p_height_cm: (bounded.height_cm as number | null) ?? null,
+        p_weight_kg: (bounded.weight_kg as number | null) ?? null,
+        p_activity_level: (bounded.activity_level as number | null) ?? null,
+        p_sleep_hours_avg: (bounded.sleep_hours_avg as number | null) ?? null,
+        p_cardio_minutes_per_week: (bounded.cardio_minutes_per_week as number | null) ?? null,
+        p_strength_sessions_per_week: (bounded.strength_sessions_per_week as number | null) ?? null,
+        p_alcohol_drinks_per_week: (bounded.alcohol_drinks_per_week as number | null) ?? null,
+        p_caffeine_mg_per_day: (bounded.caffeine_mg_per_day as number | null) ?? null,
+        p_smoker: (bounded.smoker as boolean | null) ?? null,
+        p_od_patch: odPatch,
       });
 
       if (error && isRpcMissing(error)) {
         // Pre-migration fallback — racey but functional until upgrade.sql runs.
         let mergedOd: Record<string, unknown> | undefined;
-        if (onboarding_data_patch) {
+        if (Object.keys(odPatch).length > 0) {
           const { data: existing } = await supabase.from('profiles').select('onboarding_data').eq('id', user.id).single();
           const existingOd = (existing?.onboarding_data || {}) as Record<string, unknown>;
-          mergedOd = { ...existingOd, ...onboarding_data_patch };
+          mergedOd = { ...existingOd, ...odPatch };
         }
-        const update: Record<string, unknown> = { ...directFields, updated_at: new Date().toISOString() };
+        const update: Record<string, unknown> = { updated_at: new Date().toISOString() };
+        for (const [k, v] of Object.entries(bounded)) {
+          if (v !== null && v !== undefined) update[k] = v;
+        }
         if (mergedOd) update.onboarding_data = mergedOd;
         const { error: legacyErr } = await supabase.from('profiles').update(update).eq('id', user.id);
         if (legacyErr) throw new Error(legacyErr.message);
@@ -189,7 +237,9 @@ export async function POST(request: Request) {
         throw new Error(error.message);
       }
 
-      return NextResponse.json({ ok: true, applied: 'profile', changed: Object.keys(directFields).length + (onboarding_data_patch ? 1 : 0) });
+      const changedCount = Object.values(bounded).filter(v => v !== null && v !== undefined).length
+        + Object.keys(odPatch).length;
+      return NextResponse.json({ ok: true, applied: 'profile', changed: changedCount });
     }
 
     if (action.type === 'log_metric') {
