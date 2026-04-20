@@ -330,6 +330,11 @@ export async function POST(request: Request) {
       adherenceScore30d,          // % of protocol items completed last 30d
       previousProtocolId,          // for v1 vs v2 diff in /history
       protocolVersion: (existingDiag.protocolVersion as number ?? 0) + 1,
+      // Wearable-refinement signal density — dashboard uses this to show a
+      // "based on N days of data" confidence chip under biological age.
+      // `days: 0` == refinement was skipped (no wearable data); `>= 25` ==
+      // high-confidence refinement (see lib/engine/wearable-refinement.ts).
+      wearableSignalDays: recentSignals.days,
       // Always-populated sections (merge AI's if provided, else use our lifestyle-based)
       topWins: Array.isArray(existingDiag.topWins) && existingDiag.topWins.length >= 2
         ? [...(existingDiag.topWins as string[]).slice(0, 2), ...topWins.slice(0, 2)]
@@ -371,6 +376,44 @@ export async function POST(request: Request) {
       };
     });
 
+    // Compact "what changed vs last regen" summary — attached to the response
+    // so the tracking page's manual-refresh button can show an immediate
+    // success toast ("+3 score · −0.4y bio · 2 supplements changed") without
+    // a second roundtrip to /protocol-history/diff. Best-effort; silent null
+    // if no prior protocol exists.
+    let diffSummary: {
+      scoreDelta: number | null;
+      bioAgeDelta: number | null;
+      paceDelta: number | null;
+      supplementsAdded: number;
+      supplementsRemoved: number;
+    } | null = null;
+
+    if (previousProtocolId) {
+      try {
+        const { data: prev } = await supabase.from('protocols')
+          .select('longevity_score, biological_age_decimal, aging_pace, protocol_json')
+          .eq('id', previousProtocolId).maybeSingle();
+        if (prev) {
+          const prevSups = Array.isArray((prev.protocol_json as Record<string, unknown>)?.supplements)
+            ? ((prev.protocol_json as { supplements: Array<{ name: string }> }).supplements).map(s => (s.name || '').toLowerCase().trim())
+            : [];
+          const newSups = Array.isArray(protocolJson.supplements)
+            ? (protocolJson.supplements as Array<{ name: string }>).map(s => (s.name || '').toLowerCase().trim())
+            : [];
+          const prevSet = new Set(prevSups);
+          const newSet = new Set(newSups);
+          diffSummary = {
+            scoreDelta:  typeof prev.longevity_score === 'number' ? finalScore - prev.longevity_score : null,
+            bioAgeDelta: typeof prev.biological_age_decimal === 'number' ? Math.round((finalBioAge - Number(prev.biological_age_decimal)) * 10) / 10 : null,
+            paceDelta:   typeof prev.aging_pace === 'number' ? Math.round((finalPace - Number(prev.aging_pace)) * 100) / 100 : null,
+            supplementsAdded:   newSups.filter(n => !prevSet.has(n)).length,
+            supplementsRemoved: prevSups.filter(n => !newSet.has(n)).length,
+          };
+        }
+      } catch { /* diff is best-effort — never block the save path */ }
+    }
+
     // Save to DB (non-fatal)
     const { error: dbError } = await supabase.from('protocols').insert({
       user_id: user.id,
@@ -390,7 +433,16 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: `Database error: ${dbError.message}` }, { status: 500 });
     }
 
-    return NextResponse.json({ protocol: protocolJson, longevityScore: finalScore, biologicalAge: finalBioAge, agingPace: finalPace, patterns, modelUsed, aiError });
+    return NextResponse.json({
+      protocol: protocolJson,
+      longevityScore: finalScore,
+      biologicalAge: finalBioAge,
+      agingPace: finalPace,
+      patterns,
+      modelUsed,
+      aiError,
+      diffSummary,
+    });
   } catch (err) {
     logger.error('protocol.handler_failed', { errorMessage: describeError(err) });
     return NextResponse.json({ error: err instanceof Error ? err.message : String(err) }, { status: 500 });

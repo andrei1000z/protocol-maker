@@ -477,6 +477,17 @@ export default function TrackingPage() {
       });
       if (res.ok) {
         staleness.reset();
+        // Persist a one-shot "what changed" toast payload the dashboard picks
+        // up on next mount. Cheaper than a URL param + survives the full reload.
+        try {
+          const body = await res.clone().json() as { diffSummary?: unknown };
+          if (body?.diffSummary) {
+            localStorage.setItem('protocol:regen-diff:latest', JSON.stringify({
+              diff: body.diffSummary,
+              ts: Date.now(),
+            }));
+          }
+        } catch { /* ignore — reload still happens below */ }
         // Hard refresh so SWR caches drop stale protocol + dashboard re-reads.
         window.location.href = '/dashboard';
         return;

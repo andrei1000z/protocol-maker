@@ -8,6 +8,7 @@ import { DashboardTOC } from '@/components/layout/DashboardTOC';
 import { useMyData, useProtocolDiff } from '@/lib/hooks/useApiData';
 import { SAMPLE_PROTOCOL, SAMPLE_LONGEVITY_SCORE, SAMPLE_BIO_AGE } from '@/lib/engine/sample-protocol';
 import { BRYAN } from '@/lib/engine/bryan-constants';
+import { pickTodaysFocus, type ScheduleEntry, type FocusPick } from '@/lib/engine/todays-focus';
 import clsx from 'clsx';
 import dynamic from 'next/dynamic';
 
@@ -156,6 +157,132 @@ function IncompleteProtocolBanner({ missing }: { missing: string[] }) {
 // since their last visit, so new numbers on the dashboard don't feel like
 // they came from nowhere. Dismissal is stored per protocol id in localStorage,
 // so the banner won't come back until the NEXT cron regenerates.
+// One-shot toast showing the delta from the user's most recent regen.
+// Written by the tracking page's Refresh button into localStorage; we read
+// it on mount, render it once, then clear so a refresh doesn't re-show.
+function RegenDiffToast() {
+  const [diff, setDiff] = useState<{
+    scoreDelta: number | null;
+    bioAgeDelta: number | null;
+    paceDelta: number | null;
+    supplementsAdded: number;
+    supplementsRemoved: number;
+  } | null>(null);
+  const [dismissed, setDismissed] = useState(false);
+
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    try {
+      const raw = localStorage.getItem('protocol:regen-diff:latest');
+      if (!raw) return;
+      const parsed = JSON.parse(raw) as { diff?: unknown; ts?: number };
+      // 5-minute TTL so stale diffs don't pop up after a cache hit
+      if (parsed?.ts && Date.now() - parsed.ts < 5 * 60_000 && parsed.diff) {
+        setDiff(parsed.diff as typeof diff);
+      }
+      localStorage.removeItem('protocol:regen-diff:latest');
+    } catch { /* corrupt or quota — ignore */ }
+  }, []);
+
+  if (!diff || dismissed) return null;
+  const bits: string[] = [];
+  if (typeof diff.scoreDelta === 'number' && diff.scoreDelta !== 0) {
+    bits.push(`${diff.scoreDelta > 0 ? '+' : ''}${diff.scoreDelta} score`);
+  }
+  if (typeof diff.bioAgeDelta === 'number' && Math.abs(diff.bioAgeDelta) >= 0.1) {
+    bits.push(`${diff.bioAgeDelta > 0 ? '+' : ''}${diff.bioAgeDelta.toFixed(1)}y bio age`);
+  }
+  if (typeof diff.paceDelta === 'number' && Math.abs(diff.paceDelta) >= 0.01) {
+    bits.push(`${diff.paceDelta > 0 ? '+' : ''}${diff.paceDelta.toFixed(2)} pace`);
+  }
+  if (diff.supplementsAdded > 0) bits.push(`+${diff.supplementsAdded} supplements`);
+  if (diff.supplementsRemoved > 0) bits.push(`−${diff.supplementsRemoved} supplements`);
+
+  return (
+    <div className="rounded-2xl bg-gradient-to-r from-accent/[0.12] to-accent/[0.04] border border-accent/30 p-4 flex items-center gap-3 animate-fade-in-up no-print">
+      <span className="text-xl shrink-0">✨</span>
+      <div className="flex-1 min-w-0">
+        <p className="text-sm font-semibold text-accent">Protocol refreshed</p>
+        <p className="text-[11px] text-muted-foreground mt-0.5">
+          {bits.length > 0 ? bits.join(' · ') : 'No major changes from last version.'}
+        </p>
+      </div>
+      <button
+        onClick={() => setDismissed(true)}
+        aria-label="Dismiss"
+        className="shrink-0 text-[11px] text-muted-foreground hover:text-foreground px-2 py-1"
+      >
+        Dismiss
+      </button>
+    </div>
+  );
+}
+
+// Today's Focus — pulls 1-2 entries from dailySchedule matching the current
+// time window + priority ranking. Re-computes every 60s so urgency transitions
+// (upcoming → soon → now → past) happen live without a full page refresh.
+function TodaysFocusBlock({ schedule }: { schedule: ScheduleEntry[] }) {
+  const [picks, setPicks] = useState<FocusPick[]>(() => pickTodaysFocus(schedule));
+  useEffect(() => {
+    // Initial compute on mount (client time).
+    setPicks(pickTodaysFocus(schedule));
+    const tick = setInterval(() => setPicks(pickTodaysFocus(schedule)), 60_000);
+    return () => clearInterval(tick);
+  }, [schedule]);
+
+  if (picks.length === 0) return null;
+
+  const urgencyStyle = {
+    now:      { label: 'Now',      bg: 'from-accent/15 border-accent/30',     pill: 'bg-accent text-black' },
+    soon:     { label: 'Soon',     bg: 'from-accent/[0.08] border-accent/20', pill: 'bg-accent/20 text-accent border border-accent/30' },
+    upcoming: { label: 'Later',    bg: 'from-surface-3/50 border-card-border', pill: 'bg-surface-3 text-muted-foreground border border-card-border' },
+  } as const;
+
+  const relative = (min: number) => {
+    if (Math.abs(min) < 1) return 'right now';
+    if (min < 0)  return `${Math.abs(min)} min ago`;
+    if (min < 60) return `in ${min} min`;
+    const h = Math.floor(min / 60);
+    return `in ${h}h ${min - h * 60}m`;
+  };
+
+  return (
+    <div className="glass-card rounded-2xl p-5 space-y-3 scroll-mt-20 animate-fade-in-up no-print">
+      <div className="flex items-baseline justify-between gap-3">
+        <h2 className="text-sm font-semibold tracking-tight flex items-center gap-2">
+          <span className="text-base">🎯</span>
+          Today&apos;s focus
+        </h2>
+        <p className="text-[10px] text-muted font-mono">From your daily schedule</p>
+      </div>
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+        {picks.map((p, i) => {
+          const s = urgencyStyle[p.urgency];
+          return (
+            <div
+              key={`${p.time}-${i}`}
+              className={clsx('rounded-xl bg-gradient-to-br bg-surface-2 border p-3.5 space-y-1.5', s.bg)}
+            >
+              <div className="flex items-center justify-between gap-2">
+                <span className="text-[10px] font-mono tabular-nums text-muted-foreground">
+                  {p.time} · {relative(p.minutesUntil)}
+                </span>
+                <span className={clsx('text-[9px] uppercase tracking-widest px-1.5 py-0.5 rounded', s.pill)}>
+                  {s.label}
+                </span>
+              </div>
+              <p className="text-sm font-semibold leading-snug">{p.title}</p>
+              {p.mechanism && (
+                <p className="text-[11px] text-muted-foreground leading-relaxed line-clamp-2">{p.mechanism}</p>
+              )}
+            </div>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
 function CronRegenBanner({ createdAt, protocolId }: { createdAt: string; protocolId: string }) {
   const [dismissed, setDismissed] = useState<boolean | null>(null);
 
@@ -388,6 +515,10 @@ export default function DashboardPage() {
           banner with a one-tap Regenerate button. Hidden in demo mode.
           Post Round 14 fix this should stop happening — but old protocols in
           the DB can still be in this state, so the affordance remains. */}
+      {/* One-shot "+3 score · −0.4y bio" toast after a manual regen. Self-
+          clearing from localStorage; 5-min TTL, dismissable. */}
+      {!demoMode && <RegenDiffToast />}
+
       {!demoMode && (!p.nutrition || !p.supplements?.length || !p.dailySchedule?.length) && (
         <IncompleteProtocolBanner
           missing={[
@@ -505,6 +636,22 @@ export default function DashboardPage() {
                 <span className="text-[11px] text-muted">vs {chronoAge}y chronological</span>
               </div>
             )}
+            {/* Confidence chip — surfaces how much wearable/daily-log data
+                fed the refinement. Matches thresholds in wearable-refinement.ts
+                (≥25 days = high, ≥12 = medium, ≥5 = low, <5 = baseline-only). */}
+            {typeof diag?.wearableSignalDays === 'number' && (() => {
+              const d = diag.wearableSignalDays;
+              const { label, tone } = d >= 25 ? { label: 'High confidence',   tone: 'text-accent bg-accent/10 border-accent/25' }
+                                     : d >= 12 ? { label: 'Medium confidence', tone: 'text-amber-400 bg-amber-500/10 border-amber-500/25' }
+                                     : d >= 5  ? { label: 'Low confidence',    tone: 'text-muted-foreground bg-surface-3 border-card-border' }
+                                     :           { label: 'Profile-only',      tone: 'text-muted bg-surface-3/70 border-card-border' };
+              return (
+                <p className={clsx('mt-2 inline-flex items-center gap-1.5 text-[10px] font-mono px-2 py-0.5 rounded-full border', tone)}
+                   title={d >= 5 ? `Refined using ${d} days of wearable/daily-log data` : 'No wearable data — score derived from profile + bloodwork only'}>
+                  {label}{d > 0 ? ` · ${d}d` : ''}
+                </p>
+              );
+            })()}
           </div>
 
           {/* Aging Speed */}
@@ -679,6 +826,12 @@ export default function DashboardPage() {
           </Section>
         );
       })()}
+
+      {/* ═══════════════ TODAY'S FOCUS ═══════════════
+          Picks 1-2 high-leverage actions from the user's dailySchedule for
+          the current time window. Surfaces them as urgent chips right under
+          the hero so returning users see "do this now" instead of scrolling. */}
+      <TodaysFocusBlock schedule={(p.dailySchedule || []) as ScheduleEntry[]} />
 
       {/* ═══════════════ ORGAN SYSTEMS ═══════════════ */}
       <Section id="organs" title="Organ Systems" icon="🫀" subtitle="Eight body systems scored independently. Each score blends your lifestyle inputs with matching biomarkers, then the AI surfaces what's pulling each system up + down + the highest-ROI lever.">

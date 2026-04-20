@@ -2,6 +2,7 @@
 
 import { useState, useMemo } from 'react';
 import { useStatistics, useProtocolHistory } from '@/lib/hooks/useApiData';
+import { pickBiggestMovers, type Mover } from '@/lib/engine/biggest-movers';
 import clsx from 'clsx';
 import {
   LineChart, Line, ResponsiveContainer, XAxis, YAxis, CartesianGrid, Tooltip, ReferenceLine,
@@ -337,6 +338,22 @@ export default function StatisticsPage() {
     return groups;
   }, [metricsWithData]);
 
+  // Auto-surface the 3 biggest-mover metrics (recent half vs prior half) so
+  // the user sees the real narrative at a glance instead of scrolling every
+  // chart. Pure engine function — see lib/engine/biggest-movers.ts.
+  const biggestMovers: Mover[] = useMemo(() => {
+    const inputs = metricsWithData.map(m => ({
+      key: m.def.key,
+      label: m.def.label,
+      unit: m.def.unit,
+      direction: m.def.direction,
+      target: m.def.target,
+      decimals: m.def.decimals,
+      series: m.series,
+    }));
+    return pickBiggestMovers(inputs, 3);
+  }, [metricsWithData]);
+
   // Overall stats
   const totalImproved = metricsWithData.filter(m => {
     const imp = computeImprovement(m.series, m.def);
@@ -467,6 +484,61 @@ export default function StatisticsPage() {
         </div>
       )}
 
+      {/* Biggest movers — auto-surface the 3 metrics with the largest signed
+          change (recent half of the series vs prior half). Headline-style;
+          clicking a card scrolls to the full chart for that metric. */}
+      {biggestMovers.length > 0 && (
+        <section className="space-y-3 animate-fade-in-up">
+          <div className="flex items-baseline justify-between gap-3 px-1">
+            <p className="text-xs uppercase tracking-widest text-accent font-mono">Biggest movers</p>
+            <p className="text-[10px] text-muted">vs the earlier half of your data</p>
+          </div>
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+            {biggestMovers.map(m => {
+              const improved = m.improved;
+              const pct = Math.abs(m.improvementPct);
+              const tone = improved === true ? 'accent' : improved === false ? 'danger' : 'neutral';
+              const bgCls = tone === 'accent'
+                ? 'from-accent/10 border-accent/25'
+                : tone === 'danger'
+                  ? 'from-red-500/10 border-red-500/25'
+                  : 'from-surface-3/60 border-card-border';
+              const numCls = tone === 'accent' ? 'text-accent' : tone === 'danger' ? 'text-danger' : 'text-foreground';
+              const arrow = improved === true ? '↑' : improved === false ? '↓' : '·';
+              const fmt = (n: number) => Math.abs(n) >= 10 ? n.toFixed(0) : n.toFixed(1);
+              const unit = m.unit ? ` ${m.unit}` : '';
+              const scrollTo = () => {
+                const el = document.getElementById(`metric-${m.key}`);
+                if (el) {
+                  const y = el.getBoundingClientRect().top + window.scrollY - 80;
+                  window.scrollTo({ top: y, behavior: 'smooth' });
+                }
+              };
+              return (
+                <button
+                  key={m.key}
+                  onClick={scrollTo}
+                  className={clsx('text-left rounded-2xl bg-gradient-to-br bg-card border p-4 hover:border-accent/40 transition-colors group', bgCls)}
+                >
+                  <div className="flex items-baseline justify-between gap-2">
+                    <p className="text-[11px] text-muted-foreground truncate">{m.label}</p>
+                    <span className={clsx('text-lg font-bold font-mono', numCls)}>
+                      {arrow} {pct.toFixed(1)}%
+                    </span>
+                  </div>
+                  <p className="text-xs text-muted mt-2 font-mono tabular-nums">
+                    {fmt(m.priorAvg)}{unit} → <span className="text-foreground">{fmt(m.recentAvg)}{unit}</span>
+                  </p>
+                  <p className="text-[10px] text-muted mt-1 group-hover:text-accent transition-colors">
+                    See chart →
+                  </p>
+                </button>
+              );
+            })}
+          </div>
+        </section>
+      )}
+
       {/* Category filter */}
       {visibleCategories.length > 1 && (
         <div className="flex gap-2 overflow-x-auto scrollbar-none -mx-1 px-1 pb-1 animate-fade-in">
@@ -509,7 +581,9 @@ export default function StatisticsPage() {
             <Section key={category.key} icon={category.icon} title={category.label} subtitle={category.desc}>
               <div className="grid grid-cols-1 lg:grid-cols-2 gap-3">
                 {list.map(m => (
-                  <MetricChart key={m.def.key} def={m.def} series={m.series} protocolMarkers={protocolMarkers} />
+                  <div key={m.def.key} id={`metric-${m.def.key}`} className="scroll-mt-24">
+                    <MetricChart def={m.def} series={m.series} protocolMarkers={protocolMarkers} />
+                  </div>
                 ))}
               </div>
             </Section>

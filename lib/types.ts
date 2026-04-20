@@ -176,6 +176,10 @@ export interface ProtocolOutput {
       trajectoryIfNothingChanges?: string;
       trajectoryWithProtocol?: string;
     };
+    // Signal-density badge driver — how many days of daily_metrics fed the
+    // bio-age / pace / longevity refinement at generation time. Written by
+    // generate-protocol + cron. Rendered as a confidence chip on the dashboard.
+    wearableSignalDays?: number;
   };
   biomarkerReadout: {
     code: string;

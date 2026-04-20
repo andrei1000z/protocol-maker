@@ -407,6 +407,9 @@ async function regenerateForUser(userId: string): Promise<{ skipped?: boolean; s
     agingVelocity: finalPace < 0.95 ? 'decelerated' : finalPace > 1.05 ? 'accelerated' : 'steady',
     chronologicalAge: chronoAge,
     longevityScore: finalScore,
+    // Signal density used to refine bio-age + pace. Dashboard renders a
+    // confidence chip based on this so users understand WHY the number moved.
+    wearableSignalDays: recentSignals.days,
     topWins: Array.isArray(existingDiag.topWins) && existingDiag.topWins.length >= 2
       ? [...(existingDiag.topWins as string[]).slice(0, 2), ...topWins.slice(0, 2)]
       : topWins,
