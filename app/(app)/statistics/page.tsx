@@ -186,7 +186,7 @@ function MetricChart({ def, series }: { def: MetricDef; series: { date: string; 
   } else {
     caption = series.length === 1
       ? <>One reading logged so far. Log more to see a trend.</>
-      : <>Log a reading via the Smart Log on /tracking to start building your trend.</>;
+      : <>Tap a row in /tracking to log this metric and start building a trend.</>;
   }
 
   const lineColor = improvement?.improved === true
@@ -372,15 +372,15 @@ export default function StatisticsPage() {
 
       {/* Empty state */}
       {metricsWithData.length === 0 && (
-        <Section icon={Activity} title="No metrics logged yet" subtitle="Open /tracking and tap Smart Log to start">
+        <Section icon={Activity} title="No metrics logged yet" subtitle="Open /tracking and start logging to see trends here.">
           <div className="text-center py-8 space-y-4">
             <div className="w-16 h-16 rounded-2xl bg-surface-2 border border-card-border mx-auto flex items-center justify-center">
               <Sparkles className="w-7 h-7 text-muted" />
             </div>
             <div>
-              <p className="text-sm font-medium">Statistics appear after your first log</p>
+              <p className="text-sm font-medium">Charts appear after your first reading</p>
               <p className="text-xs text-muted-foreground mt-1.5 max-w-sm mx-auto leading-relaxed">
-                Use the Smart Log button on the tracking page — it shows you the right fields for the current time of day (sleep stages in the morning, activity at midday, evening BP, etc.).
+                Each measurement gets its own line chart here — weight trend, HRV recovery, sleep score, BP — so you see exactly what's improving and what's drifting.
               </p>
             </div>
             <a href="/tracking" className="inline-block px-5 py-2.5 rounded-xl bg-accent text-black text-sm font-semibold hover:bg-accent-bright transition-colors">

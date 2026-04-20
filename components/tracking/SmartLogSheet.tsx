@@ -35,7 +35,7 @@ export function getEligibleBuckets(hour: number): TimeBucket[] {
   return BUCKET_ORDER.slice(0, idx + 1);
 }
 
-interface FieldSpec {
+export interface FieldSpec {
   key: keyof DailyMetrics;
   label: string;
   hint?: string;
@@ -46,12 +46,12 @@ interface FieldSpec {
   type?: 'number' | 'integer';
 }
 
-type GroupDef = { title: string; fields: FieldSpec[] };
+export type GroupDef = { title: string; fields: FieldSpec[] };
 
 // Fields shown for each time bucket. Morning is the biggest since wearables
 // finalize their overnight analysis then. The FASTED group is intentionally
 // first — these measurements are lowest-noise when done BEFORE food/water.
-const BUCKET_GROUPS: Record<TimeBucket, GroupDef[]> = {
+export const BUCKET_GROUPS: Record<TimeBucket, GroupDef[]> = {
   morning: [
     { title: '⚖️ FASTED — do NOW, before food or water', fields: [
       { key: 'weight_kg', label: 'Weight', unit: 'kg', min: 20, max: 400, step: 0.1, hint: 'Post-bathroom, no clothes' },

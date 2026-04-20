@@ -15,6 +15,7 @@ import {
 } from '@/lib/utils/streak';
 import { HabitsTab } from '@/components/tracking/HabitsTab';
 import { SmartLogSheet, countBucketPending, countAllPendingUpToNow, getEligibleBuckets as getEligibleBucketsFor, type TimeBucket } from '@/components/tracking/SmartLogSheet';
+import { MetricTimeline } from '@/components/tracking/MetricTimeline';
 import { useDailyMetrics, useDailyMetricsRange, DailyMetrics } from '@/lib/hooks/useDailyMetrics';
 import { buildInsights, currentWorkoutStreak, loggedDaysInLastN, Insight } from '@/lib/engine/tracking-insights';
 import { SectionCard as Section, StatTile as Stat, ProgressRing } from '@/components/ui/SectionCard';
@@ -621,192 +622,18 @@ export default function TrackingPage() {
         </div>
       )}
 
-      {/* ═══════════ HERO: SMART LOG + TODAY'S PROGRESS ═══════════ */}
-      <div className="grid grid-cols-1 md:grid-cols-5 gap-3">
-        {/* Smart log CTA — current time bucket OR full-day retro fill */}
-        <button
-          onClick={() => { setSmartLogMode('current'); setSmartLogOpen(true); }}
-          className="md:col-span-3 hero-card rounded-2xl p-5 sm:p-6 flex items-center gap-4 hover:border-accent/40 transition-all group animate-fade-in-up text-left relative overflow-hidden"
-        >
-          <div className="w-12 h-12 rounded-xl bg-accent/15 border border-accent/25 flex items-center justify-center shrink-0 group-hover:bg-accent/25 group-hover:scale-105 transition-all">
-            <Sparkles className="w-5 h-5 text-accent" />
-          </div>
-          <div className="text-left flex-1 min-w-0">
-            <div className="flex items-center gap-2 flex-wrap">
-              <p className="text-sm sm:text-base font-semibold tracking-tight">
-                {isRetroactive ? `Log ${dateLabelForSheet}` : bucketInfo.label}
-              </p>
-              <span className="text-[10px] font-mono text-muted tabular-nums">
-                {isRetroactive ? 'all windows' : clockLabel}
-              </span>
-              {!isRetroactive && pendingNow > 0 && (
-                <span className="inline-flex items-center gap-1 text-[9px] font-mono uppercase tracking-widest px-1.5 py-0.5 rounded-full bg-accent/15 text-accent border border-accent/25">
-                  {pendingNow} pending
-                </span>
-              )}
-              {isRetroactive && pendingTotal > 0 && (
-                <span className="inline-flex items-center gap-1 text-[9px] font-mono uppercase tracking-widest px-1.5 py-0.5 rounded-full bg-amber-500/15 text-warning border border-amber-500/30">
-                  {pendingTotal} blank
-                </span>
-              )}
-            </div>
-            <p className="text-[11px] sm:text-xs text-muted-foreground mt-1 leading-relaxed">
-              {isRetroactive
-                ? `Fill anything you remember from that day — morning, midday, evening, night. Skip what you don't.`
-                : bucketInfo.sub}
-            </p>
-          </div>
-          <div className="text-accent text-lg shrink-0 group-hover:translate-x-1 transition-transform">→</div>
-        </button>
-
-        {/* Today's completion ring */}
-        <div className="md:col-span-2 metric-tile flex items-center gap-4 animate-fade-in-up">
-          <div className="relative shrink-0">
-            <ProgressRing value={pct} size={72} stroke={6} />
-            <div className="absolute inset-0 flex flex-col items-center justify-center">
-              <span className="text-sm font-bold font-mono text-accent">{pct}%</span>
-            </div>
-          </div>
-          <div className="flex-1 min-w-0">
-            <p className="text-[10px] text-muted uppercase tracking-widest">Today's plan</p>
-            <p className="text-xl font-bold font-mono tabular-nums mt-1">{completed}<span className="text-muted text-base">/{total}</span></p>
-            <p className="text-[10px] text-muted-foreground mt-1">30-day avg {monthlyAvg}%</p>
-          </div>
-        </div>
-      </div>
-
-      {/* Catch-up CTA — only shown if the user has unlogged measurements from
-          EARLIER time windows today. Opens the sheet in recap mode so they
-          can sweep through all overdue metrics in one session. Hidden when
-          everything is logged or the current bucket is the only pending one. */}
-      {pendingOverdue > 0 && !isRetroactive && (
-        <button
-          onClick={() => { setSmartLogMode('recap'); setSmartLogOpen(true); }}
-          className="w-full rounded-2xl bg-amber-500/[0.06] border border-amber-500/25 p-4 flex items-center gap-3 hover:bg-amber-500/[0.10] hover:border-amber-500/40 transition-all group animate-fade-in-up text-left"
-        >
-          <div className="w-10 h-10 rounded-xl bg-amber-500/15 border border-amber-500/30 flex items-center justify-center shrink-0">
-            <AlertCircle className="w-4 h-4 text-warning" />
-          </div>
-          <div className="flex-1 min-w-0">
-            <p className="text-sm font-semibold">
-              Catch up — <span className="text-warning">{pendingOverdue}</span> measurement{pendingOverdue === 1 ? '' : 's'} missed earlier today
-            </p>
-            <p className="text-[11px] text-muted-foreground mt-0.5">
-              Log recap reads the clock ({clockLabel}) and walks you through everything from wake through now. Skip anything you don't have.
-            </p>
-          </div>
-          <div className="shrink-0 text-xs font-semibold px-3 py-1.5 rounded-lg bg-accent text-black group-hover:bg-accent-bright transition-colors">
-            Log recap →
-          </div>
-        </button>
-      )}
-
-      {/* ═══════════ 4-WINDOW PROGRESS STRIP ═══════════
-          Today: current-bucket gets a ring; later buckets are locked.
-          Retro: all windows unlocked (day is over) — just shows what's pending. */}
-      {(() => {
-        const WINDOWS: { key: TimeBucket; label: string; emoji: string; range: string }[] = [
-          { key: 'morning', label: 'Morning', emoji: '🌅', range: '05–11' },
-          { key: 'midday',  label: 'Midday',  emoji: '☀️', range: '11–17' },
-          { key: 'evening', label: 'Evening', emoji: '🌆', range: '17–23' },
-          { key: 'night',   label: 'Night',   emoji: '🌙', range: '23–05' },
-        ];
-        const eligible = isRetroactive
-          ? new Set<TimeBucket>(WINDOWS.map(w => w.key))   // past day — everything is reachable
-          : new Set(getEligibleBucketsFor(nowHour));
-        return (
-          <div className="glass-card rounded-2xl p-4 animate-fade-in-up">
-            <div className="flex items-center justify-between gap-3 mb-3">
-              <p className="text-[10px] uppercase tracking-widest text-muted">
-                {isRetroactive ? `${dateLabelForSheet} — all windows` : "Today's logging windows"}
-              </p>
-              <p className="text-[10px] font-mono text-muted">
-                {isRetroactive ? 'past day' : `${clockLabel} · ${WINDOWS.find(w => w.key === currentBucketKey)?.label.toLowerCase()}`}
-              </p>
-            </div>
-            <div className="grid grid-cols-4 gap-2">
-              {WINDOWS.map(w => {
-                const pending = countBucketPending(w.key, metricsForDate, deviceSources);
-                const isCurrent = !isRetroactive && w.key === currentBucketKey;
-                const isLocked = !eligible.has(w.key);
-                const isComplete = !isLocked && pending === 0;
-                return (
-                  <button
-                    key={w.key}
-                    onClick={() => {
-                      // Tapping a window opens Smart Log in recap mode so the user
-                      // sees every bucket (not just the one they tapped). For retro
-                      // dates, the forFullDay prop on SmartLogSheet takes over and
-                      // shows all 4 buckets regardless of mode.
-                      if (isLocked) return;
-                      setSmartLogMode('recap');
-                      setSmartLogOpen(true);
-                    }}
-                    disabled={isLocked}
-                    className={clsx('rounded-xl border p-2.5 text-center transition-all',
-                      isLocked   ? 'bg-surface-2 border-card-border opacity-50 cursor-not-allowed' :
-                      isComplete ? 'bg-accent/[0.06] border-accent/25 hover:border-accent/40' :
-                      isCurrent  ? 'bg-accent/[0.04] border-accent/35 ring-1 ring-accent/20 hover:border-accent/50' :
-                                   'bg-amber-500/[0.04] border-amber-500/20 hover:border-amber-500/40')}
-                  >
-                    <div className="text-base leading-none">{w.emoji}</div>
-                    <p className={clsx('text-[10px] font-semibold mt-1 tracking-tight',
-                      isLocked ? 'text-muted' : isComplete ? 'text-accent' : isCurrent ? 'text-accent' : 'text-warning')}>
-                      {w.label}
-                    </p>
-                    <p className="text-[9px] text-muted font-mono mt-0.5">{w.range}</p>
-                    <p className={clsx('text-[10px] font-mono mt-1',
-                      isLocked ? 'text-muted' : isComplete ? 'text-accent' : 'text-foreground/80')}>
-                      {isLocked ? 'later' : isComplete ? '✓ done' : `${pending} to log`}
-                    </p>
-                  </button>
-                );
-              })}
-            </div>
-          </div>
-        );
-      })()}
-
-      {/* ═══════════ QUICK PULSE — 4 STAT TILES ═══════════ */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-3 animate-fade-in-up">
-        <Stat
-          label="Streak"
-          value={<span className="flex items-center gap-1.5"><Flame className={clsx('w-5 h-5', streak > 0 ? 'text-orange-400' : 'text-muted')} />{streak}</span>}
-          subtext={<span className="text-muted-foreground">{longestStreak > streak ? `longest ${longestStreak}d` : 'keep going'}</span>}
-          tone={streak > 0 ? 'accent' : 'default'}
-        />
-        <Stat
-          label="Perfect days"
-          value={perfectDays}
-          subtext={<span className="text-muted-foreground">100% days</span>}
-          tone="accent"
-        />
-        <Stat
-          label="Workout streak"
-          value={workoutStreak}
-          subtext={<span className="text-muted-foreground">days in a row</span>}
-          tone={workoutStreak >= 3 ? 'accent' : 'default'}
-        />
-        <Stat
-          label="Logged days"
-          value={`${daysLogged7}/7`}
-          subtext={<span className="text-muted-foreground">this week</span>}
-          tone={daysLogged7 >= 5 ? 'accent' : daysLogged7 >= 3 ? 'default' : 'warning'}
-        />
-      </div>
-
-      {/* ═══════════ YOUR DEVICES — everything you can measure ═══════════ */}
-      <Section icon={Watch} title="Your devices" subtitle="Each device shows the metrics it can track. Tap a row to log them.">
-        <DevicesBlock summary={deviceSummary} metrics={todayMetrics as DailyMetrics} onOpenLog={() => setSmartLogOpen(true)} />
-      </Section>
-
-      {/* ═══════════ QUICK LOG BAR ═══════════ */}
-      <Section icon={TrendingUp} title="Quick log" subtitle="One-tap entry for your most-logged metrics">
-        <QuickLogBar metrics={todayMetrics as DailyMetrics} onChange={saveMetrics} />
-        <p className="text-[11px] text-muted-foreground text-center">
-          Tap a number to log or clear. Saves automatically. Want everything else (sleep stages, BP, HRV, O₂)? Use <span className="text-accent">Smart Log</span> above.
-        </p>
-      </Section>
+      {/* ═══════════ METRIC TIMELINE — primary logging surface ═══════════
+          Replaces the old Smart Log modal / 4-window strip / Your Devices /
+          Quick Log / Catch-up CTA stack. Each measurement is a single row
+          that's editable when its window is open + grayed when it's still
+          in the future. See components/tracking/MetricTimeline.tsx. */}
+      <MetricTimeline
+        metrics={metricsForDate}
+        onSave={saveMetrics}
+        deviceSources={deviceSources}
+        wakeTime={wakeTime}
+        forFullDay={isRetroactive}
+      />
 
       {/* ═══════════ INSIGHTS ═══════════ */}
       {insights.length > 0 && (
