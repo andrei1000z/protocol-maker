@@ -5,6 +5,7 @@ import { ProtocolOutput, Classification } from '@/lib/types';
 import { getClassificationColor, getClassificationBg } from '@/lib/engine/classifier';
 import { computeBiomarkerTrends, computeRetestDue, type BiomarkerTrend } from '@/lib/engine/biomarker-trends';
 import { extractPhenoAgeInputs, assessPhenoAgeConfidence } from '@/lib/engine/phenoage';
+import { AskAIPill } from '@/components/dashboard/AskAIPill';
 import { TrendingUp, TrendingDown, Minus } from 'lucide-react';
 import { AnimatedNumber } from '@/components/ui/AnimatedNumber';
 import { DashboardTOC } from '@/components/layout/DashboardTOC';
@@ -2254,6 +2255,12 @@ export default function DashboardPage() {
         <button onClick={async () => { await fetch('/api/reset-onboarding', { method: 'POST' }); window.location.href = '/onboarding'; }} className="text-xs text-accent hover:underline">Regenerate protocol</button>
       </div>
       </div>
+
+      {/* Floating "Ask AI" pill — deep-links to /chat?q=... with a pre-seeded
+          question so a user who's reading their dashboard can ask follow-ups
+          without leaving the page manually. Demo mode hides it since chat is
+          authed only. */}
+      {!demoMode && <AskAIPill />}
     </div>
   );
 }

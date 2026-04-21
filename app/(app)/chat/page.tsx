@@ -323,6 +323,31 @@ export default function ChatPage() {
     scrollRef.current?.scrollTo({ top: scrollRef.current.scrollHeight, behavior: 'smooth' });
   }, [messages]);
 
+  // Deep-link entry: `/chat?q=...` auto-submits the question on first paint.
+  // Used by the dashboard's floating "Ask AI" pill so a user can jump from
+  // a dashboard section straight into a seeded conversation. Only fires
+  // once on mount — subsequent renders shouldn't re-submit.
+  const autoSubmittedRef = useRef(false);
+  useEffect(() => {
+    if (autoSubmittedRef.current) return;
+    if (typeof window === 'undefined') return;
+    const q = new URLSearchParams(window.location.search).get('q');
+    if (!q || !q.trim()) return;
+    autoSubmittedRef.current = true;
+    // Clean the URL so a refresh doesn't re-auto-submit.
+    const url = new URL(window.location.href);
+    url.searchParams.delete('q');
+    window.history.replaceState({}, '', url.toString());
+    // Give the SWR context a beat to hydrate (the server prompt uses it),
+    // then fire. Matches the delay humans wouldn't notice.
+    const t = setTimeout(() => send(q), 150);
+    return () => clearTimeout(t);
+    // `send` is stable via useCallback on [messages, streaming]; re-running
+    // this effect on its change would double-fire, so we intentionally lock
+    // with the ref above.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
   const send = useCallback(async (text: string) => {
     const body = text.trim();
     if (!body || streaming) return;

@@ -100,6 +100,33 @@ export default function LandingPage() {
           <p className="text-xs text-muted mt-6 animate-fade-in-up stagger-4">
             Takes 3 minutes · No credit card · {BIOMARKER_COUNT} biomarkers · {PATTERN_COUNT} patterns analyzed
           </p>
+
+          {/* Trust microcopy strip — surfaces the three things that turn a
+              visitor into a signup: safety, data control, and ongoing care.
+              Each line anchors one objection we heard during user testing. */}
+          <div className="mt-10 grid grid-cols-1 sm:grid-cols-3 gap-3 max-w-3xl mx-auto animate-fade-in-up stagger-5">
+            <div className="rounded-xl bg-card/60 border border-card-border px-4 py-3 flex items-start gap-3 text-left">
+              <Shield className="w-4 h-4 text-accent shrink-0 mt-0.5" />
+              <div>
+                <p className="text-[11px] font-semibold text-foreground">Your data, RLS-locked</p>
+                <p className="text-[10px] text-muted-foreground leading-snug mt-0.5">Force row-level security on every table. Your blood panel never leaves your account.</p>
+              </div>
+            </div>
+            <div className="rounded-xl bg-card/60 border border-card-border px-4 py-3 flex items-start gap-3 text-left">
+              <Activity className="w-4 h-4 text-accent shrink-0 mt-0.5" />
+              <div>
+                <p className="text-[11px] font-semibold text-foreground">Daily protocol refresh</p>
+                <p className="text-[10px] text-muted-foreground leading-snug mt-0.5">Nightly cron re-runs the engine against your latest wearable data. No clicking required.</p>
+              </div>
+            </div>
+            <div className="rounded-xl bg-card/60 border border-card-border px-4 py-3 flex items-start gap-3 text-left">
+              <Sparkles className="w-4 h-4 text-accent shrink-0 mt-0.5" />
+              <div>
+                <p className="text-[11px] font-semibold text-foreground">Claude + fallback engine</p>
+                <p className="text-[10px] text-muted-foreground leading-snug mt-0.5">Claude Sonnet 4.5 primary, Groq backup, deterministic fallback. You always get a protocol.</p>
+              </div>
+            </div>
+          </div>
         </div>
       </section>
 

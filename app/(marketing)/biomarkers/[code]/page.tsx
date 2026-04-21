@@ -8,6 +8,7 @@ import Link from 'next/link';
 import { notFound } from 'next/navigation';
 import { BIOMARKER_DB, CATEGORY_LABELS, getBiomarkerRef } from '@/lib/engine/biomarkers';
 import { getPatternsForBiomarker } from '@/lib/engine/patterns';
+import { BryanGapBar } from '@/components/dashboard/BryanGapBar';
 import { SITE_URL } from '@/lib/config';
 import { ArrowRight, Target, AlertTriangle, Leaf, Pill, Activity, Utensils, Stethoscope, Sparkles } from 'lucide-react';
 
@@ -101,6 +102,38 @@ export default async function BiomarkerPage({ params }: { params: Promise<{ code
             {b.description}
           </p>
         </div>
+
+        {/* Visual anchor: where the population average sits vs optimal + Bryan.
+            Users immediately see what it means to be "in range" before they
+            get to the numbers. Uses the population midpoint as a stand-in for
+            "you if you're typical" — the protocol itself renders the same
+            bar with the user's real value for authed sessions. */}
+        {hasBryan && b.bryanJohnsonValue !== undefined && (
+          <section className="glass-card rounded-2xl p-5 space-y-3">
+            <div className="flex items-baseline justify-between gap-2">
+              <p className="text-[10px] font-mono uppercase tracking-widest text-muted">Where people fall vs Bryan</p>
+              <p className="text-[10px] text-muted">
+                <span className="inline-block w-2 h-2 rounded-full bg-accent align-middle" /> optimal band
+                <span className="mx-2">·</span>
+                <span className="inline-block w-2 h-2 rotate-45 bg-amber-400 align-middle" /> Bryan
+                <span className="mx-2">·</span>
+                <span className="inline-block w-[3px] h-3 bg-muted-foreground align-middle" /> population avg
+              </p>
+            </div>
+            <BryanGapBar
+              userValue={(b.populationAvgLow + b.populationAvgHigh) / 2}
+              bryanValue={b.bryanJohnsonValue}
+              optimalLow={b.longevityOptimalLow}
+              optimalHigh={b.longevityOptimalHigh}
+              unit={b.unit}
+              height={14}
+            />
+            <p className="text-[11px] text-muted-foreground leading-relaxed">
+              Population average: <span className="text-foreground font-medium">{((b.populationAvgLow + b.populationAvgHigh) / 2).toFixed(1)} {b.unit}</span>.
+              Bryan targets <span className="text-accent font-medium">{b.bryanJohnsonValue} {b.unit}</span> — {b.bryanJohnsonValue >= b.longevityOptimalLow && b.bryanJohnsonValue <= b.longevityOptimalHigh ? 'squarely inside the longevity-optimal band' : 'at the tight edge of longevity-optimal'}.
+            </p>
+          </section>
+        )}
 
         {/* Range table */}
         <section className="grid sm:grid-cols-3 gap-3">

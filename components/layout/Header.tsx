@@ -119,7 +119,22 @@ export function Header() {
           );
         })}
       </nav>
-      <UserMenu />
+      <div className="flex items-center gap-2">
+        {/* Cmd+K hint — desktop only. Pressing dispatches a fake hotkey event
+            so users without keyboards can still trigger the palette. */}
+        <button
+          onClick={() => {
+            window.dispatchEvent(new KeyboardEvent('keydown', { key: 'k', metaKey: true }));
+            window.dispatchEvent(new KeyboardEvent('keydown', { key: 'k', ctrlKey: true }));
+          }}
+          aria-label="Open command palette"
+          className="hidden md:inline-flex items-center gap-1.5 px-2 py-1 rounded-lg border border-card-border bg-surface-2 text-[10px] font-mono text-muted-foreground hover:text-foreground hover:border-accent/30 transition-colors"
+          title="Command palette"
+        >
+          <kbd>⌘K</kbd>
+        </button>
+        <UserMenu />
+      </div>
     </header>
   );
 }
