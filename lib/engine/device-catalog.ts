@@ -88,14 +88,17 @@ export const SMARTWATCH_BRANDS: DeviceBrand[] = [
   {
     name: 'Samsung Galaxy Watch',
     models: [
+      // Samsung launched "Energy Score" with One UI Watch 6 (mid-2024). It
+      // lives on Galaxy Watch 6+ and Galaxy Ring — mapped into our
+      // `body_battery` capability → daily_metrics.energy_score column.
       { name: 'Galaxy Watch 8 Ultra',      capabilities: [...FLAGSHIP, 'afib_detection', 'blood_pressure', 'body_battery'] },
-      { name: 'Galaxy Watch 8',            capabilities: [...FLAGSHIP, 'afib_detection', 'blood_pressure'] },
-      { name: 'Galaxy Watch 8 Classic',    capabilities: [...FLAGSHIP, 'afib_detection', 'blood_pressure'] },
-      { name: 'Galaxy Watch 7 Ultra',      capabilities: [...FLAGSHIP, 'afib_detection', 'blood_pressure'] },
-      { name: 'Galaxy Watch 7',            capabilities: [...FLAGSHIP, 'afib_detection', 'blood_pressure'] },
-      { name: 'Galaxy Watch 7 FE',         capabilities: FLAGSHIP },
-      { name: 'Galaxy Watch 6',            capabilities: [...FLAGSHIP, 'blood_pressure'] },
-      { name: 'Galaxy Watch 6 Classic',    capabilities: [...FLAGSHIP, 'blood_pressure'] },
+      { name: 'Galaxy Watch 8',            capabilities: [...FLAGSHIP, 'afib_detection', 'blood_pressure', 'body_battery'] },
+      { name: 'Galaxy Watch 8 Classic',    capabilities: [...FLAGSHIP, 'afib_detection', 'blood_pressure', 'body_battery'] },
+      { name: 'Galaxy Watch 7 Ultra',      capabilities: [...FLAGSHIP, 'afib_detection', 'blood_pressure', 'body_battery'] },
+      { name: 'Galaxy Watch 7',            capabilities: [...FLAGSHIP, 'afib_detection', 'blood_pressure', 'body_battery'] },
+      { name: 'Galaxy Watch 7 FE',         capabilities: [...FLAGSHIP, 'body_battery'] },
+      { name: 'Galaxy Watch 6',            capabilities: [...FLAGSHIP, 'blood_pressure', 'body_battery'] },
+      { name: 'Galaxy Watch 6 Classic',    capabilities: [...FLAGSHIP, 'blood_pressure', 'body_battery'] },
       { name: 'Galaxy Watch 5',            capabilities: [...MID, 'ecg', 'skin_temp', 'blood_pressure'] },
       { name: 'Galaxy Watch 5 Pro',        capabilities: [...MID, 'ecg', 'skin_temp', 'blood_pressure'] },
       { name: 'Galaxy Watch 4',            capabilities: [...MID, 'ecg', 'blood_pressure'] },
@@ -155,16 +158,19 @@ export const SMARTWATCH_BRANDS: DeviceBrand[] = [
     ],
   },
   {
+    // Fitbit's "Daily Readiness Score" was a Premium-only feature until
+    // 2024; now ships on Sense 2+/3, Charge 5+/6, Versa 4 via Fitbit app.
+    // Mapped to body_battery → energy_score column.
     name: 'Fitbit',
     models: [
-      { name: 'Sense 3',                   capabilities: [...MID, 'ecg', 'skin_temp'] },
-      { name: 'Sense 2',                   capabilities: [...MID, 'ecg', 'skin_temp'] },
+      { name: 'Sense 3',                   capabilities: [...MID, 'ecg', 'skin_temp', 'body_battery'] },
+      { name: 'Sense 2',                   capabilities: [...MID, 'ecg', 'skin_temp', 'body_battery'] },
       { name: 'Sense',                     capabilities: [...MID, 'ecg', 'skin_temp'] },
-      { name: 'Versa 4',                   capabilities: MID },
+      { name: 'Versa 4',                   capabilities: [...MID, 'body_battery'] },
       { name: 'Versa 3',                   capabilities: MID },
       { name: 'Versa 2',                   capabilities: BASIC },
-      { name: 'Charge 6',                  capabilities: [...MID, 'ecg'] },
-      { name: 'Charge 5',                  capabilities: [...MID, 'ecg', 'skin_temp'] },
+      { name: 'Charge 6',                  capabilities: [...MID, 'ecg', 'body_battery'] },
+      { name: 'Charge 5',                  capabilities: [...MID, 'ecg', 'skin_temp', 'body_battery'] },
       { name: 'Charge 4',                  capabilities: [...BASIC, 'blood_oxygen'] },
       { name: 'Inspire 3',                 capabilities: BASIC },
       { name: 'Inspire 2',                 capabilities: BASIC },
@@ -302,18 +308,24 @@ export const SMARTWATCH_BRANDS: DeviceBrand[] = [
 // ─────────────────────────────────────────────────────────────────────────────
 export const SMART_RING_BRANDS: DeviceBrand[] = [
   {
+    // Oura exposes a "Readiness Score" per day — we map it into the same
+    // energy_score column (via body_battery capability) so the tracking page
+    // offers it + the cron sync writes into it.
     name: 'Oura',
     models: [
-      { name: 'Oura Ring 4',               capabilities: [...RING_PLUS, 'blood_pressure'] },
-      { name: 'Oura Ring Gen 3 Horizon',   capabilities: RING_PLUS },
-      { name: 'Oura Ring Gen 3 Heritage',  capabilities: RING_PLUS },
-      { name: 'Oura Ring Gen 2',           capabilities: RING_CORE },
+      { name: 'Oura Ring 4',               capabilities: [...RING_PLUS, 'blood_pressure', 'body_battery'] },
+      { name: 'Oura Ring Gen 3 Horizon',   capabilities: [...RING_PLUS, 'body_battery'] },
+      { name: 'Oura Ring Gen 3 Heritage',  capabilities: [...RING_PLUS, 'body_battery'] },
+      { name: 'Oura Ring Gen 2',           capabilities: [...RING_CORE, 'body_battery'] },
     ],
   },
   {
+    // Samsung Galaxy Ring launched with Energy Score as a headline feature
+    // (same One UI Watch 6 family). Matches every Galaxy Watch 6+ with
+    // body_battery capability so Energy Score shows up in tracking for both.
     name: 'Samsung Galaxy Ring',
     models: [
-      { name: 'Galaxy Ring',               capabilities: RING_PLUS },
+      { name: 'Galaxy Ring',               capabilities: [...RING_PLUS, 'body_battery'] },
     ],
   },
   {

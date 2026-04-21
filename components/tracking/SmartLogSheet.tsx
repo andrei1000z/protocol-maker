@@ -95,7 +95,8 @@ export const BUCKET_GROUPS: Record<TimeBucket, GroupDef[]> = {
         rangeLabels: ['Lowest Δ', 'Highest Δ'] },
     ]},
     { title: '🔋 How you feel', fields: [
-      { key: 'energy_score', label: 'Energy score (watch)', unit: '/100', min: 0, max: 100, type: 'integer' },
+      { key: 'energy_score', label: 'Energy score (watch)', unit: '/100', min: 0, max: 100, type: 'integer',
+        hint: 'Samsung Galaxy Watch 6+ / Ring: Energy Score. Oura: Readiness. Fitbit: Daily Readiness. Garmin: Body Battery.' },
       { key: 'energy', label: 'Energy (subjective)', unit: '/10', min: 1, max: 10, type: 'integer' },
       { key: 'mood', label: 'Mood', unit: '/10', min: 1, max: 10, type: 'integer' },
     ]},
@@ -116,6 +117,11 @@ export const BUCKET_GROUPS: Record<TimeBucket, GroupDef[]> = {
       { key: 'stress_level', label: 'Stress right now', unit: '/10', min: 1, max: 10, type: 'integer' },
       { key: 'energy', label: 'Energy right now', unit: '/10', min: 1, max: 10, type: 'integer' },
       { key: 'mood', label: 'Mood right now', unit: '/10', min: 1, max: 10, type: 'integer' },
+      // Samsung Energy Score / Oura Readiness / Fitbit Daily Readiness /
+      // Garmin Body Battery — all write here. Midday check-in catches the
+      // watch reading after the morning's data has settled.
+      { key: 'energy_score', label: 'Energy score (watch)', unit: '/100', min: 0, max: 100, type: 'integer',
+        hint: 'Samsung Energy Score / Oura Readiness / Fitbit Daily Readiness / Garmin Body Battery' },
     ]},
   ],
   evening: [
