@@ -5,6 +5,7 @@ import { exchangeCodeForTokens, isConfigured } from '@/lib/integrations/whoop';
 import { clearStateCookie, readStateCookie, redirectErr, redirectOk, upsertConnection } from '@/lib/integrations/base';
 import { logger, describeError } from '@/lib/logger';
 import { SITE_URL } from '@/lib/config';
+import { trackServer } from '@/lib/analytics';
 
 export const runtime = 'nodejs';
 
@@ -32,6 +33,7 @@ export async function GET(request: Request) {
     const tokens = await exchangeCodeForTokens(code);
     await upsertConnection(createAdminClient(), user.id, 'whoop', tokens);
     logger.info('whoop.connected', { userId: user.id, hasRefresh: !!tokens.refreshToken });
+    trackServer('wearable_connected', { provider: 'whoop' });
     return clearStateCookie(redirectOk('whoop'), 'whoop');
   } catch (err) {
     logger.error('whoop.callback_failed', { userId: user.id, errorMessage: describeError(err) });

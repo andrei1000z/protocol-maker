@@ -9,6 +9,7 @@ import { NextResponse } from 'next/server';
 import { z } from 'zod';
 import { createClient } from '@/lib/supabase/server';
 import { logger } from '@/lib/logger';
+import { getChatActionRateLimit, checkRateLimit } from '@/lib/rate-limit';
 
 export const runtime = 'nodejs';
 
@@ -131,6 +132,14 @@ export async function POST(request: Request) {
     const supabase = await createClient();
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) return NextResponse.json({ error: 'Not authenticated' }, { status: 401 });
+
+    // Rate limit: 60/hour — blocks chip-apply loops (each chat message can
+    // yield multiple actions; chat itself caps at 30/h, so 60 is 2× worst-case).
+    const { allowed, reset } = await checkRateLimit(getChatActionRateLimit(), user.id, user.email);
+    if (!allowed) {
+      const resetIn = reset ? Math.max(1, Math.ceil((reset - Date.now()) / 60000)) : 60;
+      return NextResponse.json({ error: `Too many actions applied. Try again in ${resetIn}m.`, rateLimited: true }, { status: 429 });
+    }
 
     const body = await request.json();
     const parsed = ActionSchema.safeParse(body);

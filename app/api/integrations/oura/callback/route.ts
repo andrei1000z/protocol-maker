@@ -10,6 +10,7 @@ import { createAdminClient } from '@/lib/supabase/admin';
 import { exchangeCodeForTokens, isConfigured } from '@/lib/integrations/oura';
 import { logger, describeError } from '@/lib/logger';
 import { SITE_URL } from '@/lib/config';
+import { trackServer } from '@/lib/analytics';
 
 export const runtime = 'nodejs';
 
@@ -65,6 +66,7 @@ export async function GET(request: Request) {
     if (upsertErr) throw new Error(`oauth_connections upsert: ${upsertErr.message}`);
 
     logger.info('oura.connected', { userId: user.id, hasRefresh: !!tokens.refresh_token });
+    trackServer('wearable_connected', { provider: 'oura' });
 
     const res = redirectBackWithSuccess();
     // Clear the state cookie — single-use.

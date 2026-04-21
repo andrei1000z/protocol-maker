@@ -7,6 +7,7 @@ import {
   Share2, Download, RotateCcw, LogOut, Copy, Check, FileText, User, Heart,
   Edit2, Save, Trash2, AlertTriangle, Target, Sparkles, X, Clock, Link2, Unlink,
 } from 'lucide-react';
+import { OAuthPermissionsModal } from '@/components/settings/OAuthPermissionsModal';
 
 interface ShareLinkRow {
   slug: string;
@@ -214,6 +215,9 @@ function WearableRow({ providerKey, name, tagline, emoji, accentBg, envVar, regi
   } | null>(null);
   const [syncing, setSyncing] = useState(false);
   const [banner, setBanner] = useState<{ tone: 'ok' | 'err'; msg: string } | null>(null);
+  // Gate the actual OAuth redirect behind an explainer modal so users see
+  // what we'll read BEFORE they land on the provider's consent screen.
+  const [permsOpen, setPermsOpen] = useState(false);
 
   const load = async () => {
     try {
@@ -236,7 +240,7 @@ function WearableRow({ providerKey, name, tagline, emoji, accentBg, envVar, regi
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [providerKey]);
 
-  const connect = () => { window.location.href = `/api/integrations/${providerKey}/connect`; };
+  const connect = () => setPermsOpen(true);
   const syncNow = async () => {
     setSyncing(true); setBanner(null);
     try {
@@ -346,6 +350,14 @@ function WearableRow({ providerKey, name, tagline, emoji, accentBg, envVar, regi
           {banner.msg}
         </p>
       )}
+
+      <OAuthPermissionsModal
+        open={permsOpen}
+        provider={providerKey}
+        providerName={name}
+        connectUrl={`/api/integrations/${providerKey}/connect`}
+        onClose={() => setPermsOpen(false)}
+      />
     </div>
   );
 }

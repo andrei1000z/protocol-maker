@@ -5,6 +5,7 @@ import { exchangeCodeForTokens, isConfigured } from '@/lib/integrations/fitbit';
 import { clearStateCookie, readStateCookie, redirectErr, redirectOk, upsertConnection } from '@/lib/integrations/base';
 import { logger, describeError } from '@/lib/logger';
 import { SITE_URL } from '@/lib/config';
+import { trackServer } from '@/lib/analytics';
 
 export const runtime = 'nodejs';
 
@@ -32,6 +33,7 @@ export async function GET(request: Request) {
     const tokens = await exchangeCodeForTokens(code);
     await upsertConnection(createAdminClient(), user.id, 'fitbit', tokens);
     logger.info('fitbit.connected', { userId: user.id, hasRefresh: !!tokens.refreshToken });
+    trackServer('wearable_connected', { provider: 'fitbit' });
     return clearStateCookie(redirectOk('fitbit'), 'fitbit');
   } catch (err) {
     logger.error('fitbit.callback_failed', { userId: user.id, errorMessage: describeError(err) });

@@ -2,6 +2,7 @@ import Link from 'next/link';
 import { BIOMARKER_DB } from '@/lib/engine/biomarkers';
 import { PATTERN_COUNT } from '@/lib/engine/patterns';
 import { DAILY_HABITS } from '@/lib/engine/daily-habits';
+import { MobileNavToggle } from '@/components/landing/MobileNavToggle';
 
 // Single source of truth — derived at build time from the engine
 const BIOMARKER_COUNT = BIOMARKER_DB.length;
@@ -50,13 +51,14 @@ export default function LandingPage() {
           <span className="text-xl font-bold">
             <span className="text-accent">Protocol</span>
           </span>
-          <div className="flex items-center gap-5 text-sm">
+          <div className="flex items-center gap-3 sm:gap-5 text-sm">
             <a href="#how" className="text-muted-foreground hover:text-foreground hidden sm:block">How it works</a>
             <a href="#demo" className="text-muted-foreground hover:text-foreground hidden sm:block">Demo</a>
             <Link href="/changelog" className="text-muted-foreground hover:text-foreground hidden sm:block">Changelog</Link>
-            <Link href="/login" className="px-4 py-1.5 rounded-lg bg-accent text-black font-semibold hover:bg-accent-dim transition-colors">
+            <Link href="/login" className="px-3 sm:px-4 py-1.5 rounded-lg bg-accent text-black font-semibold text-xs sm:text-sm hover:bg-accent-dim transition-colors">
               Sign in
             </Link>
+            <MobileNavToggle />
           </div>
         </div>
       </nav>
@@ -416,7 +418,9 @@ export default function LandingPage() {
           <div>
             <p className="font-semibold text-xs text-muted uppercase tracking-wider mb-3">Resources</p>
             <div className="space-y-2 text-xs">
-              <a href="https://github.com/andrei1000z/protocol-maker" className="block text-muted-foreground hover:text-accent">GitHub</a>
+              <Link href="/biomarkers" className="block text-muted-foreground hover:text-accent">Biomarker guides</Link>
+              <Link href="/patterns" className="block text-muted-foreground hover:text-accent">Clinical patterns</Link>
+              <Link href="/changelog" className="block text-muted-foreground hover:text-accent">Changelog</Link>
               <a href="https://www.blueprint.bryanjohnson.com" target="_blank" rel="noopener noreferrer" className="block text-muted-foreground hover:text-accent">Bryan&apos;s Blueprint</a>
             </div>
           </div>

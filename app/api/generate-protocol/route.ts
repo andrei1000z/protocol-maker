@@ -14,8 +14,14 @@ import { buildFallbackProtocol } from '@/lib/engine/fallback-protocol';
 import { BiomarkerValue, UserProfile } from '@/lib/types';
 import { getProtocolRateLimit, checkRateLimit } from '@/lib/rate-limit';
 import { logger, describeError } from '@/lib/logger';
+import { logAiTokens, usageFromAnthropic, usageFromGroq, type AiTokenUsage } from '@/lib/ai-costs';
+import { trackServer } from '@/lib/analytics';
+import { inspectProtocolShape } from '@/lib/engine/schemas';
 
-export const maxDuration = 60;
+// 90s budget: Claude ~40-55s on long-tail, Groq fallback 20-30s on top.
+// 60s was tight — a Claude that barely fails at 55s left <5s for Groq.
+// Vercel Pro allows up to 300s, so 90 is still well within tier limits.
+export const maxDuration = 90;
 
 // Loose Zod schema — accept what AI returns, normalize what we care about
 const ProtocolShape = z.object({
@@ -116,7 +122,9 @@ export async function POST(request: Request) {
 
     // Local classification (instant, never fails)
     const classified = classifyAll(biomarkerValues);
-    const patterns = detectPatterns(classified);
+    // Pass medications so pattern detector can mute steroid-driven pseudo-
+    // inflammation + treatment-controlled glucose (metformin etc.).
+    const patterns = detectPatterns(classified, profile.medications as Array<{ name?: string | null } | string> | null);
     const baselineLongevityScore = calculateLongevityScore(classified, profile);
     const baselineBiologicalAge = estimateBiologicalAge(profile, classified);
     const baselineAgingPace = estimateAgingPace(profile, classified);
@@ -154,6 +162,36 @@ export async function POST(request: Request) {
       if (typeof ad === 'number') adherenceScore30d = ad;
     } catch { /* RPC may not exist yet — gracefully null */ }
 
+    // Top consistently-skipped items + active-days count. Feeds the master
+    // prompt's adherence block so the AI tunes the next protocol to the
+    // user's real behavior instead of repeating a stack they won't follow.
+    let adherenceTopMissed: string[] = [];
+    let adherenceActiveDays = 0;
+    try {
+      const cutoff = new Date(); cutoff.setDate(cutoff.getDate() - 30);
+      const cutoffStr = cutoff.toISOString().slice(0, 10);
+      const { data: rows } = await supabase.from('compliance_logs')
+        .select('item_type, item_name, completed, date')
+        .eq('user_id', user.id)
+        .gte('date', cutoffStr);
+      if (Array.isArray(rows)) {
+        const activeDates = new Set<string>();
+        const missCounts = new Map<string, number>();
+        for (const r of rows) {
+          if (r.completed) activeDates.add(r.date);
+          else {
+            const k = `${r.item_type}:${r.item_name}`;
+            missCounts.set(k, (missCounts.get(k) || 0) + 1);
+          }
+        }
+        adherenceActiveDays = activeDates.size;
+        adherenceTopMissed = [...missCounts.entries()]
+          .sort((a, b) => b[1] - a[1])
+          .slice(0, 5)
+          .map(([k, n]) => `${k.split(':').slice(1).join(':')} (skipped ${n}×)`);
+      }
+    } catch { /* compliance table may be pre-migration — leave empty */ }
+
     // Previous protocol ID for diff comparison on history page
     let previousProtocolId: string | null = null;
     try {
@@ -172,17 +210,24 @@ export async function POST(request: Request) {
     let firstProviderTried: 'claude' | 'groq' = 'groq';
     let firstProviderOutcome: 'ok' | 'failed' | 'skipped_no_key' = 'skipped_no_key';
     let firstProviderErrorCode: string | null = null;
+    let tokenUsage: AiTokenUsage | null = null;
     const aiStartMs = Date.now();
 
     const recentSignalsSummary = describeRecentSignals(recentSignals);
-    const prompt = buildMasterPromptV2(profile, classified, patterns, BIOMARKER_DB, longevityScore, biologicalAge, recentSignalsSummary);
+    const prompt = buildMasterPromptV2(
+      profile, classified, patterns, BIOMARKER_DB,
+      longevityScore, biologicalAge, recentSignalsSummary,
+      { rate30d: adherenceScore30d, topMissedItems: adherenceTopMissed, activeDays: adherenceActiveDays },
+    );
 
     // Try Claude Opus first (best medical reasoning), fallback to Groq, then deterministic
     try {
       if (process.env.ANTHROPIC_API_KEY) {
         firstProviderTried = 'claude';
         try {
-          protocolJson = await generateWithClaude(prompt);
+          const r = await generateWithClaude(prompt);
+          protocolJson = r.json;
+          tokenUsage = r.usage;
           modelUsed = 'claude-sonnet-4-5';
           firstProviderOutcome = 'ok';
         } catch (claudeErr) {
@@ -194,11 +239,15 @@ export async function POST(request: Request) {
             errorMessage: describeError(claudeErr),
             reason: firstProviderErrorCode,
           });
-          protocolJson = await generateWithGroq(prompt);
+          const r = await generateWithGroq(prompt);
+          protocolJson = r.json;
+          tokenUsage = r.usage;
           modelUsed = 'llama-3.3-70b-versatile';
         }
       } else {
-        protocolJson = await generateWithGroq(prompt);
+        const r = await generateWithGroq(prompt);
+        protocolJson = r.json;
+        tokenUsage = r.usage;
         modelUsed = 'llama-3.3-70b-versatile';
       }
 
@@ -238,6 +287,23 @@ export async function POST(request: Request) {
       patternCount: patterns.length,
       recentMetricDays: recentSignals.days,
     });
+
+    // Structured cost-per-call log — separate event so the token-cost
+    // aggregator can roll these up without parsing the summary line.
+    // Emitted even for fallback (tokens = 0) to keep the event shape uniform.
+    if (tokenUsage) {
+      logAiTokens({
+        op: 'protocol.generate',
+        model: modelUsed,
+        userId: user.id,
+        latencyMs: Date.now() - aiStartMs,
+        inputTokens: tokenUsage.inputTokens,
+        outputTokens: tokenUsage.outputTokens,
+        cacheReadTokens: tokenUsage.cacheReadTokens,
+        cacheCreationTokens: tokenUsage.cacheCreationTokens,
+        extra: { firstProviderTried, firstProviderOutcome },
+      });
+    }
 
     // Defense: if AI returned a VALID but SPARSE protocol (missing nutrition,
     // supplements, dailySchedule, exercise, sleep, tracking, or doctorDiscussion)
@@ -414,6 +480,20 @@ export async function POST(request: Request) {
       } catch { /* diff is best-effort — never block the save path */ }
     }
 
+    // Advisory schema check on the FINAL (enriched) protocol. Doesn't block
+    // the save — a schema drift should show up in logs so we can tighten the
+    // prompt or grow the schema, not blow up the user's regen.
+    const shape = inspectProtocolShape(protocolJson);
+    if (!shape.ok) {
+      logger.warn('protocol.zod_shape_drift', {
+        userId: user.id,
+        op: 'generate',
+        model: modelUsed,
+        issueCount: shape.drift.issueCount,
+        issues: shape.drift.issues,
+      });
+    }
+
     // Save to DB (non-fatal)
     const { error: dbError } = await supabase.from('protocols').insert({
       user_id: user.id,
@@ -432,6 +512,11 @@ export async function POST(request: Request) {
       logger.error('protocol.db_insert_failed', { userId: user.id, errorMessage: dbError.message });
       return NextResponse.json({ error: `Database error: ${dbError.message}` }, { status: 500 });
     }
+
+    // Conversion funnel: one of the few genuine success moments. Source tells
+    // us which provider actually delivered the protocol (claude vs groq vs
+    // fallback) — useful when measuring AI uptime's business impact.
+    trackServer('protocol_generated', { source: modelUsed, biomarkerCount: classified.length });
 
     return NextResponse.json({
       protocol: protocolJson,
@@ -464,7 +549,7 @@ function classifyProviderError(err: unknown): string {
   return 'unknown';
 }
 
-async function generateWithClaude(prompt: string): Promise<Record<string, unknown>> {
+async function generateWithClaude(prompt: string): Promise<{ json: Record<string, unknown>; usage: AiTokenUsage }> {
   const apiKey = process.env.ANTHROPIC_API_KEY;
   if (!apiKey) throw new Error('ANTHROPIC_API_KEY missing');
 
@@ -489,19 +574,21 @@ async function generateWithClaude(prompt: string): Promise<Record<string, unknow
   const text = response.content[0]?.type === 'text' ? response.content[0].text : '';
   if (!text) throw new Error('Empty response from Claude');
 
+  const usage = usageFromAnthropic(response.usage);
+
   // Claude sometimes wraps in markdown despite instructions
   const cleaned = text.replace(/^```(?:json)?\s*/i, '').replace(/\s*```$/i, '').trim();
   try {
-    return JSON.parse(cleaned);
+    return { json: JSON.parse(cleaned), usage };
   } catch {
     // Try to extract JSON object if prefixed with explanation
     const match = cleaned.match(/\{[\s\S]*\}/);
-    if (match) return JSON.parse(match[0]);
+    if (match) return { json: JSON.parse(match[0]), usage };
     throw new Error('Claude returned non-JSON response');
   }
 }
 
-async function generateWithGroq(prompt: string): Promise<Record<string, unknown>> {
+async function generateWithGroq(prompt: string): Promise<{ json: Record<string, unknown>; usage: AiTokenUsage }> {
   const apiKey = process.env.GROQ_API_KEY;
   if (!apiKey) throw new Error('GROQ_API_KEY missing');
 
@@ -521,12 +608,14 @@ async function generateWithGroq(prompt: string): Promise<Record<string, unknown>
   const text = completion.choices[0]?.message?.content || '';
   if (!text) throw new Error('Empty response from Groq');
 
+  const usage = usageFromGroq(completion.usage);
+
   try {
-    return JSON.parse(text);
+    return { json: JSON.parse(text), usage };
   } catch {
     const jsonMatch = text.match(/\{[\s\S]*\}/);
     if (!jsonMatch) throw new Error('No JSON found in Groq response');
-    return JSON.parse(jsonMatch[0]);
+    return { json: JSON.parse(jsonMatch[0]), usage };
   }
 }
 

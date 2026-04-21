@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
+import { trackServer } from '@/lib/analytics';
 
 // Supabase auth callback — handles both email-confirm and OAuth code exchange.
 // Also attributes a referral if the `protocol_ref` cookie is present and the
@@ -10,8 +11,19 @@ export async function GET(request: Request) {
   if (!code) return NextResponse.redirect(`${origin}/login?error=auth`);
 
   const supabase = await createClient();
-  const { error } = await supabase.auth.exchangeCodeForSession(code);
+  const { data: sessionData, error } = await supabase.auth.exchangeCodeForSession(code);
   if (error) return NextResponse.redirect(`${origin}/login?error=auth`);
+
+  // Emit signup vs signin analytics. Signup is defined as a user whose
+  // created_at is within 60s of now — new accounts hit the callback once for
+  // session exchange, and that same race window rules out spoofed events.
+  const authedUser = sessionData?.user;
+  if (authedUser?.created_at) {
+    const createdMs = Date.parse(authedUser.created_at);
+    const isNew = Number.isFinite(createdMs) && (Date.now() - createdMs) < 60_000;
+    const provider = authedUser.app_metadata?.provider ?? 'email';
+    trackServer(isNew ? 'signup' : 'signin', { provider });
+  }
 
   // Referral attribution: best-effort. Silent failures never block the signin.
   try {

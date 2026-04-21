@@ -651,6 +651,128 @@ export const BIOMARKER_DB: BiomarkerReference[] = [
     retestIntervalWeeks: 12,
   },
 
+  // ══════ METABOLIC + CBC DETAIL (for full PhenoAge coverage) ══════
+  // The next 5 markers unlock PhenoAge's 9/9 signal. Without them the
+  // biological-age estimator fills gaps with population averages, pulling
+  // results toward the mean. A CBC + CMP panel from any primary-care order
+  // covers all five.
+  {
+    code: 'ALBUMIN', name: 'Serum Albumin', shortName: 'Albumin',
+    category: 'LIVER', unit: 'g/dL',
+    longevityOptimalLow: 4.4, longevityOptimalHigh: 5.0,
+    populationAvgLow: 3.5, populationAvgHigh: 5.2,
+    bryanJohnsonValue: 4.7,
+    description: 'Primary blood protein, synthesized by liver. Reflects nutritional status, liver function, and inflammation. Declining albumin is one of the strongest blood predictors of all-cause mortality. PhenoAge input.',
+    interventionsIfLow: {
+      lifestyle: ['Increase protein intake to 1.6-2.0 g/kg bodyweight', 'Resistance training'],
+      supplements: [{ name: 'Whey / pea protein', dose: '25-40g post-workout', priority: 'STRONG' }],
+      foods_add: ['Eggs', 'Fish', 'Legumes', 'Lean meats'],
+      foods_avoid: [],
+      medical: ['Investigate liver function (synthesis)', 'Rule out kidney loss (proteinuria)', 'Check chronic inflammation'],
+    },
+    interventionsIfHigh: { lifestyle: ['Hydrate'], supplements: [], foods_add: [], foods_avoid: [], medical: ['Usually dehydration — re-test after rehydration'] },
+    retestIntervalWeeks: 12,
+  },
+  {
+    code: 'ALP', name: 'Alkaline Phosphatase', shortName: 'ALP',
+    category: 'LIVER', unit: 'U/L',
+    longevityOptimalLow: 40, longevityOptimalHigh: 70,
+    populationAvgLow: 30, populationAvgHigh: 120,
+    bryanJohnsonValue: 55,
+    description: 'Enzyme from liver, bone, and intestine. Elevated ALP signals bile duct obstruction, bone turnover, or vitamin D deficiency. PhenoAge input — elevated ALP tracks accelerated aging.',
+    interventionsIfLow: {
+      lifestyle: [],
+      supplements: [
+        { name: 'Zinc', dose: '15-30mg daily', priority: 'OPTIONAL' },
+        { name: 'Magnesium', dose: '400mg evening', priority: 'OPTIONAL' },
+      ],
+      foods_add: ['Leafy greens', 'Nuts'],
+      foods_avoid: [],
+      medical: ['Investigate zinc / magnesium deficiency if persistently <30'],
+    },
+    interventionsIfHigh: {
+      lifestyle: ['Weight-bearing exercise (if bone source)'],
+      supplements: [{ name: 'Vitamin D3', dose: '2000-4000 IU daily', priority: 'STRONG' }],
+      foods_add: ['Vitamin D-rich foods: fatty fish, eggs'],
+      foods_avoid: ['Alcohol'],
+      medical: ['Fractionate (bone vs liver) if persistently >120', 'Check GGT — if normal, likely bone source'],
+    },
+    retestIntervalWeeks: 12,
+  },
+  {
+    code: 'MCV', name: 'Mean Corpuscular Volume', shortName: 'MCV',
+    category: 'BLOOD_COUNT', unit: 'fL',
+    longevityOptimalLow: 85, longevityOptimalHigh: 92,
+    populationAvgLow: 80, populationAvgHigh: 100,
+    bryanJohnsonValue: 88,
+    description: 'Average red blood cell size. Elevated = macrocytic (often B12 / folate deficiency, alcohol, hypothyroidism). Low = microcytic (iron deficiency, thalassemia). PhenoAge input.',
+    interventionsIfLow: {
+      lifestyle: [],
+      supplements: [{ name: 'Iron bisglycinate', dose: '25mg daily', priority: 'STRONG' }],
+      foods_add: ['Red meat', 'Lentils', 'Spinach'],
+      foods_avoid: ['Coffee / tea at meals'],
+      medical: ['Full iron panel: ferritin, TIBC, transferrin saturation'],
+    },
+    interventionsIfHigh: {
+      lifestyle: ['Eliminate alcohol'],
+      supplements: [
+        { name: 'Vitamin B12 methylcobalamin', dose: '1000mcg daily', priority: 'STRONG' },
+        { name: 'Folate (methylfolate)', dose: '400mcg daily', priority: 'STRONG' },
+      ],
+      foods_add: ['Leafy greens', 'Eggs', 'Fish'],
+      foods_avoid: ['Alcohol'],
+      medical: ['Check B12 + folate levels', 'Rule out hypothyroidism (TSH)', 'Investigate MDS if persistent + unexplained'],
+    },
+    retestIntervalWeeks: 12,
+  },
+  {
+    code: 'RDW', name: 'Red Cell Distribution Width', shortName: 'RDW',
+    category: 'BLOOD_COUNT', unit: '%',
+    longevityOptimalLow: 11.5, longevityOptimalHigh: 13.0,
+    populationAvgLow: 11.5, populationAvgHigh: 14.5,
+    bryanJohnsonValue: 12.3,
+    description: 'Variation in red blood cell size. Elevated RDW is a robust independent predictor of all-cause mortality — possibly reflecting subclinical inflammation and nutritional stress. PhenoAge input.',
+    interventionsIfLow: { lifestyle: [], supplements: [], foods_add: [], foods_avoid: [], medical: ['Rare — no action needed'] },
+    interventionsIfHigh: {
+      lifestyle: ['Anti-inflammatory protocol', 'Consistent sleep'],
+      supplements: [
+        { name: 'Iron (if ferritin low)', dose: '25mg daily', priority: 'STRONG' },
+        { name: 'B12', dose: '1000mcg daily', priority: 'STRONG' },
+        { name: 'Folate', dose: '400mcg daily', priority: 'STRONG' },
+      ],
+      foods_add: ['Leafy greens', 'Iron-rich foods'],
+      foods_avoid: ['Alcohol'],
+      medical: ['Full anemia workup: iron, B12, folate, reticulocytes', 'Check for mixed deficiency'],
+    },
+    retestIntervalWeeks: 12,
+  },
+  {
+    code: 'LYMPH_PCT', name: 'Lymphocyte Percentage', shortName: 'Lymph %',
+    category: 'BLOOD_COUNT', unit: '%',
+    longevityOptimalLow: 28, longevityOptimalHigh: 40,
+    populationAvgLow: 20, populationAvgHigh: 45,
+    bryanJohnsonValue: 33,
+    description: 'Share of white blood cells that are lymphocytes. Low lymphocytes signal immune suppression (chronic stress, aging, steroids). PhenoAge input — higher = younger.',
+    interventionsIfLow: {
+      lifestyle: ['Stress management (cortisol suppresses lymphocytes)', 'Sleep optimization'],
+      supplements: [
+        { name: 'Vitamin D3', dose: '4000 IU daily', priority: 'STRONG' },
+        { name: 'Zinc', dose: '15mg daily', priority: 'STRONG' },
+      ],
+      foods_add: ['Citrus', 'Berries', 'Leafy greens'],
+      foods_avoid: ['Chronic alcohol'],
+      medical: ['Check vitamin D + zinc status', 'Rule out chronic viral infection if <15%'],
+    },
+    interventionsIfHigh: {
+      lifestyle: [],
+      supplements: [],
+      foods_add: [],
+      foods_avoid: [],
+      medical: ['Check for viral infection / EBV / CMV if >50%', 'Full differential if persistent'],
+    },
+    retestIntervalWeeks: 12,
+  },
+
   // ══════ CARDIAC ADVANCED ══════
   {
     code: 'LPA', name: 'Lipoprotein(a)', shortName: 'Lp(a)',
@@ -701,11 +823,14 @@ export const BIG_11_CODES = [
   'HSCRP', 'VITD', 'TESTO', 'ALT', 'TSH',
 ];
 
-// Extended panel — recommended for comprehensive protocol
+// Extended panel — recommended for comprehensive protocol. Includes the
+// 5 PhenoAge inputs (ALBUMIN, ALP, MCV, RDW, LYMPH_PCT) so a user who
+// orders the extended panel gets 9/9 confidence on biological age.
 export const EXTENDED_CODES = [
   ...BIG_11_CODES,
   'FERRITIN', 'B12', 'HOMOCYS', 'FOLAT', 'MAGNE',
   'WBC', 'HGB', 'OMEGA3', 'CREAT',
+  'ALBUMIN', 'ALP', 'MCV', 'RDW', 'LYMPH_PCT',
 ];
 
 // Full panel — everything we support

@@ -6,8 +6,9 @@ import type { Metadata } from 'next';
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
 import { PATTERN_REFERENCE, getPatternRef } from '@/lib/engine/patterns';
+import { BIOMARKER_DB } from '@/lib/engine/biomarkers';
 import { SITE_URL } from '@/lib/config';
-import { ArrowRight, Sparkles } from 'lucide-react';
+import { ArrowRight, Sparkles, Activity } from 'lucide-react';
 
 export async function generateStaticParams() {
   return PATTERN_REFERENCE.map(p => ({ slug: p.slug }));
@@ -92,6 +93,31 @@ export default async function PatternPage({ params }: { params: Promise<{ slug: 
             ))}
           </ul>
         </section>
+
+        {p.triggeringCodes.length > 0 && (
+          <section className="space-y-4">
+            <h2 className="text-xl font-semibold tracking-tight flex items-center gap-2">
+              <Activity className="w-5 h-5 text-accent" />
+              Biomarkers that trigger this pattern
+            </h2>
+            <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
+              {p.triggeringCodes.map(code => {
+                const ref = BIOMARKER_DB.find(b => b.code === code);
+                if (!ref) return null;
+                return (
+                  <Link
+                    key={code}
+                    href={`/biomarkers/${code.toLowerCase()}`}
+                    className="group rounded-xl p-3 bg-surface-2 border border-card-border hover:border-accent/40 transition-colors"
+                  >
+                    <p className="text-xs font-semibold text-foreground group-hover:text-accent transition-colors">{ref.shortName || ref.name}</p>
+                    <p className="text-[10px] text-muted mt-0.5 uppercase tracking-widest">{code}</p>
+                  </Link>
+                );
+              })}
+            </div>
+          </section>
+        )}
 
         <section className="rounded-3xl bg-gradient-to-br from-accent/10 via-accent/[0.03] to-transparent border border-accent/25 p-6 sm:p-8 text-center space-y-4">
           <h2 className="text-xl sm:text-2xl font-semibold tracking-tight">

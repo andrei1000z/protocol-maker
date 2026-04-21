@@ -5,7 +5,7 @@ import { useMyData, useComplianceToday, useComplianceHistory, invalidate } from 
 import clsx from 'clsx';
 import {
   Check, Pill, Dumbbell, Moon, Apple, Flame, Sparkles, ClipboardCheck, Trophy,
-  TrendingUp, AlertCircle, Lightbulb, Watch,
+  TrendingUp, AlertCircle, Lightbulb, Watch, Clock,
 } from 'lucide-react';
 import { ACHIEVEMENTS, checkAchievements } from '@/lib/engine/achievements';
 import {
@@ -96,15 +96,22 @@ function WeeklyBar({ data }: { data: { day: string; pct: number }[] }) {
   );
 }
 
-// 30-day heatmap
+// 30-day heatmap.
+//
+// Mobile: previous 10-col grid squeezed cells into ~28px on 320-375px
+// viewports, and the sm-breakpoint 15-col push collapsed them further to
+// ~2px unreachable squares. New layout: 6 cols on the smallest phones
+// (keeps cells tappable at ~48px), widens through 10 then 15 as space
+// grows. Min-height guard keeps cells ≥20px even at narrow widths.
 function Heatmap30({ data }: { data: { date: string; pct: number }[] }) {
   return (
-    <div className="grid grid-cols-10 sm:grid-cols-15 gap-1">
+    <div className="grid grid-cols-6 sm:grid-cols-10 md:grid-cols-15 gap-1.5 sm:gap-1">
       {data.map((d, i) => (
         <div
           key={i}
           title={`${d.date}: ${d.pct}%`}
-          className={clsx('aspect-square rounded-[3px] transition-colors',
+          aria-label={`${d.date}: ${d.pct}% complete`}
+          className={clsx('aspect-square rounded-[3px] transition-colors min-h-[20px]',
             d.pct === 0 && 'bg-surface-3',
             d.pct > 0 && d.pct < 30 && 'bg-accent/25',
             d.pct >= 30 && d.pct < 60 && 'bg-accent/50',
@@ -447,6 +454,27 @@ export default function TrackingPage() {
   const { metrics: todayMetrics, save: saveMetricsRaw } = useDailyMetrics(date);
   const { metrics: rangeMetrics } = useDailyMetricsRange(thirtyDaysAgoStr, date);
 
+  // Yesterday-gap nudge: if the user is on Today in the morning + yesterday
+  // left most core fields blank, surface a one-tap button to catch up. We
+  // check 5 "daily discipline" fields — sleep hours, RHR, mood, stress, and
+  // either HRV or sleep_score. Under 2 filled = meaningful gap; otherwise
+  // the user logged what they cared about and we leave them alone.
+  const yesterdayIso = useMemo(() => {
+    const d = new Date(); d.setDate(d.getDate() - 1);
+    return d.toISOString().slice(0, 10);
+  }, []);
+  const yesterdayGap = useMemo(() => {
+    if (date !== todayIso) return null;          // only nudge on the Today view
+    const hour = new Date(nowTick).getHours();
+    if (hour >= 14) return null;                 // afternoon → the day is already half gone, no nudge
+    const y = (rangeMetrics || []).find(m => m.date === yesterdayIso);
+    if (!y) return { missed: true };             // no row at all for yesterday
+    const filled = [y.sleep_hours, y.resting_hr, y.mood, y.stress_level, y.hrv ?? y.sleep_score]
+      .filter(v => v !== null && v !== undefined).length;
+    if (filled < 2) return { missed: true };
+    return null;
+  }, [date, todayIso, nowTick, rangeMetrics, yesterdayIso]);
+
   // Staleness counter — increments each time the user logs a metric so we can
   // surface a single "Refresh protocol" button at the threshold instead of
   // hammering /api/generate-protocol after every save. Keyed by protocol id so
@@ -713,6 +741,24 @@ export default function TrackingPage() {
             className="shrink-0 text-[11px] font-semibold px-3 py-1.5 rounded-lg bg-accent text-black hover:bg-accent-bright disabled:opacity-60 transition-colors"
           >
             {refreshing ? 'Refreshing…' : '↻ Refresh protocol'}
+          </button>
+        </div>
+      )}
+
+      {yesterdayGap && (
+        <div className="flex items-start gap-3 p-3.5 rounded-xl bg-amber-500/[0.05] border border-amber-500/25 animate-fade-in">
+          <Clock className="w-4 h-4 text-amber-400 shrink-0 mt-0.5" />
+          <div className="flex-1">
+            <p className="text-[11px] sm:text-xs leading-relaxed">
+              <span className="text-amber-400 font-medium">Yesterday has gaps.</span>
+              <span className="text-muted-foreground"> Log the morning readings you missed so last night&apos;s sleep counts toward your 30-day trend.</span>
+            </p>
+          </div>
+          <button
+            onClick={() => setDate(yesterdayIso)}
+            className="shrink-0 text-[11px] font-semibold px-3 py-1.5 rounded-lg bg-amber-500/15 text-amber-400 border border-amber-500/30 hover:bg-amber-500/20 transition-colors"
+          >
+            Log yesterday
           </button>
         </div>
       )}

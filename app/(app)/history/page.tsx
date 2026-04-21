@@ -8,8 +8,15 @@ import {
 } from 'lucide-react';
 import { BIOMARKER_DB } from '@/lib/engine/biomarkers';
 import clsx from 'clsx';
-import { LineChart, Line, ResponsiveContainer, XAxis, YAxis, CartesianGrid, Tooltip } from 'recharts';
+import dynamic from 'next/dynamic';
 import { SectionCard as Section, StatTile as Stat } from '@/components/ui/SectionCard';
+
+// Defer Recharts to this page's first chart render — keeps /dashboard +
+// /tracking from paying the ~60KB bundle cost.
+const MetricLineChart = dynamic(() => import('@/components/charts/MetricLineChart'), {
+  ssr: false,
+  loading: () => <div className="h-[220px] rounded-lg bg-surface-3/30 animate-pulse" />,
+});
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Types
@@ -231,54 +238,24 @@ export default function HistoryPage() {
       {protocols.length >= 2 && (
         <Section icon={Activity} title="Longevity score timeline" subtitle={`${protocols.length} protocol regenerations over ${Math.round((new Date(protocols[protocols.length - 1].created_at).getTime() - new Date(protocols[0].created_at).getTime()) / 864e5)} days`}>
           <div className="rounded-xl bg-surface-2 border border-card-border p-4 -mx-1">
-            <ResponsiveContainer width="100%" height={220}>
-              <LineChart data={protocolChartData}>
-                <CartesianGrid strokeDasharray="3 3" stroke="#1d2128" vertical={false} />
-                <XAxis dataKey="date" tick={{ fontSize: 10, fill: '#9ca3af' }} axisLine={false} tickLine={false} />
-                <YAxis tick={{ fontSize: 10, fill: '#9ca3af' }} axisLine={false} tickLine={false} domain={[0, 100]} />
-                <Tooltip
-                  contentStyle={{
-                    background: '#13161c',
-                    border: '1px solid #1d2128',
-                    borderRadius: 12,
-                    fontSize: 12,
-                  }}
-                  labelStyle={{ color: '#ecedef', fontSize: 11 }}
-                  itemStyle={{ color: '#34d399' }}
-                />
-                <Line
-                  type="monotone"
-                  dataKey="score"
-                  stroke="#34d399"
-                  strokeWidth={2.5}
-                  dot={{ fill: '#34d399', r: 4 }}
-                  activeDot={{ r: 6 }}
-                />
-              </LineChart>
-            </ResponsiveContainer>
+            <MetricLineChart
+              data={protocolChartData.map(p => ({ date: p.date, dateLabel: p.date, value: p.score }))}
+              height={220}
+              lineColor="#34d399"
+              domainY={[0, 100]}
+            />
           </div>
 
           {/* Bio age timeline — compact */}
           {protocolChartData.some(p => p.bioAge !== null) && (
             <div className="rounded-xl bg-surface-2 border border-card-border p-4 -mx-1">
               <p className="text-[10px] uppercase tracking-widest text-muted mb-2">Biological age</p>
-              <ResponsiveContainer width="100%" height={140}>
-                <LineChart data={protocolChartData}>
-                  <CartesianGrid strokeDasharray="3 3" stroke="#1d2128" vertical={false} />
-                  <XAxis dataKey="date" tick={{ fontSize: 10, fill: '#9ca3af' }} axisLine={false} tickLine={false} />
-                  <YAxis tick={{ fontSize: 10, fill: '#9ca3af' }} axisLine={false} tickLine={false} />
-                  <Tooltip
-                    contentStyle={{
-                      background: '#13161c',
-                      border: '1px solid #1d2128',
-                      borderRadius: 12,
-                      fontSize: 12,
-                    }}
-                    itemStyle={{ color: '#6ee7b7' }}
-                  />
-                  <Line type="monotone" dataKey="bioAge" stroke="#6ee7b7" strokeWidth={2} dot={{ fill: '#6ee7b7', r: 3 }} />
-                </LineChart>
-              </ResponsiveContainer>
+              <MetricLineChart
+                data={protocolChartData.map(p => ({ date: p.date, dateLabel: p.date, value: p.bioAge }))}
+                height={140}
+                lineColor="#6ee7b7"
+                decimals={1}
+              />
             </div>
           )}
         </Section>

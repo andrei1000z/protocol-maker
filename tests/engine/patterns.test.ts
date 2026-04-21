@@ -100,6 +100,49 @@ describe('pattern exclusion layer', () => {
   });
 });
 
+describe('medication-driven exclusions', () => {
+  test('prednisone suppresses Inflammatory Cluster (steroid-driven neutrophilia, not real inflammation)', () => {
+    const biomarkers = [
+      mk('HSCRP', 2.5),
+      mk('WBC', 9.0),
+      mk('HOMOCYS', 14),
+    ];
+    const withoutMeds = detectPatterns(biomarkers);
+    const withSteroid = detectPatterns(biomarkers, ['Prednisone 10mg daily']);
+    expect(withoutMeds.find(p => p.name === 'Inflammatory Cluster')).toBeTruthy();
+    expect(withSteroid.find(p => p.name === 'Inflammatory Cluster')).toBeFalsy();
+  });
+
+  test('metformin + controlled HbA1c (<6.0) suppresses Prediabetes', () => {
+    // HbA1c 5.8 + GLUC 105 would normally fire Prediabetes, but on metformin
+    // with HbA1c below 6.0 this is "controlled", not "pre".
+    const biomarkers = [mk('HBA1C', 5.8), mk('GLUC', 105)];
+    const noMeds = detectPatterns(biomarkers);
+    const onMetformin = detectPatterns(biomarkers, [{ name: 'Metformin 500mg' }]);
+    expect(noMeds.find(p => p.name === 'Prediabetes')).toBeTruthy();
+    expect(onMetformin.find(p => p.name === 'Prediabetes')).toBeFalsy();
+  });
+
+  test('metformin does NOT suppress Prediabetes when HbA1c is still elevated (≥6.0)', () => {
+    const res = detectPatterns([mk('HBA1C', 6.2), mk('GLUC', 115)], ['metformin']);
+    expect(res.find(p => p.name === 'Prediabetes')).toBeTruthy();
+  });
+
+  test('unrelated medications leave pattern detection untouched', () => {
+    const biomarkers = [mk('HSCRP', 2.5), mk('WBC', 9.0)];
+    const res = detectPatterns(biomarkers, ['lisinopril', 'vitamin d3 4000 IU']);
+    expect(res.find(p => p.name === 'Inflammatory Cluster')).toBeTruthy();
+  });
+
+  test('accepts structured {name, dose, frequency} shape used by profiles table', () => {
+    const res = detectPatterns(
+      [mk('HSCRP', 2.5), mk('WBC', 9.0), mk('HOMOCYS', 14)],
+      [{ name: 'Dexamethasone' } as { name: string }],
+    );
+    expect(res.find(p => p.name === 'Inflammatory Cluster')).toBeFalsy();
+  });
+});
+
 describe('PATTERN_REFERENCE (SEO/static view)', () => {
   test('count matches the live detector count', () => {
     expect(PATTERN_REFERENCE.length).toBe(PATTERN_COUNT);

@@ -4,6 +4,8 @@ import Groq from 'groq-sdk';
 import Anthropic from '@anthropic-ai/sdk';
 import { getChatRateLimit, checkRateLimit } from '@/lib/rate-limit';
 import { logger, describeError } from '@/lib/logger';
+import { logAiTokens, usageFromAnthropic, usageFromGroq } from '@/lib/ai-costs';
+import { trackServer } from '@/lib/analytics';
 
 export const maxDuration = 60;
 export const runtime = 'nodejs';
@@ -20,13 +22,24 @@ async function buildContext(supabase: Supabase, userId: string) {
   const today = new Date().toISOString().slice(0, 10);
   const twoWeeksAgo = new Date(Date.now() - 14 * 864e5).toISOString().slice(0, 10);
 
-  const [profileRes, protocolRes, bloodTestRes, metricsRes, complianceRes, historyRes] = await Promise.all([
+  const [profileRes, protocolRes, bloodTestRes, metricsRes, complianceRes, historyRes, recentChatRes] = await Promise.all([
     supabase.from('profiles').select('*').eq('id', userId).single(),
     supabase.from('protocols').select('*').eq('user_id', userId).is('deleted_at', null).order('created_at', { ascending: false }).limit(1).maybeSingle(),
     supabase.from('blood_tests').select('biomarkers, taken_at').eq('user_id', userId).is('deleted_at', null).order('taken_at', { ascending: false }).limit(1).maybeSingle(),
     supabase.from('daily_metrics').select('*').eq('user_id', userId).gte('date', twoWeeksAgo).lte('date', today).order('date', { ascending: true }),
     supabase.from('compliance_logs').select('item_type, item_name, completed, date').eq('user_id', userId).gte('date', new Date(Date.now() - 7 * 864e5).toISOString().slice(0, 10)).lte('date', today),
     supabase.from('protocols').select('created_at, longevity_score, biological_age_decimal, aging_pace').eq('user_id', userId).is('deleted_at', null).order('created_at', { ascending: true }),
+    // Last few chat turns from PREVIOUS sessions (older than 1h) — gives the
+    // AI a sense of what the user talked about last time without re-streaming
+    // every exchange of the current turn into the prompt. Client already
+    // sends the current session's messages[]; this is only about long-term
+    // memory across separate visits.
+    supabase.from('chat_messages')
+      .select('role, content, created_at')
+      .eq('user_id', userId)
+      .lt('created_at', new Date(Date.now() - 60 * 60 * 1000).toISOString())
+      .order('created_at', { ascending: false })
+      .limit(12),
   ]);
 
   const profile = profileRes.data;
@@ -35,6 +48,7 @@ async function buildContext(supabase: Supabase, userId: string) {
   const metrics = (metricsRes.data || []) as Record<string, unknown>[];
   const compliance = complianceRes.data || [];
   const protocolHistory = (historyRes.data || []) as Array<{ created_at: string; longevity_score: number | null; biological_age_decimal: number | null; aging_pace: number | null }>;
+  const priorChat = ((recentChatRes.data || []) as Array<{ role: string; content: string; created_at: string }>).reverse();
 
   // Profile snapshot
   const od = (profile?.onboarding_data || {}) as Record<string, unknown>;
@@ -214,6 +228,24 @@ ${topMissed.length > 0 ? '- Most missed: ' + topMissed.map(([k, n]) => `${k} (×
     sections.push(`## PROTOCOL PROGRESSION\n- ${progression}`);
   }
 
+  // Long-term chat memory — compact summary of the last few turns from prior
+  // sessions so the AI can continue threads instead of starting cold every
+  // visit. Messages are capped at 280 chars apiece to keep the prompt lean;
+  // current-session messages[] already arrive in full via the API body.
+  if (priorChat.length > 0) {
+    const lastDate = new Date(priorChat[priorChat.length - 1].created_at);
+    const daysAgo = Math.max(0, Math.round((Date.now() - lastDate.getTime()) / 864e5));
+    const lines = priorChat.map(m => {
+      const role = m.role === 'user' ? 'User' : 'You';
+      const clipped = m.content.length > 280 ? m.content.slice(0, 280) + '…' : m.content;
+      // Collapse whitespace so multi-line AI replies don't blow the token
+      // budget here — we want the gist, not the full reply.
+      const oneLine = clipped.replace(/\s+/g, ' ').trim();
+      return `- ${role}: ${oneLine}`;
+    });
+    sections.push(`## RECENT CONVERSATION (prior sessions, last talked ${daysAgo}d ago)\n${lines.join('\n')}`);
+  }
+
   return { context: sections.join('\n\n'), profile, protocol };
 }
 
@@ -321,11 +353,15 @@ async function streamResponse(
       let outcome: 'ok' | 'failed' | 'no_provider' = 'no_provider';
       let charsStreamed = 0;
       let assistantText = '';
+      // Track usage so we can log token cost at stream close. SDK shapes
+      // differ: Anthropic exposes `finalMessage()`; Groq streams return
+      // usage in the final chunk when stream_options.include_usage is on.
+      let streamUsage: Awaited<ReturnType<typeof usageFromAnthropic>> | null = null;
       try {
         if (process.env.ANTHROPIC_API_KEY) {
           model = 'claude-sonnet-4-5';
           const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
-          const stream = await anthropic.messages.stream({
+          const stream = anthropic.messages.stream({
             model: 'claude-sonnet-4-5',
             max_tokens: 1500,
             // Two-block system prompt: cached persona first (qualifies for prompt
@@ -344,6 +380,12 @@ async function streamResponse(
               charsStreamed += chunk.delta.text.length;
             }
           }
+          // Pull final usage from the assembled message — arrives after the
+          // stream resolves with accurate cache_read + cache_create counts.
+          try {
+            const finalMsg = await stream.finalMessage();
+            streamUsage = usageFromAnthropic(finalMsg.usage);
+          } catch { /* finalMessage can throw on abort; fall through with null usage */ }
           outcome = 'ok';
         } else if (process.env.GROQ_API_KEY) {
           model = 'llama-3.3-70b-versatile';
@@ -351,7 +393,10 @@ async function streamResponse(
           // Groq doesn't support prompt caching — concatenate persona + context
           // into a single system message.
           const fullSystem = `${cachedPersona}\n\n${userContext}`;
-          const completion = await groq.chat.completions.create({
+          // Groq accepts OpenAI's `stream_options.include_usage` but groq-sdk's
+          // TypeScript defs don't expose it. Cast the param bag so we keep the
+          // usage-in-terminal-chunk benefit without forking the SDK types.
+          const groqParams = {
             model: 'llama-3.3-70b-versatile',
             messages: [
               { role: 'system', content: fullSystem },
@@ -360,7 +405,14 @@ async function streamResponse(
             temperature: 0.65,
             max_tokens: 1500,
             stream: true,
-          });
+            stream_options: { include_usage: true },
+          } as unknown as Parameters<typeof groq.chat.completions.create>[0];
+          // Cast back to an async iterable — union type from the overload
+          // gets widened when we erased stream discriminator above.
+          const completion = (await groq.chat.completions.create(groqParams)) as AsyncIterable<{
+            choices: Array<{ delta?: { content?: string } }>;
+            usage?: { prompt_tokens?: number; completion_tokens?: number };
+          }>;
           for await (const chunk of completion) {
             const text = chunk.choices[0]?.delta?.content;
             if (text) {
@@ -368,6 +420,9 @@ async function streamResponse(
               assistantText += text;
               charsStreamed += text.length;
             }
+            // Terminal chunk on Groq carries usage; capture whenever present.
+            const chunkUsage = (chunk as { usage?: { prompt_tokens?: number; completion_tokens?: number } }).usage;
+            if (chunkUsage) streamUsage = usageFromGroq(chunkUsage);
           }
           outcome = 'ok';
         } else {
@@ -395,6 +450,21 @@ async function streamResponse(
             charsStreamed,
             messageCount: messages.length,
           });
+          // Separate event for cost roll-up. Emitted only when we actually
+          // captured usage — absence is silent (still covered by stream_done).
+          if (streamUsage) {
+            logAiTokens({
+              op: 'chat.stream',
+              model,
+              userId,
+              latencyMs: Date.now() - startMs,
+              inputTokens: streamUsage.inputTokens,
+              outputTokens: streamUsage.outputTokens,
+              cacheReadTokens: streamUsage.cacheReadTokens,
+              cacheCreationTokens: streamUsage.cacheCreationTokens,
+              extra: { charsStreamed, messageCount: messages.length },
+            });
+          }
         }
         controller.close();
       }
@@ -451,6 +521,9 @@ export async function POST(request: Request) {
     if (lastUserMsg?.content) {
       persistChatMessage(supabase, user.id, 'user', lastUserMsg.content, null)
         .catch(err => logger.warn('chat.persist_failed', { userId: user.id, role: 'user', errorMessage: describeError(err) }));
+      // Analytics — engagement signal. Fires on every user turn, not every
+      // assistant reply (that would double-count).
+      trackServer('chat_message_sent', { messageCount: body.messages.length });
     }
 
     // Streaming response (default)
@@ -468,6 +541,8 @@ export async function POST(request: Request) {
     // Non-streaming fallback path (for older clients)
     let reply = '';
     let model: string | null = null;
+    const nonStreamStartMs = Date.now();
+    let nonStreamUsage: ReturnType<typeof usageFromAnthropic> | null = null;
     if (process.env.ANTHROPIC_API_KEY) {
       model = 'claude-sonnet-4-5';
       const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
@@ -481,6 +556,7 @@ export async function POST(request: Request) {
         messages: body.messages.map(m => ({ role: m.role, content: m.content })),
       });
       reply = response.content[0]?.type === 'text' ? response.content[0].text : '';
+      nonStreamUsage = usageFromAnthropic(response.usage);
     } else if (process.env.GROQ_API_KEY) {
       model = 'llama-3.3-70b-versatile';
       const groq = new Groq({ apiKey: process.env.GROQ_API_KEY });
@@ -491,8 +567,21 @@ export async function POST(request: Request) {
         max_tokens: 1500,
       });
       reply = completion.choices[0]?.message?.content || '';
+      nonStreamUsage = usageFromGroq(completion.usage);
     } else {
       return NextResponse.json({ error: 'No AI provider configured' }, { status: 500 });
+    }
+    if (nonStreamUsage && model) {
+      logAiTokens({
+        op: 'chat.nonstream',
+        model,
+        userId: user.id,
+        latencyMs: Date.now() - nonStreamStartMs,
+        inputTokens: nonStreamUsage.inputTokens,
+        outputTokens: nonStreamUsage.outputTokens,
+        cacheReadTokens: nonStreamUsage.cacheReadTokens,
+        cacheCreationTokens: nonStreamUsage.cacheCreationTokens,
+      });
     }
     if (reply.trim().length > 0) {
       persistChatMessage(supabase, user.id, 'assistant', reply, model)

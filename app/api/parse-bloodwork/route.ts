@@ -3,12 +3,24 @@ import { createClient } from '@/lib/supabase/server';
 import Groq from 'groq-sdk';
 import { buildGroqParsingPrompt } from '@/lib/engine/master-prompt';
 import { logger, describeError } from '@/lib/logger';
+import { getParseBloodworkRateLimit, checkRateLimit } from '@/lib/rate-limit';
+import { logAiTokens, usageFromGroq } from '@/lib/ai-costs';
 
 export async function POST(request: Request) {
   try {
     const supabase = await createClient();
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) return NextResponse.json({ error: 'Not authenticated' }, { status: 401 });
+
+    // Rate limit: 20/hour. Groq parse is the most expensive unmetered surface
+    // (~$0.01/call). Without this, an attacker can burn ~$10 per 1000 retries.
+    // 20/h is far above legit use (quarterly retest = 1-2 PDFs), so false
+    // positives are effectively zero.
+    const { allowed, reset } = await checkRateLimit(getParseBloodworkRateLimit(), user.id, user.email);
+    if (!allowed) {
+      const resetIn = reset ? Math.max(1, Math.ceil((reset - Date.now()) / 60000)) : 60;
+      return NextResponse.json({ error: `Too many uploads. Try again in ${resetIn}m.`, rateLimited: true }, { status: 429 });
+    }
 
     const formData = await request.formData();
     const file = formData.get('file') as File;
@@ -48,6 +60,7 @@ export async function POST(request: Request) {
     const groq = new Groq({ apiKey: process.env.GROQ_API_KEY });
     const prompt = buildGroqParsingPrompt(pdfText);
 
+    const aiStartMs = Date.now();
     const completion = await groq.chat.completions.create({
       model: 'llama-3.3-70b-versatile',
       messages: [
@@ -59,6 +72,16 @@ export async function POST(request: Request) {
     });
 
     const text = completion.choices[0]?.message?.content || '';
+    const usage = usageFromGroq(completion.usage);
+    logAiTokens({
+      op: 'parse_bloodwork',
+      model: 'llama-3.3-70b-versatile',
+      userId: user.id,
+      latencyMs: Date.now() - aiStartMs,
+      inputTokens: usage.inputTokens,
+      outputTokens: usage.outputTokens,
+      extra: { pdfChars: pdfText.length },
+    });
     const jsonMatch = text.match(/\[[\s\S]*\]/);
 
     if (!jsonMatch) {

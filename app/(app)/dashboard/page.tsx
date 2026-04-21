@@ -1,14 +1,18 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { ProtocolOutput, Classification } from '@/lib/types';
 import { getClassificationColor, getClassificationBg } from '@/lib/engine/classifier';
+import { computeBiomarkerTrends, computeRetestDue, type BiomarkerTrend } from '@/lib/engine/biomarker-trends';
+import { extractPhenoAgeInputs, assessPhenoAgeConfidence } from '@/lib/engine/phenoage';
+import { TrendingUp, TrendingDown, Minus } from 'lucide-react';
 import { AnimatedNumber } from '@/components/ui/AnimatedNumber';
 import { DashboardTOC } from '@/components/layout/DashboardTOC';
 import { useMyData, useProtocolDiff, useLiveScores } from '@/lib/hooks/useApiData';
 import { SAMPLE_PROTOCOL, SAMPLE_LONGEVITY_SCORE, SAMPLE_BIO_AGE } from '@/lib/engine/sample-protocol';
 import { BRYAN } from '@/lib/engine/bryan-constants';
 import { pickTodaysFocus, type ScheduleEntry, type FocusPick } from '@/lib/engine/todays-focus';
+import { ProgressRing } from '@/components/ui/SectionCard';
 import clsx from 'clsx';
 import dynamic from 'next/dynamic';
 
@@ -87,25 +91,6 @@ function EmptyState({ message, allowRegenerate }: { message: string; allowRegene
         <p className="text-[10px] text-muted mt-1.5">Upload blood work or complete more onboarding for richer data.</p>
       )}
     </div>
-  );
-}
-
-function ProgressRing({ value, size = 120, stroke = 8, color = 'var(--accent)' }: { value: number; size?: number; stroke?: number; color?: string }) {
-  const radius = (size - stroke) / 2;
-  const circumference = 2 * Math.PI * radius;
-  const offset = circumference - (value / 100) * circumference;
-  return (
-    <svg className="progress-ring" width={size} height={size}>
-      <circle cx={size / 2} cy={size / 2} r={radius} strokeWidth={stroke} fill="none" className="progress-ring-bg" />
-      <circle
-        cx={size / 2} cy={size / 2} r={radius} strokeWidth={stroke} fill="none"
-        stroke={color}
-        strokeLinecap="round"
-        strokeDasharray={circumference}
-        strokeDashoffset={offset}
-        style={{ transition: 'stroke-dashoffset 1.2s cubic-bezier(0.4, 0, 0.2, 1)' }}
-      />
-    </svg>
   );
 }
 
@@ -384,6 +369,33 @@ function BiomarkerBar({ value, low, high, popLow, popHigh, bryanVal, unit }: {
 export default function DashboardPage() {
   const { data: myData, isLoading } = useMyData();
   const { data: diffData } = useProtocolDiff();
+  // Compute per-biomarker delta vs previous blood test + retest-due markers
+  // from the user's actual lab history. Both are derived inline so the
+  // dashboard has no extra fetch — the data is already in myData.bloodTests.
+  const biomarkerTrends = useMemo<Map<string, BiomarkerTrend>>(
+    () => computeBiomarkerTrends((myData?.bloodTests ?? []) as Parameters<typeof computeBiomarkerTrends>[0]),
+    [myData?.bloodTests],
+  );
+  const retestDue = useMemo(() => {
+    const tests = (myData?.bloodTests ?? []) as NonNullable<Parameters<typeof computeRetestDue>[0]>[];
+    // Latest test is the one with the most recent taken_at — defensive sort.
+    const sorted = [...tests].sort((a, b) => new Date(b.taken_at).getTime() - new Date(a.taken_at).getTime());
+    return computeRetestDue(sorted[0] ?? null);
+  }, [myData?.bloodTests]);
+  // PhenoAge confidence — how many of the 9 blood markers the algorithm
+  // actually has. Below 4, the biological-age number is largely a population
+  // average with profile noise. Dashboard shows this next to bio age.
+  const phenoConfidence = useMemo(() => {
+    const tests = (myData?.bloodTests ?? []) as Array<{ taken_at: string; biomarkers: Array<{ code: string; value: number; unit?: string }> }>;
+    if (tests.length === 0) return null;
+    const sorted = [...tests].sort((a, b) => new Date(b.taken_at).getTime() - new Date(a.taken_at).getTime());
+    const latest = sorted[0];
+    if (!latest?.biomarkers) return null;
+    // extractPhenoAgeInputs only reads `code` + `value`; coerce unit to empty
+    // string to satisfy BiomarkerValue's stricter typing at the boundary.
+    const normalized = latest.biomarkers.map(b => ({ code: b.code, value: b.value, unit: b.unit ?? '' }));
+    return assessPhenoAgeConfidence(extractPhenoAgeInputs(normalized));
+  }, [myData?.bloodTests]);
   // Live refined scores — computed against current profile + bloodwork +
   // last-30d daily metrics without the AI in the loop. Updates whenever the
   // tracking page saves a metric (invalidate.liveScores()) so the dashboard
@@ -661,7 +673,7 @@ export default function DashboardPage() {
           <div className="metric-tile relative">
             <div className="flex items-center gap-5">
               <div className="relative w-[88px] h-[88px] shrink-0">
-                <ProgressRing value={longevityScore} size={88} stroke={7} />
+                <ProgressRing value={longevityScore} size={88} stroke={7} transitionMs={1200} />
                 <div className="absolute inset-0 flex items-center justify-center">
                   <AnimatedNumber value={longevityScore} duration={1500} className="text-2xl font-bold font-mono" />
                 </div>
@@ -714,6 +726,20 @@ export default function DashboardPage() {
                 <p className={clsx('mt-2 inline-flex items-center gap-1.5 text-[10px] font-mono px-2 py-0.5 rounded-full border', tone)}
                    title={d >= 5 ? `Refined using ${d} days of wearable/daily-log data` : 'No wearable data — score derived from profile + bloodwork only'}>
                   {label}{d > 0 ? ` · ${d}d` : ''}
+                </p>
+              );
+            })()}
+            {/* PhenoAge-coverage chip — how many of the 9 blood markers the
+                Levine 2018 algorithm has. Sits next to the wearable-signal
+                chip so the user sees what's feeding bio age at a glance. */}
+            {phenoConfidence && phenoConfidence.inputsPresent > 0 && (() => {
+              const tone = phenoConfidence.label === 'high'   ? 'text-accent bg-accent/10 border-accent/25'
+                         : phenoConfidence.label === 'medium' ? 'text-amber-400 bg-amber-500/10 border-amber-500/25'
+                         :                                       'text-muted-foreground bg-surface-3 border-card-border';
+              return (
+                <p className={clsx('ml-1.5 mt-2 inline-flex items-center gap-1.5 text-[10px] font-mono px-2 py-0.5 rounded-full border', tone)}
+                   title={`PhenoAge uses 9 blood markers (Levine 2018). You have ${phenoConfidence.inputsPresent} — missing ones fall back to population averages.`}>
+                  PhenoAge {phenoConfidence.inputsPresent}/9
                 </p>
               );
             })()}
@@ -1205,9 +1231,25 @@ export default function DashboardPage() {
           ? 'Your measured values positioned against longevity-optimal ranges and Bryan\'s published numbers.'
           : 'No blood work yet — below are estimated ranges based on your lifestyle. Upload a lab PDF to replace these with real values.'
       }>
+        {retestDue.length > 0 && (
+          <div className="mb-3 p-3 rounded-xl bg-amber-500/[0.06] border border-amber-500/25 flex items-start gap-2.5">
+            <span className="text-amber-400 text-sm shrink-0 mt-0.5">⏱</span>
+            <div className="flex-1 min-w-0">
+              <p className="text-xs font-semibold text-amber-400">
+                {retestDue.length === 1 ? '1 biomarker due for retest' : `${retestDue.length} biomarkers due for retest`}
+              </p>
+              <p className="text-[11px] text-muted-foreground mt-0.5 leading-relaxed">
+                {retestDue.slice(0, 3).map(r => r.shortName).join(', ')}
+                {retestDue.length > 3 && ` +${retestDue.length - 3} more`} · last test {retestDue[0].weeksSinceTest}w ago
+              </p>
+            </div>
+          </div>
+        )}
         {p.biomarkerReadout && p.biomarkerReadout.length > 0 ? (
           <div className="space-y-1.5">
-            {p.biomarkerReadout.map((b) => (
+            {p.biomarkerReadout.map((b) => {
+              const trend = biomarkerTrends.get(b.code);
+              return (
               <button key={b.code} onClick={() => setExpandedBiomarker(expandedBiomarker === b.code ? null : b.code)} className="w-full text-left">
                 <div className="p-4 rounded-xl bg-surface-2 border border-card-border hover:border-accent/30 transition-all">
                   <div className="flex items-center justify-between gap-3">
@@ -1216,6 +1258,23 @@ export default function DashboardPage() {
                       <Badge classification={b.classification} />
                     </div>
                     <div className="flex items-baseline gap-1.5 shrink-0">
+                      {trend && trend.direction !== 'steady' && (
+                        <span
+                          className={clsx('inline-flex items-center gap-0.5 text-[10px] font-mono px-1.5 py-0.5 rounded-full border',
+                            trend.improved === true ? 'text-accent bg-accent/10 border-accent/25'
+                            : trend.improved === false ? 'text-danger bg-red-500/10 border-red-500/25'
+                            : 'text-muted bg-surface-3 border-card-border')}
+                          title={`Was ${trend.previousValue} ${b.unit} ${trend.daysBetween}d ago`}
+                        >
+                          {trend.direction === 'up' ? <TrendingUp className="w-3 h-3" /> : <TrendingDown className="w-3 h-3" />}
+                          {trend.delta > 0 ? '+' : ''}{Math.abs(trend.delta) < 1 ? trend.delta.toFixed(1) : Math.round(trend.delta)}
+                        </span>
+                      )}
+                      {trend?.direction === 'steady' && (
+                        <span className="inline-flex items-center text-[10px] text-muted bg-surface-3 border border-card-border px-1.5 py-0.5 rounded-full" title="No meaningful change">
+                          <Minus className="w-3 h-3" />
+                        </span>
+                      )}
                       <span className={clsx('text-lg font-bold font-mono tabular-nums', getClassificationColor(b.classification))}>{b.value}</span>
                       <span className="text-[10px] text-muted">{b.unit}</span>
                     </div>
@@ -1230,7 +1289,8 @@ export default function DashboardPage() {
                   )}
                 </div>
               </button>
-            ))}
+              );
+            })}
           </div>
         ) : estimatedBiomarkers.length > 0 ? (
           showEstimatedBiomarkers ? (

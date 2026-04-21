@@ -33,3 +33,38 @@ describe('phenoage', () => {
     }
   });
 });
+
+describe('assessPhenoAgeConfidence', () => {
+  test('9/9 markers present -> high', () => {
+    const c = phenoage.assessPhenoAgeConfidence({
+      albumin: 4.5, creatinine: 1.0, glucose: 90, crp: 0.5,
+      lymphocytePercent: 30, mcv: 88, rdw: 13, alp: 70, wbc: 5,
+    });
+    expect(c.inputsPresent).toBe(9);
+    expect(c.label).toBe('high');
+    expect(c.ratio).toBeCloseTo(1);
+  });
+
+  test('required-4 only -> low', () => {
+    const c = phenoage.assessPhenoAgeConfidence({
+      creatinine: 1.0, glucose: 90, crp: 0.5, wbc: 5,
+    });
+    expect(c.inputsPresent).toBe(4);
+    expect(c.label).toBe('medium');
+  });
+
+  test('0 markers -> low', () => {
+    const c = phenoage.assessPhenoAgeConfidence({});
+    expect(c.inputsPresent).toBe(0);
+    expect(c.label).toBe('low');
+    expect(c.ratio).toBe(0);
+  });
+
+  test('ratio is always 0..1', () => {
+    for (const inputs of [{}, { crp: 1 }, { creatinine: 1, glucose: 90, crp: 0.5, wbc: 5 }]) {
+      const c = phenoage.assessPhenoAgeConfidence(inputs);
+      expect(c.ratio).toBeGreaterThanOrEqual(0);
+      expect(c.ratio).toBeLessThanOrEqual(1);
+    }
+  });
+});

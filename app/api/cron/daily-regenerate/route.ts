@@ -11,6 +11,8 @@ import { computeOrganSystems, generateTopWins, generateTopRisks, estimateBiomark
 import { buildPainPoints, buildFlexRules } from '@/lib/engine/personalization-fills';
 import { buildFallbackProtocol } from '@/lib/engine/fallback-protocol';
 import { logger } from '@/lib/logger';
+import { logAiTokens, usageFromAnthropic, usageFromGroq, type AiTokenUsage } from '@/lib/ai-costs';
+import { inspectProtocolShape } from '@/lib/engine/schemas';
 import { syncProvider } from '@/lib/integrations/sync';
 import { isConfigured as ouraConfigured } from '@/lib/integrations/oura';
 import { isConfigured as fitbitConfigured } from '@/lib/integrations/fitbit';
@@ -190,14 +192,14 @@ async function regenerateForUser(userId: string): Promise<{ skipped?: boolean; s
   const sevenDaysAgo = new Date(Date.now() - 7 * 864e5).toISOString().slice(0, 10);
   const thirtyDaysAgo = new Date(Date.now() - 30 * 864e5).toISOString().slice(0, 10);
 
-  // Load profile + latest bloodtest + last 30d daily metrics + last 7d compliance.
-  // The extra compliance query is cheap (indexed on user_id+date) and lets us skip
-  // idle users, which is the biggest cost lever in the cron pipeline.
-  const [profileRes, bloodRes, metricsRes, complianceCountRes] = await Promise.all([
+  // Load profile + latest bloodtest + last 30d daily metrics + last 30d
+  // compliance rows. The compliance rows (full data, not just count) now
+  // also feed the adherence-aware prompt below, so there's no extra query.
+  const [profileRes, bloodRes, metricsRes, complianceRows30Res] = await Promise.all([
     supabase.from('profiles').select('*').eq('id', userId).single(),
     supabase.from('blood_tests').select('*').eq('user_id', userId).is('deleted_at', null).order('taken_at', { ascending: false }).limit(1).maybeSingle(),
     supabase.from('daily_metrics').select('*').eq('user_id', userId).gte('date', thirtyDaysAgo),
-    supabase.from('compliance_logs').select('id', { count: 'exact', head: true }).eq('user_id', userId).eq('completed', true).gte('date', sevenDaysAgo),
+    supabase.from('compliance_logs').select('item_type, item_name, completed, date').eq('user_id', userId).gte('date', thirtyDaysAgo),
   ]);
 
   if (profileRes.error || !profileRes.data) throw new Error(`profile load: ${profileRes.error?.message}`);
@@ -215,7 +217,8 @@ async function regenerateForUser(userId: string): Promise<{ skipped?: boolean; s
   // and the next cron run after their first log will pick them up).
   const metricsLast7d = (metricsRes.data || []).filter((m: { date: string }) => m.date >= sevenDaysAgo);
   const hasRecentMetrics = metricsLast7d.length > 0;
-  const hasRecentCompliance = (complianceCountRes.count ?? 0) > 0;
+  const complianceRows = (complianceRows30Res.data || []) as Array<{ item_type: string; item_name: string; completed: boolean; date: string }>;
+  const hasRecentCompliance = complianceRows.some(r => r.date >= sevenDaysAgo && r.completed);
   if (!hasRecentMetrics && !hasRecentCompliance) {
     return { skipped: true, skippedReason: 'inactive_7d' };
   }
@@ -281,7 +284,7 @@ async function regenerateForUser(userId: string): Promise<{ skipped?: boolean; s
   }
 
   const classified = classifyAll(biomarkerValues);
-  const patterns = detectPatterns(classified);
+  const patterns = detectPatterns(classified, (mergedProfile.medications as Array<{ name?: string | null } | string> | null));
   const baseLongevityScore = calculateLongevityScore(classified, mergedProfile);
   const baseBiologicalAge = estimateBiologicalAge(mergedProfile, classified);
   const baseAgingPace = estimateAgingPace(mergedProfile, classified);
@@ -299,30 +302,60 @@ async function regenerateForUser(userId: string): Promise<{ skipped?: boolean; s
   const agingPace = refineAgingPace(baseAgingPace, recentSignals);
   const recentSignalsSummary = describeRecentSignals(recentSignals);
 
+  // Adherence signal for the master prompt — same shape the interactive
+  // /api/generate-protocol path uses. Keeps cron regens from prescribing
+  // items the user has been silently skipping for 30 days.
+  const activeDates = new Set<string>();
+  const missCounts = new Map<string, number>();
+  let totalRows = 0, completedRows = 0;
+  for (const r of complianceRows) {
+    totalRows++;
+    if (r.completed) { completedRows++; activeDates.add(r.date); }
+    else {
+      const k = `${r.item_type}:${r.item_name}`;
+      missCounts.set(k, (missCounts.get(k) || 0) + 1);
+    }
+  }
+  const adherenceRate30d = totalRows > 0 ? Math.round((completedRows / totalRows) * 100) : null;
+  const adherenceTopMissed = [...missCounts.entries()]
+    .sort((a, b) => b[1] - a[1]).slice(0, 5)
+    .map(([k, n]) => `${k.split(':').slice(1).join(':')} (skipped ${n}×)`);
+
   // Try AI, fall back deterministically so the cron never crashes a user
   let protocolJson: Record<string, unknown>;
   let modelUsed = 'fallback';
   let firstProviderTried: 'claude' | 'groq' = 'groq';
   let firstProviderOutcome: 'ok' | 'failed' | 'skipped_no_key' = 'skipped_no_key';
   let firstProviderErrorCode: string | null = null;
+  let tokenUsage: AiTokenUsage | null = null;
   const aiStartMs = Date.now();
-  const prompt = buildMasterPromptV2(mergedProfile as UserProfile, classified, patterns, BIOMARKER_DB, longevityScore, biologicalAge, recentSignalsSummary);
+  const prompt = buildMasterPromptV2(
+    mergedProfile as UserProfile, classified, patterns, BIOMARKER_DB,
+    longevityScore, biologicalAge, recentSignalsSummary,
+    { rate30d: adherenceRate30d, topMissedItems: adherenceTopMissed, activeDays: activeDates.size },
+  );
 
   try {
     if (process.env.ANTHROPIC_API_KEY) {
       firstProviderTried = 'claude';
       try {
-        protocolJson = await generateWithClaude(prompt);
+        const r = await generateWithClaude(prompt);
+        protocolJson = r.json;
+        tokenUsage = r.usage;
         modelUsed = 'claude-sonnet-4-5';
         firstProviderOutcome = 'ok';
       } catch (claudeErr) {
         firstProviderOutcome = 'failed';
         firstProviderErrorCode = classifyProviderError(claudeErr);
-        protocolJson = await generateWithGroq(prompt);
+        const r = await generateWithGroq(prompt);
+        protocolJson = r.json;
+        tokenUsage = r.usage;
         modelUsed = 'llama-3.3-70b-versatile';
       }
     } else {
-      protocolJson = await generateWithGroq(prompt);
+      const r = await generateWithGroq(prompt);
+      protocolJson = r.json;
+      tokenUsage = r.usage;
       modelUsed = 'llama-3.3-70b-versatile';
     }
   } catch {
@@ -345,6 +378,22 @@ async function regenerateForUser(userId: string): Promise<{ skipped?: boolean; s
     biomarkerCount: classified.length,
     recentMetricDays: recentSignals.days,
   });
+
+  // Per-user cost log. Cron processes N users back-to-back so these events
+  // form the daily cost time-series; sum by date to get run totals.
+  if (tokenUsage) {
+    logAiTokens({
+      op: 'cron.regen',
+      model: modelUsed,
+      userId,
+      latencyMs: Date.now() - aiStartMs,
+      inputTokens: tokenUsage.inputTokens,
+      outputTokens: tokenUsage.outputTokens,
+      cacheReadTokens: tokenUsage.cacheReadTokens,
+      cacheCreationTokens: tokenUsage.cacheCreationTokens,
+      extra: { firstProviderTried, firstProviderOutcome },
+    });
+  }
 
   // Defense: if AI returned a VALID but SPARSE protocol, merge missing
   // sections from the deterministic fallback. Same fix as the main
@@ -448,6 +497,20 @@ async function regenerateForUser(userId: string): Promise<{ skipped?: boolean; s
     };
   });
 
+  // Advisory schema check — see /api/generate-protocol for rationale. Cron
+  // runs across the entire user base daily, so any shape drift shows up
+  // quickly in log aggregates.
+  const shape = inspectProtocolShape(protocolJson);
+  if (!shape.ok) {
+    logger.warn('protocol.zod_shape_drift', {
+      userId,
+      op: 'cron',
+      model: modelUsed,
+      issueCount: shape.drift.issueCount,
+      issues: shape.drift.issues,
+    });
+  }
+
   const { data: inserted, error: insertErr } = await supabase.from('protocols').insert({
     user_id: userId,
     protocol_json: protocolJson,
@@ -468,7 +531,7 @@ async function regenerateForUser(userId: string): Promise<{ skipped?: boolean; s
 // ─────────────────────────────────────────────────────────────────────────────
 // AI helpers (simpler versions — no streaming, no markdown stripping beyond basics)
 // ─────────────────────────────────────────────────────────────────────────────
-async function generateWithClaude(prompt: string): Promise<Record<string, unknown>> {
+async function generateWithClaude(prompt: string): Promise<{ json: Record<string, unknown>; usage: AiTokenUsage }> {
   const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY! });
   // Cached system prefix — cron processes N users back-to-back, so after the
   // first user the prefix is a cache-hit for every remaining user in the batch.
@@ -482,10 +545,10 @@ async function generateWithClaude(prompt: string): Promise<Record<string, unknow
     messages: [{ role: 'user', content: prompt + '\n\nRespond with ONLY the JSON object. Start with { and end with }.' }],
   });
   const text = response.content[0]?.type === 'text' ? response.content[0].text : '';
-  return parseJsonLoose(text);
+  return { json: parseJsonLoose(text), usage: usageFromAnthropic(response.usage) };
 }
 
-async function generateWithGroq(prompt: string): Promise<Record<string, unknown>> {
+async function generateWithGroq(prompt: string): Promise<{ json: Record<string, unknown>; usage: AiTokenUsage }> {
   const groq = new Groq({ apiKey: process.env.GROQ_API_KEY! });
   const completion = await groq.chat.completions.create({
     model: 'llama-3.3-70b-versatile',
@@ -498,7 +561,7 @@ async function generateWithGroq(prompt: string): Promise<Record<string, unknown>
     response_format: { type: 'json_object' },
   });
   const text = completion.choices[0]?.message?.content || '';
-  return parseJsonLoose(text);
+  return { json: parseJsonLoose(text), usage: usageFromGroq(completion.usage) };
 }
 
 function parseJsonLoose(text: string): Record<string, unknown> {

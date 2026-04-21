@@ -49,7 +49,22 @@ export function StatTile({ label, value, subtext, tone = 'default' }: {
   );
 }
 
-export function ProgressRing({ value, size = 64, stroke = 6 }: { value: number; size?: number; stroke?: number }) {
+// Canonical progress ring. Previously the dashboard shipped its own 18-line
+// copy with an extra `color` prop — merged here so everywhere that draws a
+// scored ring (tracking cards, dashboard hero) pulls one implementation.
+export function ProgressRing({
+  value,
+  size = 64,
+  stroke = 6,
+  color = 'var(--accent)',
+  transitionMs = 800,
+}: {
+  value: number;
+  size?: number;
+  stroke?: number;
+  color?: string;
+  transitionMs?: number;
+}) {
   const radius = (size - stroke) / 2;
   const circumference = 2 * Math.PI * radius;
   const offset = circumference - (Math.max(0, Math.min(100, value)) / 100) * circumference;
@@ -58,9 +73,9 @@ export function ProgressRing({ value, size = 64, stroke = 6 }: { value: number; 
       <circle cx={size / 2} cy={size / 2} r={radius} strokeWidth={stroke} fill="none" className="progress-ring-bg" />
       <circle
         cx={size / 2} cy={size / 2} r={radius} strokeWidth={stroke} fill="none"
-        stroke="var(--accent)" strokeLinecap="round"
+        stroke={color} strokeLinecap="round"
         strokeDasharray={circumference} strokeDashoffset={offset}
-        style={{ transition: 'stroke-dashoffset 0.8s cubic-bezier(0.4, 0, 0.2, 1)' }}
+        style={{ transition: `stroke-dashoffset ${transitionMs}ms cubic-bezier(0.4, 0, 0.2, 1)` }}
       />
     </svg>
   );

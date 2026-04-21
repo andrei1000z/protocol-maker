@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { z } from 'zod';
 import { createClient } from '@/lib/supabase/server';
 import { logger, describeError } from '@/lib/logger';
+import { getSaveBloodtestRateLimit, checkRateLimit } from '@/lib/rate-limit';
 
 // Tight per-biomarker shape — code is required, value must be a real number,
 // unit caps at a reasonable length. Reject anything outside.
@@ -20,6 +21,14 @@ export async function POST(request: Request) {
     const supabase = await createClient();
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) return NextResponse.json({ error: 'Not authenticated' }, { status: 401 });
+
+    // Rate limit: 10/hour. Server dedupes same-day writes, so the only legit
+    // reason to hit this repeatedly is a failed parse retry flow (3-4 tries).
+    const { allowed, reset } = await checkRateLimit(getSaveBloodtestRateLimit(), user.id, user.email);
+    if (!allowed) {
+      const resetIn = reset ? Math.max(1, Math.ceil((reset - Date.now()) / 60000)) : 60;
+      return NextResponse.json({ error: `Too many saves. Try again in ${resetIn}m.`, rateLimited: true }, { status: 429 });
+    }
 
     const raw = await request.json().catch(() => null);
     const parsed = Schema.safeParse(raw);

@@ -281,6 +281,20 @@ SUBSTANCES TO MINIMIZE/ELIMINATE:
 - Ultra-processed food: <10% of calories
 `;
 
+/** Shape of the adherence signal passed through to the master prompt. The
+ *  caller computes this from compliance_logs — we keep the shape narrow so
+ *  the prompt builder stays a pure function. */
+export interface AdherenceSignal {
+  /** 0-100, or null when no compliance data exists yet. */
+  rate30d: number | null;
+  /** Ordered list of item names the user skipped the MOST over the last 30
+   *  days. Top 5 suffices — anything more is noise in the prompt. */
+  topMissedItems: string[];
+  /** Count of distinct days with at least one completed log — a rough
+   *  "engagement" signal. Low + low-rate = user is checked out. */
+  activeDays: number;
+}
+
 export function buildMasterPromptV2(
   profile: UserProfile,
   classifiedBiomarkers: BiomarkerValue[],
@@ -291,7 +305,12 @@ export function buildMasterPromptV2(
   // Optional — one-paragraph summary of the user's last 30 days of
   // wearable/self-log data. Injected verbatim under "RECENT SIGNAL DATA"
   // so Claude can reason about actual trajectory, not just profile claims.
-  recentSignalsSummary?: string
+  recentSignalsSummary?: string,
+  // Optional — adherence picture from compliance_logs. When present the
+  // prompt steers toward "simpler stack when missing" heuristics so the AI
+  // doesn't prescribe 15 supplements to someone who's been ignoring 8 of
+  // them for a month.
+  adherence?: AdherenceSignal,
 ): string {
   const bmi = profile.weightKg / ((profile.heightCm / 100) ** 2);
   const bmiCategory = bmi < 18.5 ? 'underweight' : bmi < 25 ? 'normal' : bmi < 30 ? 'overweight' : 'obese';
@@ -625,6 +644,23 @@ If sleep is inconsistent (σ > 1h), that IS aging the user faster regardless of
 profile claims — call it out as a top risk. Use the ACTUAL averages above in
 your topWins/topRisks bullets (e.g. "Your 52 ms average HRV sits above the
 typical 41 ms for your age — keep guarding this").
+` : ''}
+${adherence && adherence.rate30d !== null ? `
+═══ ADHERENCE SIGNAL (last 30 days — reality check on the previous protocol) ═══
+30-day completion rate: ${adherence.rate30d}% (${adherence.activeDays} active days)
+${adherence.topMissedItems.length > 0 ? `Consistently skipped: ${adherence.topMissedItems.slice(0, 5).join('; ')}` : 'No consistent misses yet.'}
+
+TUNING RULES (apply only when present):
+- Rate < 40%: the previous protocol is OVER-PRESCRIBED for this user. Cut the
+  supplement stack to the 3-5 highest-impact items. Simpler beats optimal-
+  on-paper when the user is ignoring half of it.
+- Rate 40-70%: keep the stack, but move the consistently-skipped items in the
+  "Consistently skipped" list either to as-needed / remove them entirely, OR
+  change the timing (many skips are "can't take 4am supplement" — shift it).
+- Rate ≥ 70%: user is engaged; you have room to add one targeted addition if
+  biomarkers + patterns justify it.
+- NEVER silently keep an item the user has skipped 20+ times in a row. Either
+  name why it still matters + make it easier, or drop it and explain.
 ` : ''}
 
 You are expected to produce your OWN best estimate based on ALL available data.

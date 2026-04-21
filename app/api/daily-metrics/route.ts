@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
 import { logger, describeError } from '@/lib/logger';
+import { getDailyMetricsRateLimit, checkRateLimit } from '@/lib/rate-limit';
 
 const ISO_DATE = /^\d{4}-\d{2}-\d{2}$/;
 function isRealDate(s: unknown): s is string {
@@ -49,6 +50,14 @@ export async function POST(request: Request) {
     const supabase = await createClient();
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) return NextResponse.json({ error: 'Not authenticated' }, { status: 401 });
+
+    // Rate limit: 200 writes/hour — covers wearable burst-sync (30-60 fields
+    // in one POST) + manual logging, blocks write-storms.
+    const { allowed, reset } = await checkRateLimit(getDailyMetricsRateLimit(), user.id, user.email);
+    if (!allowed) {
+      const resetIn = reset ? Math.max(1, Math.ceil((reset - Date.now()) / 60000)) : 60;
+      return NextResponse.json({ error: `Too many updates. Try again in ${resetIn}m.`, rateLimited: true }, { status: 429 });
+    }
 
     const body = await request.json().catch(() => null);
     if (!body || typeof body !== 'object') {

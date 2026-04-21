@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { z } from 'zod';
 import { createClient } from '@/lib/supabase/server';
 import { logger, describeError } from '@/lib/logger';
+import { getComplianceRateLimit, checkRateLimit } from '@/lib/rate-limit';
 
 const ISO_DATE = /^\d{4}-\d{2}-\d{2}$/;
 // Validates the date is real (catches 2025-02-30 etc) before letting it touch the DB.
@@ -47,6 +48,14 @@ export async function POST(request: Request) {
     const supabase = await createClient();
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) return NextResponse.json({ error: 'Not authenticated' }, { status: 401 });
+
+    // Rate limit: 200 writes/hour — matches daily_metrics budget; power user
+    // ticking 40 items × 2 views/day is ~80/day, so 200/h handles rage-clicks.
+    const { allowed, reset } = await checkRateLimit(getComplianceRateLimit(), user.id, user.email);
+    if (!allowed) {
+      const resetIn = reset ? Math.max(1, Math.ceil((reset - Date.now()) / 60000)) : 60;
+      return NextResponse.json({ error: `Too many updates. Try again in ${resetIn}m.`, rateLimited: true }, { status: 429 });
+    }
 
     const raw = await request.json().catch(() => null);
     const parsed = PostSchema.safeParse(raw);

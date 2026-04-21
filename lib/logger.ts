@@ -27,12 +27,26 @@ type LogLevel = 'debug' | 'info' | 'warn' | 'error';
 
 // Fields that are NEVER serialized — even if you accidentally pass them in.
 // Add anything that could carry credentials, raw prompts, or full bodies.
+// Keys are compared case-insensitively at the redact() call site.
 const REDACTED_KEYS = new Set([
+  // Credentials / session
   'password', 'token', 'authorization', 'cookie', 'secret',
-  'apiKey', 'api_key', 'serviceRoleKey', 'service_role_key',
-  'prompt', 'systemPrompt', 'context', 'rawBody', 'body',
-  // Anthropic + Groq response shapes that include the full reply
-  'completion', 'choices', 'content',
+  'apikey', 'api_key', 'servicerolekey', 'service_role_key',
+  'accesstoken', 'access_token', 'refreshtoken', 'refresh_token',
+  // Direct PII — never belongs in structured logs. User identity is
+  // `userId` (uuid); anything else resolves back to a real human.
+  'email', 'phone', 'phonenumber', 'phone_number',
+  'firstname', 'first_name', 'lastname', 'last_name',
+  'fullname', 'full_name', 'address', 'street', 'zip', 'postalcode',
+  // Location — protects against a coarse grid locating a user.
+  'latitude', 'longitude', 'lat', 'lng', 'ip', 'ipaddress', 'ip_address',
+  // Romanian national ID + other national IDs.
+  'cnp', 'ssn', 'nationalid', 'national_id', 'passport',
+  // Payment surfaces.
+  'card', 'cardnumber', 'card_number', 'cvv', 'stripeCustomerId', 'stripe_customer_id',
+  // Raw prompt / response bodies — reply text carries patient data.
+  'prompt', 'systemprompt', 'system_prompt', 'context', 'rawbody', 'body',
+  'completion', 'choices', 'content', 'message', 'messages',
 ]);
 
 function redact(value: unknown, depth = 0): unknown {

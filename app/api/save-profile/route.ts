@@ -2,6 +2,9 @@ import { NextResponse } from 'next/server';
 import { z } from 'zod';
 import { createClient } from '@/lib/supabase/server';
 import { logger, describeError } from '@/lib/logger';
+import { getSaveProfileRateLimit, checkRateLimit } from '@/lib/rate-limit';
+import { trackServer } from '@/lib/analytics';
+import { OnboardingDataSchema } from '@/lib/engine/schemas';
 
 // Validates profile inputs at the API boundary. Ranges are sanity checks —
 // the DB has its own CHECK constraints as defense in depth. All fields are
@@ -33,7 +36,9 @@ const ProfileSchema = z.object({
   experimentalOpenness: z.enum(['otc_only', 'open_rx', 'open_experimental']).optional().nullable(),
   onboardingCompleted: z.boolean().optional(),
   onboardingStep: z.number().int().min(0).max(10).optional(),
-  onboardingData: z.record(z.string(), z.unknown()).optional(),
+  // Typed onboarding blob. Passthrough tolerates unknown keys (future steps,
+  // client-side scratch fields) while validating the shape of what we know.
+  onboardingData: OnboardingDataSchema.optional(),
 }).passthrough();  // extra fields are dropped; Zod ignores them during .passthrough
 
 export async function POST(request: Request) {
@@ -42,12 +47,28 @@ export async function POST(request: Request) {
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) return NextResponse.json({ error: 'Not authenticated' }, { status: 401 });
 
+    // Rate limit: 20/hour — onboarding saves per-step + occasional settings
+    // edits are fine; blocks writestorms from a broken client loop.
+    const { allowed, reset } = await checkRateLimit(getSaveProfileRateLimit(), user.id, user.email);
+    if (!allowed) {
+      const resetIn = reset ? Math.max(1, Math.ceil((reset - Date.now()) / 60000)) : 60;
+      return NextResponse.json({ error: `Too many saves. Try again in ${resetIn}m.`, rateLimited: true }, { status: 429 });
+    }
+
     const raw = await request.json().catch(() => null);
     const parsed = ProfileSchema.safeParse(raw);
     if (!parsed.success) {
       return NextResponse.json({ error: 'Invalid profile', issues: parsed.error.flatten() }, { status: 400 });
     }
     const body = parsed.data;
+
+    // Detect onboarding_complete transition so we track it ONCE per user,
+    // not every subsequent settings save. One extra cheap read keyed by id.
+    let wasOnboarded = false;
+    if (body.onboardingCompleted) {
+      const { data: prev } = await supabase.from('profiles').select('onboarding_completed').eq('id', user.id).maybeSingle();
+      wasOnboarded = !!prev?.onboarding_completed;
+    }
 
     const { error } = await supabase.from('profiles').update({
       age: body.age,
@@ -82,6 +103,11 @@ export async function POST(request: Request) {
     if (error) {
       logger.error('save_profile.db_failed', { userId: user.id, errorMessage: error.message });
       return NextResponse.json({ error: error.message }, { status: 500 });
+    }
+    // Fire once, on the false→true transition. Subsequent saves (settings
+    // edits where the flag stays true) don't re-fire.
+    if (body.onboardingCompleted && !wasOnboarded) {
+      trackServer('onboarding_complete');
     }
     return NextResponse.json({ success: true });
   } catch (err) {

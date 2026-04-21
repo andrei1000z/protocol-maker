@@ -1,17 +1,23 @@
 'use client';
 
 import { useState, useMemo } from 'react';
+import dynamic from 'next/dynamic';
 import { useStatistics, useProtocolHistory } from '@/lib/hooks/useApiData';
 import { pickBiggestMovers, type Mover } from '@/lib/engine/biggest-movers';
 import clsx from 'clsx';
-import {
-  LineChart, Line, ResponsiveContainer, XAxis, YAxis, CartesianGrid, Tooltip, ReferenceLine,
-} from 'recharts';
 import {
   Activity, Moon, HeartPulse, Droplet, Dumbbell, Brain, Sparkles, Flame,
   TrendingUp, TrendingDown, Minus,
 } from 'lucide-react';
 import { SectionCard as Section } from '@/components/ui/SectionCard';
+
+// Recharts is ~60KB gzipped. Dynamic-import with ssr:false so a user who
+// navigates to /dashboard (no charts) never pays the download. Loading
+// placeholder matches the final chart height to avoid layout shift.
+const MetricLineChart = dynamic(() => import('@/components/charts/MetricLineChart'), {
+  ssr: false,
+  loading: () => <div className="h-[140px] rounded-lg bg-surface-3/30 animate-pulse" />,
+});
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Metric catalog — maps daily_metrics columns to UI metadata
@@ -230,63 +236,31 @@ function MetricChart({ def, series, protocolMarkers }: { def: MetricDef; series:
 
       {series.length >= 2 ? (
         <div className="-mx-2">
-          <ResponsiveContainer width="100%" height={140}>
-            <LineChart data={series.map(s => ({ ...s, dateLabel: fmtDate(s.date) }))}>
-              <CartesianGrid strokeDasharray="3 3" stroke="#1d2128" vertical={false} />
-              <XAxis dataKey="dateLabel" tick={{ fontSize: 9, fill: '#71717a' }} axisLine={false} tickLine={false} interval="preserveStartEnd" minTickGap={20} />
-              <YAxis tick={{ fontSize: 9, fill: '#71717a' }} axisLine={false} tickLine={false} domain={['auto', 'auto']} />
-              <Tooltip
-                contentStyle={{ background: '#13161c', border: '1px solid #1d2128', borderRadius: 10, fontSize: 11, padding: '6px 10px' }}
-                labelStyle={{ color: '#ecedef', fontSize: 10 }}
-                itemStyle={{ color: lineColor }}
-                formatter={(v) => [`${fmtValue(Number(v), def)}${unitSuffix}`, def.label]}
-              />
-              {def.direction === 'target' && def.target !== undefined && (
-                <ReferenceLine y={def.target} stroke="#34d399" strokeDasharray="3 3" strokeOpacity={0.4} />
-              )}
-              {/* Vertical markers at each protocol regen date that falls within
-                  the visible series. Skip v1 — its "start" has no "before" to
-                  compare against, so the line adds noise without signal. */}
-              {protocolMarkers
-                .filter(m => m.version > 1)
-                .map(m => {
-                  // Find the closest series date (series dates may not exactly
-                  // match the protocol created_at timestamp)
-                  const targetMs = new Date(m.date).getTime();
-                  const closest = series.reduce((best, s) => {
-                    const d = Math.abs(new Date(s.date).getTime() - targetMs);
-                    return d < best.d ? { d, date: s.date } : best;
-                  }, { d: Infinity, date: '' });
-                  if (!closest.date) return null;
-                  // Only draw if the regen date is within the chart window
-                  if (Math.abs(new Date(closest.date).getTime() - targetMs) > 14 * 86400000) return null;
-                  return (
-                    <ReferenceLine
-                      key={`v${m.version}`}
-                      x={fmtDate(closest.date)}
-                      stroke="#60a5fa"
-                      strokeDasharray="2 3"
-                      strokeOpacity={0.55}
-                      label={{
-                        value: `v${m.version}`,
-                        fontSize: 9,
-                        fill: '#60a5fa',
-                        position: 'insideTop',
-                      }}
-                    />
-                  );
-                })}
-              <Line
-                type="monotone"
-                dataKey="value"
-                stroke={lineColor}
-                strokeWidth={2}
-                dot={{ fill: lineColor, r: 3 }}
-                activeDot={{ r: 5 }}
-                isAnimationActive
-              />
-            </LineChart>
-          </ResponsiveContainer>
+          <MetricLineChart
+            data={series.map(s => ({ ...s, dateLabel: fmtDate(s.date) }))}
+            height={140}
+            lineColor={lineColor}
+            unitSuffix={unitSuffix}
+            decimals={def.decimals ?? 0}
+            targetY={def.direction === 'target' ? def.target : undefined}
+            // Skip v1 — its "start" has no "before" to compare against, so the
+            // marker adds noise without signal. Otherwise anchor each regen
+            // marker to the nearest logged datapoint within a 14-day window.
+            markers={protocolMarkers
+              .filter(m => m.version > 1)
+              .map(m => {
+                const targetMs = new Date(m.date).getTime();
+                const closest = series.reduce((best, s) => {
+                  const d = Math.abs(new Date(s.date).getTime() - targetMs);
+                  return d < best.d ? { d, date: s.date } : best;
+                }, { d: Infinity, date: '' });
+                if (!closest.date) return null;
+                if (Math.abs(new Date(closest.date).getTime() - targetMs) > 14 * 86400000) return null;
+                return { date: fmtDate(closest.date), label: `v${m.version}` };
+              })
+              .filter((x): x is { date: string; label: string } => x !== null)
+            }
+          />
         </div>
       ) : (
         <div className="h-[140px] flex items-center justify-center rounded-lg bg-surface-3/50 border border-dashed border-card-border">

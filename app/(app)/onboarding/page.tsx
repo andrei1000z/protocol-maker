@@ -4,14 +4,11 @@ import { useState, useRef, useEffect, useMemo } from 'react';
 import { BIOMARKER_DB, BIG_11_CODES, BIOMARKER_CATEGORIES, CATEGORY_LABELS } from '@/lib/engine/biomarkers';
 import { classifyBiomarker } from '@/lib/engine/classifier';
 import { SMARTWATCH_BRANDS, SMART_RING_BRANDS, HOME_EQUIPMENT, type DeviceBrand } from '@/lib/engine/device-catalog';
+import { CONDITIONS, FAMILY_CONDITIONS, GOALS, SLEEP_ISSUES } from '@/lib/engine/onboarding-options';
 import { GeneratingScreen } from '@/components/protocol/GeneratingScreen';
 import { Upload, FileText, ChevronDown, ChevronUp, Plus, X } from 'lucide-react';
 import clsx from 'clsx';
 
-const CONDITIONS = ['Type 2 Diabetes', 'Hypertension', 'Dyslipidemia', 'Thyroid', 'Autoimmune', 'Cardiovascular', 'Depression/Anxiety', 'Sleep Apnea', 'PCOS', 'Obesity'];
-const FAMILY_CONDITIONS = ['Diabetes', 'Heart disease', 'Cancer', "Alzheimer's", 'Autoimmune', 'Mental illness', 'None known'];
-const GOALS = ['Longevity / Healthspan', 'Body Composition', 'Cognitive Performance', 'Skin / Hair', 'Energy / Mood', 'Athletic Performance', 'Fertility', 'Fitness Recovery', 'Sleep', 'Mental Health'];
-const SLEEP_ISSUES = ['Trouble falling asleep', 'Waking in the night', 'Wake up unrested', 'Snoring', 'Restless legs', 'None'];
 const STEPS = ['Basics', 'Blood Work', 'Lifestyle', 'Day-to-Day', 'Goals'];
 
 // Auto-save draft key — versioned so a future schema rename invalidates
@@ -1609,9 +1606,15 @@ export default function OnboardingPage() {
                       <input value={m.name} onChange={e => updateMed(i, 'name', e.target.value)} placeholder="Name (e.g. Metformin)" className="flex-1 rounded-lg bg-card border border-card-border px-2 py-1.5 text-xs outline-none focus:border-accent" />
                       <input value={m.dose} onChange={e => updateMed(i, 'dose', e.target.value)} placeholder="500mg" className="w-20 rounded-lg bg-card border border-card-border px-2 py-1.5 text-xs outline-none focus:border-accent" />
                       <select value={m.frequency} onChange={e => updateMed(i, 'frequency', e.target.value)} className="rounded-lg bg-card border border-card-border px-2 py-1.5 text-xs outline-none focus:border-accent">
-                        <option value="daily">daily</option><option value="2x/day">2x/day</option><option value="weekly">weekly</option><option value="as needed">as needed</option>
+                        <option value="daily">daily</option>
+                        <option value="2x/day">2x/day</option>
+                        <option value="3x/day">3x/day</option>
+                        <option value="every other day">every other day</option>
+                        <option value="weekly">weekly</option>
+                        <option value="monthly">monthly</option>
+                        <option value="as needed">as needed</option>
                       </select>
-                      <button onClick={() => removeMed(i)} className="p-1.5 text-muted hover:text-danger"><X className="w-3 h-3" /></button>
+                      <button onClick={() => removeMed(i)} aria-label={`Remove medication ${m.name || i + 1}`} className="p-2.5 text-muted hover:text-danger"><X className="w-4 h-4" /></button>
                     </div>
                   ))}
                 </div>
@@ -2030,7 +2033,15 @@ export default function OnboardingPage() {
         </div>
       )}
 
-      <div className="fixed bottom-0 left-0 right-0 z-50 bg-background/95 backdrop-blur-xl border-t border-card-border px-6 py-4 pb-[calc(1rem+env(safe-area-inset-bottom))] flex gap-3 justify-center">
+      {/* Keyboard-inset-aware footer: iOS Safari overlays the keyboard on top
+          of fixed-bottom elements — without env(keyboard-inset-height), the
+          Next/Generate button on the last step gets occluded by the keyboard
+          while the user is still editing the previous input. Compose with
+          safe-area so notch-devices keep their bottom padding. */}
+      <div
+        className="fixed bottom-0 left-0 right-0 z-50 bg-background/95 backdrop-blur-xl border-t border-card-border px-6 py-4 flex gap-3 justify-center"
+        style={{ paddingBottom: 'calc(1rem + max(env(keyboard-inset-height, 0px), env(safe-area-inset-bottom, 0px)))' }}
+      >
         <div className="max-w-2xl w-full flex gap-3">
         {step > 0 && (
           <button onClick={handleBack} className="px-4 py-3 rounded-xl bg-card border border-card-border text-sm font-medium text-muted-foreground hover:text-foreground transition-colors">← Back</button>

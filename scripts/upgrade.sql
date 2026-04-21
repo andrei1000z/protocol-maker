@@ -378,12 +378,17 @@ alter table public.compliance_logs enable row level security;
 alter table public.chat_messages enable row level security;
 alter table public.oauth_connections enable row level security;
 
--- Defense in depth: force RLS even for table owner
+-- Defense in depth: force RLS even for table owner. Applies to EVERY user-
+-- scoped table — a future route that accidentally uses the service-role
+-- client without a user filter would otherwise leak rows across users.
 alter table public.profiles force row level security;
 alter table public.blood_tests force row level security;
 alter table public.protocols force row level security;
 alter table public.chat_messages force row level security;
 alter table public.oauth_connections force row level security;  -- tokens are sensitive
+alter table public.daily_metrics force row level security;
+alter table public.share_links force row level security;        -- slug enum-guessed = public, but owner writes must stay scoped
+alter table public.compliance_logs force row level security;
 
 drop policy if exists "profiles_select" on public.profiles;
 drop policy if exists "profiles_insert" on public.profiles;

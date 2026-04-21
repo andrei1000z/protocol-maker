@@ -1,4 +1,5 @@
 import { BiomarkerValue, DetectedPattern } from '../types';
+import { thresholdValue } from './clinical-thresholds';
 
 type PatternRule = {
   name: string;
@@ -14,11 +15,11 @@ const PATTERNS: PatternRule[] = [
     check: (m) => {
       const markers: string[] = [];
       let count = 0;
-      if (m.get('GLUC')?.value && m.get('GLUC')!.value > 100) { count++; markers.push('GLUC'); }
-      if (m.get('TRIG')?.value && m.get('TRIG')!.value > 150) { count++; markers.push('TRIG'); }
-      if (m.get('HDL')?.value && m.get('HDL')!.value < 40) { count++; markers.push('HDL'); }
-      if (m.get('INSULIN')?.value && m.get('INSULIN')!.value > 10) { count++; markers.push('INSULIN'); }
-      if (m.get('HBA1C')?.value && m.get('HBA1C')!.value > 5.6) { count++; markers.push('HBA1C'); }
+      if (m.get('GLUC')?.value && m.get('GLUC')!.value > thresholdValue('GLUC_PREDIABETES_LOW')) { count++; markers.push('GLUC'); }
+      if (m.get('TRIG')?.value && m.get('TRIG')!.value > thresholdValue('TRIG_METABOLIC')) { count++; markers.push('TRIG'); }
+      if (m.get('HDL')?.value && m.get('HDL')!.value < thresholdValue('HDL_METABOLIC_M')) { count++; markers.push('HDL'); }
+      if (m.get('INSULIN')?.value && m.get('INSULIN')!.value > thresholdValue('INSULIN_METABOLIC')) { count++; markers.push('INSULIN'); }
+      if (m.get('HBA1C')?.value && m.get('HBA1C')!.value > thresholdValue('HBA1C_METABOLIC_CLUSTER')) { count++; markers.push('HBA1C'); }
       return { triggered: count >= 2, severity: count >= 4 ? 'critical' : count >= 3 ? 'high' : 'moderate', triggeringMarkers: markers };
     },
     recommendations: ['Priority #1: reverse insulin resistance', 'Time-restricted eating (16:8)', 'Walk 30 min after every meal + strength train 3x/week', 'Berberine 1000mg/day + Magnesium 400mg evening', 'Discuss metformin with doctor'],
@@ -29,10 +30,10 @@ const PATTERNS: PatternRule[] = [
     check: (m) => {
       const markers: string[] = [];
       let count = 0;
-      if (m.get('HSCRP')?.value && m.get('HSCRP')!.value > 1.0) { count++; markers.push('HSCRP'); }
-      if (m.get('WBC')?.value && m.get('WBC')!.value > 7.0) { count++; markers.push('WBC'); }
-      if (m.get('HOMOCYS')?.value && m.get('HOMOCYS')!.value > 10) { count++; markers.push('HOMOCYS'); }
-      if (m.get('FERRITIN')?.value && m.get('FERRITIN')!.value > 200) { count++; markers.push('FERRITIN'); }
+      if (m.get('HSCRP')?.value && m.get('HSCRP')!.value > thresholdValue('HSCRP_ELEVATED')) { count++; markers.push('HSCRP'); }
+      if (m.get('WBC')?.value && m.get('WBC')!.value > thresholdValue('WBC_ELEVATED')) { count++; markers.push('WBC'); }
+      if (m.get('HOMOCYS')?.value && m.get('HOMOCYS')!.value > thresholdValue('HOMOCYS_ELEVATED')) { count++; markers.push('HOMOCYS'); }
+      if (m.get('FERRITIN')?.value && m.get('FERRITIN')!.value > thresholdValue('FERRITIN_HIGH')) { count++; markers.push('FERRITIN'); }
       return { triggered: count >= 2, severity: count >= 3 ? 'high' : 'moderate', triggeringMarkers: markers };
     },
     recommendations: ['Intensive anti-inflammatory protocol', 'Omega-3 EPA/DHA 3g/day', 'Curcumin 1g with piperine', 'Eliminate processed food for 30 days', 'Investigate hidden sources: dental, gut, joint'],
@@ -150,11 +151,11 @@ const PATTERNS: PatternRule[] = [
     check: (m) => {
       const markers: string[] = [];
       const hba1c = m.get('HBA1C');
-      if (hba1c && hba1c.value >= 5.7 && hba1c.value < 6.5) markers.push('HBA1C');
+      if (hba1c && hba1c.value >= thresholdValue('HBA1C_PREDIABETES_LOW') && hba1c.value < thresholdValue('HBA1C_DIABETES')) markers.push('HBA1C');
       const gluc = m.get('GLUC');
-      if (gluc && gluc.value >= 100 && gluc.value < 126) markers.push('GLUC');
+      if (gluc && gluc.value >= thresholdValue('GLUC_PREDIABETES_LOW') && gluc.value < thresholdValue('GLUC_DIABETES')) markers.push('GLUC');
       const insulin = m.get('INSULIN');
-      if (insulin && insulin.value > 7) markers.push('INSULIN');
+      if (insulin && insulin.value > thresholdValue('INSULIN_PREDIABETES')) markers.push('INSULIN');
       return { triggered: markers.length >= 1 && (markers.includes('HBA1C') || markers.includes('GLUC')), severity: markers.length >= 3 ? 'high' : 'moderate', triggeringMarkers: markers };
     },
     recommendations: ['URGENT: Prediabetes is reversible NOW', 'Berberine 1500mg/day (as effective as metformin in studies)', 'Eliminate refined carbs and sugar', 'Strength training 3x/week (muscle = glucose sink)', 'CGM (continuous glucose monitor) recommended for 2 weeks', 'Discuss metformin with endocrinologist'],
@@ -186,14 +187,43 @@ export const PATTERN_COUNT = PATTERNS.length;
 export function slugifyPatternName(name: string): string {
   return name.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '');
 }
+// Biomarker codes each pattern can trigger on. Used by /patterns/[slug] to
+// render "related biomarkers" links (internal SEO) and for downstream tooling
+// that needs to know which markers feed which pattern without running a
+// synthetic detection pass.
+const PATTERN_CODE_MAP: Record<string, string[]> = {
+  'Metabolic Syndrome':            ['GLUC', 'TRIG', 'HDL', 'INSULIN', 'HBA1C'],
+  'Inflammatory Cluster':          ['HSCRP', 'WBC', 'HOMOCYS', 'FERRITIN'],
+  'Thyroid Dysfunction':           ['TSH', 'FT4', 'ANTI_TPO'],
+  'Nutritional Deficiency Cluster':['VITD', 'B12', 'FERRITIN', 'FOLAT', 'MAGNE', 'IRON'],
+  'Cardiovascular Risk':           ['LDL', 'APOB', 'TRIG', 'HDL', 'HSCRP', 'HOMOCYS', 'LPA'],
+  'Hormonal Imbalance':            ['TESTO', 'CORTISOL', 'DHEAS', 'ESTRADIOL'],
+  'Iron Overload':                 ['FERRITIN', 'IRON'],
+  'Anemia Cluster':                ['HGB', 'FERRITIN', 'IRON', 'RBC'],
+  'Liver Stress':                  ['ALT', 'AST', 'GGT'],
+  'Kidney Decline':                ['CREAT', 'URIC_ACID'],
+  'Prediabetes':                   ['HBA1C', 'GLUC', 'INSULIN'],
+  'Oxidative Stress':              ['VITD', 'OMEGA3', 'HSCRP', 'HOMOCYS', 'GGT'],
+};
+
 export const PATTERN_REFERENCE = PATTERNS.map(p => ({
   name: p.name,
   slug: slugifyPatternName(p.name),
   description: p.description,
   recommendations: p.recommendations,
+  triggeringCodes: PATTERN_CODE_MAP[p.name] ?? [],
 }));
 export function getPatternRef(slug: string) {
   return PATTERN_REFERENCE.find(p => p.slug === slug);
+}
+
+/** Inverse lookup: given a biomarker code, which patterns can it trigger?
+ *  Powers the "related patterns" links on /biomarkers/[code]. */
+export function getPatternsForBiomarker(code: string): Array<{ name: string; slug: string }> {
+  const upper = code.toUpperCase();
+  return PATTERN_REFERENCE
+    .filter(p => p.triggeringCodes.includes(upper))
+    .map(p => ({ name: p.name, slug: p.slug }));
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -217,12 +247,12 @@ type ExclusionRule = {
 const EXCLUSIONS: ExclusionRule[] = [
   // Prediabetes is a more actionable framing than the broader Metabolic Syndrome
   // for the same glucose signal. Keep Metabolic only if HbA1c crosses diabetic
-  // threshold (≥6.5%) or the user has non-glucose cluster factors (low HDL).
+  // threshold or the user has non-glucose cluster factors (low HDL / high TG).
   {
     suppress: 'Metabolic Syndrome',
     when: 'Prediabetes',
-    unless: (m) => (m.get('HBA1C')?.value ?? 0) >= 6.5
-                || (m.get('HDL')?.value ?? 999) < 40
+    unless: (m) => (m.get('HBA1C')?.value ?? 0) >= thresholdValue('HBA1C_DIABETES')
+                || (m.get('HDL')?.value ?? 999) < thresholdValue('HDL_METABOLIC_M')
                 || (m.get('TRIG')?.value ?? 0) >= 200,
   },
   // Anemia Cluster is a specific diagnosis; the broader Nutritional Deficiency
@@ -234,9 +264,81 @@ const EXCLUSIONS: ExclusionRule[] = [
   { suppress: 'Oxidative Stress', when: 'Inflammatory Cluster' },
 ];
 
-export function detectPatterns(biomarkers: BiomarkerValue[]): DetectedPattern[] {
+// Medication input can be free-text strings ("prednisone 10mg daily") or
+// the structured shape from profiles.medications ({name, dose, frequency}).
+// Normalize to lowercase names so the rules below compare reliably.
+export type MedicationInput = string | { name?: string | null } | null | undefined;
+
+function normalizeMeds(meds: MedicationInput[] | null | undefined): string[] {
+  if (!meds || !Array.isArray(meds)) return [];
+  return meds
+    .map(m => {
+      if (!m) return '';
+      if (typeof m === 'string') return m;
+      return typeof m.name === 'string' ? m.name : '';
+    })
+    .map(s => s.toLowerCase())
+    .filter(Boolean);
+}
+
+function hasAnyMed(names: string[], keywords: string[]): boolean {
+  return names.some(n => keywords.some(k => n.includes(k)));
+}
+
+// Medication classes that materially change the meaning of a biomarker
+// signature. Kept as keyword lists rather than drug IDs so the check matches
+// brand names, generics, and common spelling variants without maintenance.
+const CORTICOSTEROIDS = [
+  'prednison',        // prednisone / prednisone(u) / prednisolone
+  'dexamethason',
+  'methylprednisolon', 'medrol',
+  'hydrocortison',
+  'budesonid',
+  'cortisone',
+];
+const ANTIDIABETICS = [
+  'metformin', 'glucophage',
+  'glipizid', 'glyburid', 'glimepirid',          // sulfonylureas
+  'sitagliptin', 'linagliptin', 'saxagliptin',    // DPP-4 inhibitors
+  'empagliflozin', 'dapagliflozin', 'canagliflozin', 'jardiance', 'farxiga',  // SGLT2
+  'semaglutid', 'liraglutid', 'dulaglutid', 'tirzepatid', 'ozempic', 'wegovy', 'mounjaro',  // GLP-1 / dual
+  'pioglitazon',
+  'insulin',
+];
+
+/** Medication-driven suppressions. Ordered so the most specific rule wins. */
+function medicationSuppresses(
+  patternName: string,
+  markerMap: Map<string, BiomarkerValue>,
+  medNames: string[],
+): boolean {
+  // Inflammatory Cluster: corticosteroids elevate WBC (neutrophilia is a known
+  // side effect) and suppress HSCRP independently of real inflammation. The
+  // cluster can't be trusted on a steroid-exposed lab panel.
+  if (patternName === 'Inflammatory Cluster' && hasAnyMed(medNames, CORTICOSTEROIDS)) {
+    return true;
+  }
+  // Metabolic Syndrome / Prediabetes: if the user is on an antidiabetic and
+  // HbA1c is now in the optimal band (<6.0), the number reflects treatment
+  // effect, not disease state. Suppress so we don't layer redundant "reverse
+  // metabolic syndrome" advice on top of an already-controlled patient.
+  // If HbA1c is missing we keep the pattern (absence is not evidence of control).
+  const hba1c = markerMap.get('HBA1C')?.value;
+  // "Controlled" = HbA1c now in sub-prediabetic band. Use the same registry
+  // value the detector uses, so a future guideline revision flows through.
+  if (hasAnyMed(medNames, ANTIDIABETICS) && typeof hba1c === 'number' && hba1c < thresholdValue('HBA1C_PREDIABETES_LOW') + 0.3) {
+    if (patternName === 'Metabolic Syndrome' || patternName === 'Prediabetes') return true;
+  }
+  return false;
+}
+
+export function detectPatterns(
+  biomarkers: BiomarkerValue[],
+  medications: MedicationInput[] | null = null,
+): DetectedPattern[] {
   const markerMap = new Map<string, BiomarkerValue>();
   for (const b of biomarkers) markerMap.set(b.code, b);
+  const medNames = normalizeMeds(medications);
 
   const detected: DetectedPattern[] = [];
   for (const pattern of PATTERNS) {
@@ -253,9 +355,12 @@ export function detectPatterns(biomarkers: BiomarkerValue[]): DetectedPattern[] 
   }
 
   // Apply exclusions — drop `suppress` patterns when their `when` partner
-  // triggered and no `unless` escalation applies.
+  // triggered and no `unless` escalation applies. Also apply medication-
+  // driven suppressions (prednisone masks Inflammatory, metformin with
+  // controlled HbA1c masks Metabolic / Prediabetes).
   const triggeredNames = new Set(detected.map(d => d.name));
   const filtered = detected.filter(d => {
+    if (medicationSuppresses(d.name, markerMap, medNames)) return false;
     for (const rule of EXCLUSIONS) {
       if (rule.suppress !== d.name) continue;
       if (!triggeredNames.has(rule.when)) continue;

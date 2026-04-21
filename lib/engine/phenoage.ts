@@ -70,7 +70,41 @@ export function extractPhenoAgeInputs(biomarkers: BiomarkerValue[]): PhenoAgeInp
     glucose: map.get('GLUC'),
     crp: map.get('HSCRP'),
     wbc: map.get('WBC'),
-    // Optional (not always measured):
-    // albumin, lymphocytePercent, mcv, rdw, alp
+    albumin: map.get('ALBUMIN'),
+    lymphocytePercent: map.get('LYMPH_PCT'),
+    mcv: map.get('MCV'),
+    rdw: map.get('RDW'),
+    alp: map.get('ALP'),
   };
+}
+
+// Confidence = how many of the 9 inputs the user actually supplied. Below
+// 7/9, PhenoAge is filling the gaps with population defaults — the resulting
+// number drifts toward the average and a "your biological age is 35" message
+// starts to reflect "average person + your 4 markers" rather than "you".
+// Expose the count so the dashboard can show a "7/9 markers — high" chip.
+export interface PhenoAgeConfidence {
+  /** How many of the 9 PhenoAge inputs were present. */
+  inputsPresent: number;
+  /** Max possible (9). Kept as a field so callers don't need to guess. */
+  inputsPossible: 9;
+  /** 0..1 fraction, for progress UI. */
+  ratio: number;
+  /** Human-readable bucket. */
+  label: 'high' | 'medium' | 'low';
+}
+
+export function assessPhenoAgeConfidence(inputs: PhenoAgeInputs): PhenoAgeConfidence {
+  const fields: Array<keyof PhenoAgeInputs> = [
+    'albumin', 'creatinine', 'glucose', 'crp',
+    'lymphocytePercent', 'mcv', 'rdw', 'alp', 'wbc',
+  ];
+  const inputsPresent = fields.reduce((n, f) => n + (inputs[f] !== undefined ? 1 : 0), 0);
+  const ratio = inputsPresent / 9;
+  // Thresholds: ≥7/9 is high (Levine's paper shows validation against full
+  // set up to ±1 year); 4-6 is medium (the required core is present but
+  // defaults fill inflammation / hematology subscales); <4 means the number
+  // is mostly a population average wearing a number hat.
+  const label: PhenoAgeConfidence['label'] = inputsPresent >= 7 ? 'high' : inputsPresent >= 4 ? 'medium' : 'low';
+  return { inputsPresent, inputsPossible: 9, ratio, label };
 }

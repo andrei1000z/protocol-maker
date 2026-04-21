@@ -7,8 +7,9 @@ import type { Metadata } from 'next';
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
 import { BIOMARKER_DB, CATEGORY_LABELS, getBiomarkerRef } from '@/lib/engine/biomarkers';
+import { getPatternsForBiomarker } from '@/lib/engine/patterns';
 import { SITE_URL } from '@/lib/config';
-import { ArrowRight, Target, AlertTriangle, Leaf, Pill, Activity, Utensils, Stethoscope } from 'lucide-react';
+import { ArrowRight, Target, AlertTriangle, Leaf, Pill, Activity, Utensils, Stethoscope, Sparkles } from 'lucide-react';
 
 // Pre-render all 33 biomarker pages at build time.
 export async function generateStaticParams() {
@@ -45,6 +46,7 @@ export default async function BiomarkerPage({ params }: { params: Promise<{ code
 
   const categoryLabel = CATEGORY_LABELS[b.category] || b.category;
   const hasBryan = b.bryanJohnsonValue !== undefined;
+  const relatedPatterns = getPatternsForBiomarker(b.code);
 
   // JSON-LD structured data so search engines treat this as a medical
   // reference article, not generic content. MedicalCondition/MedicalTest
@@ -273,6 +275,28 @@ export default async function BiomarkerPage({ params }: { params: Promise<{ code
               <strong>Retest every {b.retestIntervalWeeks} {b.retestIntervalWeeks === 1 ? 'week' : 'weeks'}</strong>
               <span className="text-muted-foreground"> after starting an intervention to see if it&apos;s working.</span>
             </p>
+          </section>
+        )}
+
+        {/* Related patterns — internal SEO link juice + user comprehension */}
+        {relatedPatterns.length > 0 && (
+          <section className="space-y-4">
+            <h2 className="text-xl font-semibold tracking-tight flex items-center gap-2">
+              <Sparkles className="w-5 h-5 text-accent" />
+              Clinical patterns {b.shortName} can trigger
+            </h2>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+              {relatedPatterns.map(p => (
+                <Link
+                  key={p.slug}
+                  href={`/patterns/${p.slug}`}
+                  className="group rounded-xl p-3.5 bg-surface-2 border border-card-border hover:border-accent/40 transition-colors flex items-center justify-between gap-2"
+                >
+                  <span className="text-sm font-medium text-foreground group-hover:text-accent transition-colors">{p.name}</span>
+                  <ArrowRight className="w-4 h-4 text-muted group-hover:text-accent group-hover:translate-x-0.5 transition-all shrink-0" />
+                </Link>
+              ))}
+            </div>
           </section>
         )}
 
