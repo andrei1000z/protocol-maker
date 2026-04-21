@@ -39,6 +39,13 @@ const ProfileSchema = z.object({
   // Typed onboarding blob. Passthrough tolerates unknown keys (future steps,
   // client-side scratch fields) while validating the shape of what we know.
   onboardingData: OnboardingDataSchema.optional(),
+  // Notification prefs — 4 independent opt-ins; booleans persist to narrow
+  // columns on the profile row. All default off except protocol regen
+  // alerts, which users expect out of the box.
+  notifWeeklyDigest:     z.boolean().optional(),
+  notifProtocolRegen:    z.boolean().optional(),
+  notifRetestReminders:  z.boolean().optional(),
+  notifStreakMilestones: z.boolean().optional(),
 }).passthrough();  // extra fields are dropped; Zod ignores them during .passthrough
 
 export async function POST(request: Request) {
@@ -70,35 +77,49 @@ export async function POST(request: Request) {
       wasOnboarded = !!prev?.onboarding_completed;
     }
 
-    const { error } = await supabase.from('profiles').update({
-      age: body.age,
-      sex: body.sex,
-      height_cm: body.heightCm,
-      weight_kg: body.weightKg,
-      ethnicity: body.ethnicity,
-      latitude: body.latitude,
-      occupation: body.occupation,
-      activity_level: body.activityLevel,
-      sleep_hours_avg: body.sleepHoursAvg,
-      sleep_quality: body.sleepQuality,
-      diet_type: body.dietType,
-      alcohol_drinks_per_week: body.alcoholDrinksPerWeek,
-      caffeine_mg_per_day: body.caffeineMgPerDay,
-      smoker: body.smoker,
-      cardio_minutes_per_week: body.cardioMinutesPerWeek,
-      strength_sessions_per_week: body.strengthSessionsPerWeek,
-      conditions: body.conditions,
-      medications: body.medications,
-      current_supplements: body.currentSupplements,
-      allergies: body.allergies,
-      goals: body.goals,
-      time_budget_min: body.timeBudgetMin,
-      monthly_budget_ron: body.monthlyBudgetRon,
-      experimental_openness: body.experimentalOpenness,
-      onboarding_completed: body.onboardingCompleted ?? false,
-      onboarding_step: body.onboardingStep ?? 0,
-      onboarding_data: body.onboardingData ?? {},
-    }).eq('id', user.id);
+    // Build a partial update so sending just `{ notifWeeklyDigest: true }`
+    // from settings doesn't null out the user's age. Keys absent from the
+    // incoming body are left untouched on the row. Onboarding still sends
+    // everything in one go, so the full-save behaviour is preserved.
+    const updates: Record<string, unknown> = { updated_at: new Date().toISOString() };
+    const mapping: Array<[keyof typeof body, string]> = [
+      ['age', 'age'],
+      ['sex', 'sex'],
+      ['heightCm', 'height_cm'],
+      ['weightKg', 'weight_kg'],
+      ['ethnicity', 'ethnicity'],
+      ['latitude', 'latitude'],
+      ['occupation', 'occupation'],
+      ['activityLevel', 'activity_level'],
+      ['sleepHoursAvg', 'sleep_hours_avg'],
+      ['sleepQuality', 'sleep_quality'],
+      ['dietType', 'diet_type'],
+      ['alcoholDrinksPerWeek', 'alcohol_drinks_per_week'],
+      ['caffeineMgPerDay', 'caffeine_mg_per_day'],
+      ['smoker', 'smoker'],
+      ['cardioMinutesPerWeek', 'cardio_minutes_per_week'],
+      ['strengthSessionsPerWeek', 'strength_sessions_per_week'],
+      ['conditions', 'conditions'],
+      ['medications', 'medications'],
+      ['currentSupplements', 'current_supplements'],
+      ['allergies', 'allergies'],
+      ['goals', 'goals'],
+      ['timeBudgetMin', 'time_budget_min'],
+      ['monthlyBudgetRon', 'monthly_budget_ron'],
+      ['experimentalOpenness', 'experimental_openness'],
+      ['onboardingCompleted', 'onboarding_completed'],
+      ['onboardingStep', 'onboarding_step'],
+      ['onboardingData', 'onboarding_data'],
+      ['notifWeeklyDigest', 'notif_weekly_digest'],
+      ['notifProtocolRegen', 'notif_protocol_regen'],
+      ['notifRetestReminders', 'notif_retest_reminders'],
+      ['notifStreakMilestones', 'notif_streak_milestones'],
+    ];
+    for (const [k, col] of mapping) {
+      if (k in body) updates[col] = body[k];
+    }
+
+    const { error } = await supabase.from('profiles').update(updates).eq('id', user.id);
 
     if (error) {
       logger.error('save_profile.db_failed', { userId: user.id, errorMessage: error.message });

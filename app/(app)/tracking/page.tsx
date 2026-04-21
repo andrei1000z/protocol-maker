@@ -13,6 +13,7 @@ import {
   getWeeklyData, getMonthlyHeatmap, calculateMonthlyAverage,
   ComplianceEntry,
 } from '@/lib/utils/streak';
+import { StreakWidget } from '@/components/tracking/StreakWidget';
 import { HabitsTab } from '@/components/tracking/HabitsTab';
 import { SmartLogSheet, countBucketPending, countAllPendingUpToNow, type TimeBucket } from '@/components/tracking/SmartLogSheet';
 import { MetricTimeline } from '@/components/tracking/MetricTimeline';
@@ -868,9 +869,21 @@ export default function TrackingPage() {
       )}
 
       {activeTab === 'habits' && (
-        <Section icon={Check} title="Daily habits" subtitle="Longevity habits beyond the protocol checklist">
-          <HabitsTab completed={todayMetrics.habits_completed ?? []} onToggle={toggleHabit} />
-        </Section>
+        <>
+          {/* Streak + milestone progress widget. Celebration toast fires once
+              per milestone crossing (stored per-user in localStorage). */}
+          {myData?.profile?.id && (
+            <StreakWidget
+              streak={streak}
+              longestStreak={longestStreak}
+              perfectDays={perfectDays}
+              userId={myData.profile.id}
+            />
+          )}
+          <Section icon={Check} title="Daily habits" subtitle="Longevity habits beyond the protocol checklist">
+            <HabitsTab completed={todayMetrics.habits_completed ?? []} onToggle={toggleHabit} />
+          </Section>
+        </>
       )}
 
       {activeTab === 'awards' && (() => {

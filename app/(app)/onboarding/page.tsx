@@ -861,6 +861,12 @@ export default function OnboardingPage() {
   const [redFlagAck, setRedFlagAck] = useState(false);
   const [showRedFlagModal, setShowRedFlagModal] = useState(false);
 
+  // Review-before-generate modal. Users spend 10+ minutes filling onboarding
+  // and then a single click fires off an expensive AI call — a review step
+  // catches typos (age 3 vs 30), missing sleep data, and forgotten meds
+  // before the first protocol is written. Opens on the last-step CTA.
+  const [showReview, setShowReview] = useState(false);
+
   const handleFinish = async () => {
     // Hard-stop check before anything else
     if (redFlagsAcute.length > 0 && !redFlagAck) {
@@ -2047,10 +2053,10 @@ export default function OnboardingPage() {
           <button onClick={handleBack} className="px-4 py-3 rounded-xl bg-card border border-card-border text-sm font-medium text-muted-foreground hover:text-foreground transition-colors">← Back</button>
         )}
         <button
-          onClick={() => step < 4 ? handleNext() : handleFinish()}
+          onClick={() => step < 4 ? handleNext() : setShowReview(true)}
           disabled={!canNext() || loading}
           className="flex-1 py-3 rounded-xl bg-accent text-black font-semibold text-sm transition-all hover:bg-accent-dim active:scale-[0.98] disabled:opacity-40">
-          {step < 4 ? 'Continue →' : '⚡ Generate Protocol'}
+          {step < 4 ? 'Continue →' : 'Review & generate →'}
         </button>
         </div>
       </div>
@@ -2103,6 +2109,133 @@ export default function OnboardingPage() {
                 className="flex-1 py-3 rounded-xl bg-accent text-black text-sm font-semibold hover:bg-accent-bright transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
               >
                 I understand, continue
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* REVIEW BEFORE GENERATE — surfaces the answers that drive the protocol
+          so the user can catch typos before an expensive AI call. Fields shown
+          are the ones with the highest protocol-impact: demographics, lifestyle
+          loads, pillar-relevant habits, supplements, and filled biomarker count.
+          Conditions + meds are included because they gate safety-critical
+          interventions downstream. */}
+      {showReview && (
+        <div
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="review-title"
+          className="fixed inset-0 z-[60] flex items-end sm:items-center justify-center animate-fade-in"
+        >
+          <div className="absolute inset-0 bg-black/80 backdrop-blur-sm" onClick={() => setShowReview(false)} />
+          <div className="relative bg-surface-1 rounded-t-3xl sm:rounded-3xl w-full sm:max-w-lg mx-0 sm:mx-4 max-h-[88dvh] overflow-y-auto border border-card-border animate-fade-in-up">
+            <div className="sticky top-0 bg-surface-1/95 backdrop-blur-lg border-b border-card-border p-5 flex items-center justify-between">
+              <div>
+                <p className="text-[10px] font-mono uppercase tracking-widest text-accent">One last look</p>
+                <h2 id="review-title" className="text-lg font-semibold mt-0.5">Review before generating</h2>
+              </div>
+              <button onClick={() => setShowReview(false)} aria-label="Close review" className="p-1.5 rounded-lg text-muted-foreground hover:text-foreground hover:bg-surface-2 transition-colors">
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+
+            <div className="p-5 space-y-4 text-sm">
+              {/* Dense two-column summary — keeps the modal short enough to
+                  scan in 10 seconds. A 30-row table would defeat the purpose. */}
+              <div className="grid grid-cols-2 gap-x-4 gap-y-3">
+                <div>
+                  <p className="text-[10px] text-muted uppercase tracking-widest">Age</p>
+                  <p className="font-medium">{age || '—'}</p>
+                </div>
+                <div>
+                  <p className="text-[10px] text-muted uppercase tracking-widest">Sex</p>
+                  <p className="font-medium capitalize">{sex || '—'}</p>
+                </div>
+                <div>
+                  <p className="text-[10px] text-muted uppercase tracking-widest">Height / Weight</p>
+                  <p className="font-medium">{heightCm || '—'} cm · {weightKg || '—'} kg</p>
+                </div>
+                <div>
+                  <p className="text-[10px] text-muted uppercase tracking-widest">Activity</p>
+                  <p className="font-medium">{activityLevel || '—'}</p>
+                </div>
+                <div className="col-span-2">
+                  <p className="text-[10px] text-muted uppercase tracking-widest">Sleep</p>
+                  <p className="font-medium">{sleepHours ? `${sleepHours}h avg` : '—'} · quality {sleepQuality ?? '—'}/10</p>
+                </div>
+                <div className="col-span-2">
+                  <p className="text-[10px] text-muted uppercase tracking-widest">Exercise load</p>
+                  <p className="font-medium">{cardioMin || 0} min cardio · {strengthSessions || 0} strength/wk</p>
+                </div>
+                <div>
+                  <p className="text-[10px] text-muted uppercase tracking-widest">Alcohol</p>
+                  <p className="font-medium">{alcoholPerWeek ?? 0} drinks/wk</p>
+                </div>
+                <div>
+                  <p className="text-[10px] text-muted uppercase tracking-widest">Caffeine</p>
+                  <p className="font-medium">{caffeineServings ?? 0} servings/day</p>
+                </div>
+                <div className="col-span-2">
+                  <p className="text-[10px] text-muted uppercase tracking-widest">Smoker</p>
+                  <p className="font-medium">{smoker ? 'Yes' : 'No'}</p>
+                </div>
+              </div>
+
+              {conditions.length > 0 && (
+                <div className="pt-3 border-t border-card-border">
+                  <p className="text-[10px] text-muted uppercase tracking-widest mb-1">Conditions</p>
+                  <p className="text-[13px] leading-relaxed">{conditions.join(' · ')}</p>
+                </div>
+              )}
+
+              {medications.filter(m => m.name.trim()).length > 0 && (
+                <div className="pt-3 border-t border-card-border">
+                  <p className="text-[10px] text-muted uppercase tracking-widest mb-1">Medications</p>
+                  <ul className="space-y-1 text-[13px]">
+                    {medications.filter(m => m.name.trim()).map((m, i) => (
+                      <li key={i} className="leading-relaxed">
+                        <span className="font-medium">{m.name}</span>
+                        {m.dose && <span className="text-muted-foreground"> · {m.dose}</span>}
+                        {m.frequency && <span className="text-muted-foreground"> · {m.frequency}</span>}
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              )}
+
+              {(primaryGoal || secondaryGoals.length > 0) && (
+                <div className="pt-3 border-t border-card-border">
+                  <p className="text-[10px] text-muted uppercase tracking-widest mb-1">Goals</p>
+                  <p className="text-[13px] leading-relaxed">{[primaryGoal, ...secondaryGoals].filter(Boolean).join(' · ')}</p>
+                </div>
+              )}
+
+              <div className="pt-3 border-t border-card-border">
+                <p className="text-[10px] text-muted uppercase tracking-widest mb-1">Biomarkers entered</p>
+                <p className="text-[13px] leading-relaxed">
+                  <span className="font-mono font-medium">{filledCount}</span> of {BIG_11_CODES.length} core markers.
+                  {filledCount === 0 && <span className="text-muted-foreground"> The protocol will estimate from your lifestyle — upload a lab PDF later to refine.</span>}
+                </p>
+              </div>
+
+              <p className="text-[11px] text-muted-foreground leading-relaxed pt-3 border-t border-card-border">
+                Generating the protocol takes ~15 seconds. You can come back to tweak answers any time from Settings.
+              </p>
+            </div>
+
+            <div className="sticky bottom-0 bg-surface-1/95 backdrop-blur-lg border-t border-card-border p-4 flex gap-2">
+              <button
+                onClick={() => setShowReview(false)}
+                className="flex-1 py-3 rounded-xl bg-surface-3 border border-card-border text-sm text-muted-foreground hover:text-foreground transition-colors"
+              >
+                Go back to edit
+              </button>
+              <button
+                onClick={() => { setShowReview(false); handleFinish(); }}
+                className="flex-1 py-3 rounded-xl bg-accent text-black font-semibold text-sm hover:bg-accent-bright transition-colors"
+              >
+                ⚡ Generate protocol
               </button>
             </div>
           </div>

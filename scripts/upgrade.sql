@@ -55,6 +55,26 @@ alter table public.profiles add column if not exists referral_code text unique; 
 alter table public.profiles add column if not exists referred_by_user_id uuid references auth.users on delete set null;
 alter table public.profiles add column if not exists referred_by_code text;       -- raw code used at signup (kept even if referrer deletes)
 
+-- Notification preferences — opt-in, default off for everything except
+-- protocol-regen-alert (users expect to know when their score changed
+-- meaningfully). Stored as a narrow bitmap so adding a new channel doesn't
+-- require a fresh migration. Actual email sending requires a transactional
+-- email provider (Resend/Postmark) — until that ships, these flags are a
+-- preference record that future workers read.
+alter table public.profiles add column if not exists notif_weekly_digest       boolean default false;
+alter table public.profiles add column if not exists notif_protocol_regen      boolean default true;
+alter table public.profiles add column if not exists notif_retest_reminders    boolean default false;
+alter table public.profiles add column if not exists notif_streak_milestones   boolean default false;
+
+-- Stripe subscription state — kept on the profile row so RLS gates access
+-- without a second table. Populated by the Stripe webhook route (server-
+-- to-server); clients never write these fields directly. Nullable because
+-- a user doesn't need a subscription to use the app during beta.
+alter table public.profiles add column if not exists subscription_status       text;       -- 'active' | 'trialing' | 'past_due' | 'canceled' | null
+alter table public.profiles add column if not exists subscription_tier         text;       -- 'free' | 'plus' | 'pro' (future-proofing for tier gating)
+alter table public.profiles add column if not exists subscription_customer_id  text;       -- Stripe customer id — stable across subscriptions
+alter table public.profiles add column if not exists subscription_current_period_end timestamptz;
+
 -- ┌──────────────────────────────────────────────────────────────────────────┐
 -- │ 2. PROTOCOLS — precision bio age, aging pace, soft delete                │
 -- └──────────────────────────────────────────────────────────────────────────┘

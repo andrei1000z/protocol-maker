@@ -8,6 +8,7 @@ import {
   Edit2, Save, Trash2, AlertTriangle, Target, Sparkles, X, Clock, Link2, Unlink,
 } from 'lucide-react';
 import { OAuthPermissionsModal } from '@/components/settings/OAuthPermissionsModal';
+import { NotificationPrefs } from '@/components/settings/NotificationPrefs';
 import {
   buildBiomarkersCsv,
   buildDailyMetricsCsv,
@@ -1219,6 +1220,18 @@ export default function SettingsPage() {
           </div>
         )}
       </SettingsCard>
+
+      {/* Notification preferences — writes through /api/save-profile with
+          a partial payload so toggling a switch doesn't null unrelated
+          profile columns. Defaults to "protocol regen alerts on" only. */}
+      <NotificationPrefs
+        initial={{
+          weeklyDigest:     (profile as Record<string, unknown>).notif_weekly_digest as boolean | null | undefined,
+          protocolRegen:    (profile as Record<string, unknown>).notif_protocol_regen as boolean | null | undefined,
+          retestReminders:  (profile as Record<string, unknown>).notif_retest_reminders as boolean | null | undefined,
+          streakMilestones: (profile as Record<string, unknown>).notif_streak_milestones as boolean | null | undefined,
+        }}
+      />
 
       {/* ═══════════ DATA EXPORT ═══════════
           Four format-specific exports beyond the GDPR JSON archive below.
