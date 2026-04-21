@@ -8,6 +8,13 @@ import {
   Edit2, Save, Trash2, AlertTriangle, Target, Sparkles, X, Clock, Link2, Unlink,
 } from 'lucide-react';
 import { OAuthPermissionsModal } from '@/components/settings/OAuthPermissionsModal';
+import {
+  buildBiomarkersCsv,
+  buildDailyMetricsCsv,
+  buildProtocolHistoryCsv,
+  buildDoctorMarkdown,
+  downloadBlob,
+} from '@/lib/utils/export-formats';
 
 interface ShareLinkRow {
   slug: string;
@@ -790,12 +797,41 @@ export default function SettingsPage() {
     // page-hydration shape and would be an incomplete Article 15 response.
     const res = await fetch('/api/my-data?full=1');
     const data = await res.json();
-    const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = `protocol-export-${new Date().toISOString().split('T')[0]}.json`;
-    a.click();
+    downloadBlob(JSON.stringify(data, null, 2),
+      `protocol-export-${new Date().toISOString().split('T')[0]}.json`,
+      'application/json');
+  };
+
+  // Format-specific exports — same `?full=1` archive, transformed client-side.
+  // Biomarkers + daily metrics go out as CSV (doctor/Excel friendly) and
+  // the Markdown doctor snapshot is a narrative summary for a consult.
+  const handleExportBiomarkersCsv = async () => {
+    const res = await fetch('/api/my-data?full=1');
+    const data = await res.json();
+    downloadBlob(buildBiomarkersCsv(data),
+      `biomarkers-${new Date().toISOString().split('T')[0]}.csv`,
+      'text/csv;charset=utf-8');
+  };
+  const handleExportMetricsCsv = async () => {
+    const res = await fetch('/api/my-data?full=1');
+    const data = await res.json();
+    downloadBlob(buildDailyMetricsCsv(data),
+      `daily-metrics-${new Date().toISOString().split('T')[0]}.csv`,
+      'text/csv;charset=utf-8');
+  };
+  const handleExportProtocolHistoryCsv = async () => {
+    const res = await fetch('/api/my-data?full=1');
+    const data = await res.json();
+    downloadBlob(buildProtocolHistoryCsv(data),
+      `protocol-history-${new Date().toISOString().split('T')[0]}.csv`,
+      'text/csv;charset=utf-8');
+  };
+  const handleExportDoctorMd = async () => {
+    const res = await fetch('/api/my-data?full=1');
+    const data = await res.json();
+    downloadBlob(buildDoctorMarkdown(data),
+      `doctor-snapshot-${new Date().toISOString().split('T')[0]}.md`,
+      'text/markdown;charset=utf-8');
   };
 
   const handleLogout = async () => {
@@ -1183,6 +1219,38 @@ export default function SettingsPage() {
           </div>
         )}
       </SettingsCard>
+
+      {/* ═══════════ DATA EXPORT ═══════════
+          Four format-specific exports beyond the GDPR JSON archive below.
+          CSV lands in Excel/Sheets in one paste; Markdown snapshot is meant
+          for sending to a doctor during a consult. All pull from the same
+          /api/my-data?full=1 endpoint — transforms happen client-side. */}
+      <div className="glass-card rounded-2xl p-5 space-y-3 animate-fade-in-up">
+        <div>
+          <p className="text-sm font-semibold">Export your data</p>
+          <p className="text-[11px] text-muted-foreground leading-relaxed mt-0.5">Take your record anywhere. Everything below is generated from your own data, unredacted.</p>
+        </div>
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+          {[
+            { label: 'Biomarkers (CSV)',       desc: 'One row per test × code. Excel/Sheets ready.', onClick: handleExportBiomarkersCsv },
+            { label: 'Daily metrics (CSV)',    desc: 'Last month of sleep, HRV, steps, etc.',         onClick: handleExportMetricsCsv },
+            { label: 'Protocol history (CSV)', desc: 'Score, bio age, pace across every regen.',      onClick: handleExportProtocolHistoryCsv },
+            { label: 'Doctor snapshot (MD)',   desc: 'One-page readable summary for a consult.',      onClick: handleExportDoctorMd },
+          ].map(x => (
+            <button
+              key={x.label}
+              onClick={x.onClick}
+              className="flex items-start gap-3 p-3 rounded-xl bg-surface-2 border border-card-border hover:border-accent/30 hover:text-accent transition-colors text-left"
+            >
+              <Download className="w-4 h-4 text-muted-foreground mt-0.5 shrink-0" />
+              <div className="min-w-0 flex-1">
+                <p className="text-xs font-semibold">{x.label}</p>
+                <p className="text-[10px] text-muted-foreground leading-snug mt-0.5">{x.desc}</p>
+              </div>
+            </button>
+          ))}
+        </div>
+      </div>
 
       {/* ═══════════ ACTIONS (no heading per user request) ═══════════ */}
       <div className="glass-card rounded-2xl p-2 space-y-0.5 animate-fade-in-up">

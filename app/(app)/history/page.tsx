@@ -10,6 +10,7 @@ import { BIOMARKER_DB } from '@/lib/engine/biomarkers';
 import clsx from 'clsx';
 import dynamic from 'next/dynamic';
 import { SectionCard as Section, StatTile as Stat } from '@/components/ui/SectionCard';
+import { ProtocolCompare } from '@/components/history/ProtocolCompare';
 
 // Defer Recharts to this page's first chart render — keeps /dashboard +
 // /tracking from paying the ~60KB bundle cost.
@@ -287,6 +288,10 @@ export default function HistoryPage() {
           </div>
         </Section>
       )}
+
+      {/* Pick-any-two comparator — renders only when ≥ 3 protocols exist,
+          so it doesn't overlap with the Latest-vs-Previous block below. */}
+      {protocols.length >= 3 && <ProtocolCompare protocols={protocols} />}
 
       {/* Protocol v2 vs v1 diff — full breakdown */}
       {diffData?.diff && (() => {

@@ -19,8 +19,10 @@ export interface BloodTestLite {
   biomarkers: Array<{ code: string; value: number; unit?: string }>;
 }
 
-/** Codes where a LOWER value is healthier. Matches the set used in /history. */
-const LOWER_IS_BETTER = new Set([
+/** Codes where a LOWER value is healthier. Matches the set used in /history.
+ *  Exported so UI components (sparklines, inline chips) can classify
+ *  direction without duplicating the list. */
+export const LOWER_IS_BETTER = new Set([
   'LDL', 'TRIG', 'HSCRP', 'HOMOCYS', 'HBA1C', 'GLUC', 'INSULIN',
   'ALT', 'AST', 'GGT', 'CREAT', 'URIC_ACID', 'WBC', 'CORTISOL', 'APOB',
   'ALP', 'FERRITIN', 'LPA',

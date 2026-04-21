@@ -3,9 +3,13 @@
 import { useState, useEffect, useMemo } from 'react';
 import { ProtocolOutput, Classification } from '@/lib/types';
 import { getClassificationColor, getClassificationBg } from '@/lib/engine/classifier';
-import { computeBiomarkerTrends, computeRetestDue, type BiomarkerTrend } from '@/lib/engine/biomarker-trends';
+import { computeBiomarkerTrends, computeRetestDue, LOWER_IS_BETTER, type BiomarkerTrend } from '@/lib/engine/biomarker-trends';
 import { extractPhenoAgeInputs, assessPhenoAgeConfidence } from '@/lib/engine/phenoage';
 import { AskAIPill } from '@/components/dashboard/AskAIPill';
+import { BiomarkerSparkline, extractBiomarkerSeries } from '@/components/dashboard/BiomarkerSparkline';
+import { SupplementTimeGroups } from '@/components/dashboard/SupplementTimeGroups';
+import { DailyBriefing } from '@/components/dashboard/DailyBriefing';
+import { useDailyMetrics } from '@/lib/hooks/useDailyMetrics';
 import { TrendingUp, TrendingDown, Minus } from 'lucide-react';
 import { AnimatedNumber } from '@/components/ui/AnimatedNumber';
 import { DashboardTOC } from '@/components/layout/DashboardTOC';
@@ -402,6 +406,10 @@ export default function DashboardPage() {
   // tracking page saves a metric (invalidate.liveScores()) so the dashboard
   // hero reflects new data instantly instead of waiting for a full regen.
   const { data: liveScores } = useLiveScores();
+  // Latest daily-metrics row feeds the Daily Briefing card (sleep score,
+  // HRV, etc). Hits the same SWR cache the tracking page uses.
+  const todayIsoLocal = useMemo(() => new Date().toISOString().slice(0, 10), []);
+  const { metrics: todayMetricsForBriefing } = useDailyMetrics(todayIsoLocal);
   const [expandedBiomarker, setExpandedBiomarker] = useState<string | null>(null);
   const [demoMode, setDemoMode] = useState(false);
   const [showEstimatedBiomarkers, setShowEstimatedBiomarkers] = useState(false);
@@ -646,12 +654,61 @@ export default function DashboardPage() {
         );
       })()}
 
+      {/* ═══════════════ DAILY BRIEFING ═══════════════
+          Top-of-page at-a-glance card — "good morning, here's last night +
+          what to take now + today's focus." Demo mode hides it because the
+          sample protocol doesn't have a live daily_metrics row. */}
+      {!demoMode && p.supplements && (
+        <DailyBriefing
+          name={typeof (myData?.profile?.onboarding_data as Record<string, unknown>)?.name === 'string'
+            ? String((myData?.profile?.onboarding_data as Record<string, unknown>)?.name)
+            : null}
+          latestMetrics={todayMetricsForBriefing as Parameters<typeof DailyBriefing>[0]['latestMetrics']}
+          supplements={p.supplements.map(s => ({ name: s.name, dose: s.dose, timing: s.timing, priority: s.priority }))}
+          deltaLine={
+            diffData?.diff && diffData.diff.score.delta > 0
+              ? `Protocol refreshed — score ${diffData.diff.score.delta > 0 ? '+' : ''}${diffData.diff.score.delta}, bio age ${diffData.diff.bioAge.delta > 0 ? '+' : ''}${diffData.diff.bioAge.delta.toFixed(1)}y`
+              : null
+          }
+        />
+      )}
+
       {/* ═══════════════ HERO DIAGNOSTIC ═══════════════ */}
       <div id="diagnostic" className="hero-card rounded-3xl p-8 scroll-mt-20 animate-fade-in-up relative overflow-hidden">
         <div className="flex items-start justify-between gap-4 mb-8">
           <div>
             <div className="flex items-center gap-2 mb-2 flex-wrap">
               <p className="text-[10px] uppercase tracking-[0.2em] text-muted">Longevity Protocol</p>
+              {/* Protocol version + freshness badge. Makes "which version am
+                  I looking at" discoverable without opening /history, and
+                  surfaces the "how old is this?" question the dashboard was
+                  previously silent about. */}
+              {(() => {
+                // `protocolVersion` is an optional enrichment field the
+                // engine appends but isn't in the base type — read it
+                // defensively so the type system doesn't complain while
+                // still surfacing the version when present.
+                const version = typeof (diag as Record<string, unknown> | undefined)?.protocolVersion === 'number'
+                  ? ((diag as Record<string, unknown>).protocolVersion as number)
+                  : null;
+                const createdAt = myData?.protocol?.created_at;
+                if (!version && !createdAt) return null;
+                const daysOld = createdAt ? Math.max(0, Math.floor((Date.now() - new Date(createdAt).getTime()) / 864e5)) : null;
+                const freshnessTone = daysOld === null ? 'text-muted-foreground bg-surface-3 border-card-border'
+                                   : daysOld <= 3 ? 'text-accent bg-accent/10 border-accent/25'
+                                   : daysOld <= 14 ? 'text-muted-foreground bg-surface-3 border-card-border'
+                                   : 'text-amber-400 bg-amber-500/10 border-amber-500/25';
+                return (
+                  <span className={clsx('inline-flex items-center gap-1 text-[10px] px-2 py-0.5 rounded-full border font-mono', freshnessTone)}
+                        title={createdAt ? `Created ${new Date(createdAt).toLocaleString('ro-RO')}` : undefined}>
+                    {version !== null && <span className="font-semibold">v{version}</span>}
+                    {version !== null && daysOld !== null && <span className="text-muted">·</span>}
+                    {daysOld !== null && (
+                      <span>{daysOld === 0 ? 'updated today' : daysOld === 1 ? 'updated 1d ago' : `updated ${daysOld}d ago`}</span>
+                    )}
+                  </span>
+                );
+              })()}
               {/* Visible positioning chip — makes it unambiguous that the
                   scores/bio-age/aging-pace below are lifestyle-optimization
                   targets, not clinical diagnoses. Legal footer lives at the
@@ -1250,6 +1307,8 @@ export default function DashboardPage() {
           <div className="space-y-1.5">
             {p.biomarkerReadout.map((b) => {
               const trend = biomarkerTrends.get(b.code);
+              const series = extractBiomarkerSeries(myData?.bloodTests as Parameters<typeof extractBiomarkerSeries>[0], b.code);
+              const lowerBetter = LOWER_IS_BETTER.has(b.code.toUpperCase());
               return (
               <button key={b.code} onClick={() => setExpandedBiomarker(expandedBiomarker === b.code ? null : b.code)} className="w-full text-left">
                 <div className="p-4 rounded-xl bg-surface-2 border border-card-border hover:border-accent/30 transition-all">
@@ -1257,6 +1316,14 @@ export default function DashboardPage() {
                     <div className="flex items-center gap-2.5 flex-1 min-w-0">
                       <p className="text-sm font-semibold truncate">{b.shortName || b.name}</p>
                       <Badge classification={b.classification} />
+                      {series.length >= 2 && (
+                        <BiomarkerSparkline
+                          values={series}
+                          lowerIsBetter={lowerBetter}
+                          unit={b.unit}
+                          className="hidden sm:inline-block"
+                        />
+                      )}
                     </div>
                     <div className="flex items-baseline gap-1.5 shrink-0">
                       {trend && trend.direction !== 'steady' && (
@@ -1521,6 +1588,13 @@ export default function DashboardPage() {
               <p className="text-[10px] text-muted uppercase tracking-widest mt-1">Est. cost</p>
             </div>
           </div>
+
+          {/* Take-now quick view — auto-expands the current window, collapses
+              the rest. Rendered ABOVE the existing timing-buckets section so
+              a user at 08:15 sees "morning: take these 3" without scrolling. */}
+          <SupplementTimeGroups
+            supplements={p.supplements.map(s => ({ name: s.name, dose: s.dose, timing: s.timing, priority: s.priority }))}
+          />
 
           {/* Timing buckets — uses AI's timeOfDay field with robust fallback inference from timing text */}
           {(() => {
