@@ -698,7 +698,7 @@ export default function DashboardPage() {
         <div className="flex items-start justify-between gap-4 mb-8">
           <div>
             <div className="flex items-center gap-2 mb-2 flex-wrap">
-              <p className="text-[10px] uppercase tracking-[0.2em] text-muted">Longevity Protocol</p>
+              <p className="text-[10px] uppercase tracking-[0.2em] text-muted">Your report</p>
               {/* Protocol version + freshness badge. Makes "which version am
                   I looking at" discoverable without opening /history, and
                   surfaces the "how old is this?" question the dashboard was
@@ -734,14 +734,14 @@ export default function DashboardPage() {
                   targets, not clinical diagnoses. Legal footer lives at the
                   bottom; this is the version your users actually see. */}
               <span className="inline-flex items-center gap-1 text-[10px] px-2 py-0.5 rounded-full bg-accent/10 border border-accent/25 text-accent font-medium">
-                Preventive optimization · not medical advice
+                Health-optimization view · not medical advice
               </span>
             </div>
-            <h1 className="text-3xl font-semibold tracking-tight">Your diagnostic</h1>
+            <h1 className="text-3xl font-semibold tracking-tight">How you're doing</h1>
             {diag?.summary && <p className="text-sm text-muted-foreground mt-3 max-w-xl leading-relaxed">{diag.summary}</p>}
           </div>
           <button onClick={() => window.print()} className="no-print shrink-0 text-xs px-3.5 py-2 rounded-xl bg-surface-2 border border-card-border hover:border-accent/40 text-muted-foreground hover:text-accent transition-all">
-            Print / PDF
+            Save as PDF
           </button>
         </div>
 

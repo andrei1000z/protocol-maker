@@ -165,7 +165,7 @@ export function CommandPalette() {
             value={query}
             onChange={e => { setQuery(e.target.value); setCursor(0); }}
             onKeyDown={handleKey}
-            placeholder="Jump to anywhere — biomarkers, patterns, pages…"
+            placeholder="Search for a page, biomarker, or pattern…"
             className="flex-1 bg-transparent text-sm outline-none placeholder:text-muted-foreground/50"
             aria-label="Command search"
           />

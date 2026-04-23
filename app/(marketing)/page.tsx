@@ -68,37 +68,36 @@ export default function LandingPage() {
         <div className="max-w-5xl mx-auto px-6 pt-20 sm:pt-28 pb-20 text-center relative">
           <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-accent/10 border border-accent/20 text-accent text-xs font-medium mb-8 animate-fade-in">
             <span className="w-1.5 h-1.5 rounded-full bg-accent animate-pulse" />
-            Free during beta — powered by AI
+            Free while in beta
           </div>
 
           <h1 className="text-5xl sm:text-7xl font-bold leading-[1.05] tracking-tight animate-fade-in-up stagger-1">
             Your blood work.<br />
-            <span className="gradient-text">AI longevity coach.</span><br />
-            <span className="text-muted-foreground">Your protocol.</span>
+            <span className="gradient-text">A real plan.</span><br />
+            <span className="text-muted-foreground">Built for you.</span>
           </h1>
 
           <p className="text-lg sm:text-xl text-muted-foreground mt-8 max-w-2xl mx-auto leading-relaxed animate-fade-in-up stagger-2">
-            Bryan Johnson spends <strong className="text-foreground">$2M/year</strong> on longevity.
-            You have your blood panel and AI. Get a protocol calibrated to <strong className="text-foreground">YOUR</strong> biomarkers —
-            not his. Personalized nutrition, supplements, exercise, sleep. Generated in 60 seconds.
+            Upload your lab panel. In 60 seconds, get a plan calibrated to <strong className="text-foreground">your</strong> biomarkers —
+            what to eat, what to take, how to train, how to sleep. No generic advice, no $2M Bryan Johnson budget.
           </p>
 
           <div className="flex flex-col sm:flex-row items-center justify-center gap-3 mt-10 animate-fade-in-up stagger-3">
             <Link href="/login"
               className="inline-flex items-center gap-2 px-8 py-4 bg-accent text-black rounded-xl font-bold text-sm hover:bg-accent-bright transition-all active:scale-[0.98] glow-cta">
-              Start in 3 minutes
+              Get my plan
               <ArrowRight className="w-4 h-4" />
             </Link>
             <Link
               href="/dashboard?demo=1"
               className="px-6 py-4 rounded-xl border border-accent/40 bg-accent/[0.04] text-sm text-accent hover:bg-accent/[0.08] hover:border-accent/60 transition-all flex items-center gap-2"
             >
-              👀 See a live sample protocol
+              See a sample first
             </Link>
           </div>
 
           <p className="text-xs text-muted mt-6 animate-fade-in-up stagger-4">
-            Takes 3 minutes · No credit card · {BIOMARKER_COUNT} biomarkers · {PATTERN_COUNT} patterns analyzed
+            3-minute signup · No card required · {BIOMARKER_COUNT} biomarkers · {PATTERN_COUNT} patterns
           </p>
 
           {/* Trust microcopy strip — surfaces the three things that turn a
@@ -108,22 +107,22 @@ export default function LandingPage() {
             <div className="rounded-xl bg-card/60 border border-card-border px-4 py-3 flex items-start gap-3 text-left">
               <Shield className="w-4 h-4 text-accent shrink-0 mt-0.5" />
               <div>
-                <p className="text-[11px] font-semibold text-foreground">Your data, RLS-locked</p>
-                <p className="text-[10px] text-muted-foreground leading-snug mt-0.5">Force row-level security on every table. Your blood panel never leaves your account.</p>
+                <p className="text-[11px] font-semibold text-foreground">Your data stays yours</p>
+                <p className="text-[10px] text-muted-foreground leading-snug mt-0.5">Only you can read your blood panel. Delete the account, everything goes.</p>
               </div>
             </div>
             <div className="rounded-xl bg-card/60 border border-card-border px-4 py-3 flex items-start gap-3 text-left">
               <Activity className="w-4 h-4 text-accent shrink-0 mt-0.5" />
               <div>
-                <p className="text-[11px] font-semibold text-foreground">Daily protocol refresh</p>
-                <p className="text-[10px] text-muted-foreground leading-snug mt-0.5">Nightly cron re-runs the engine against your latest wearable data. No clicking required.</p>
+                <p className="text-[11px] font-semibold text-foreground">Updates every night</p>
+                <p className="text-[10px] text-muted-foreground leading-snug mt-0.5">Your plan re-runs against your latest wearable and tracking data — no button to press.</p>
               </div>
             </div>
             <div className="rounded-xl bg-card/60 border border-card-border px-4 py-3 flex items-start gap-3 text-left">
               <Sparkles className="w-4 h-4 text-accent shrink-0 mt-0.5" />
               <div>
-                <p className="text-[11px] font-semibold text-foreground">Claude + fallback engine</p>
-                <p className="text-[10px] text-muted-foreground leading-snug mt-0.5">Claude Sonnet 4.5 primary, Groq backup, deterministic fallback. You always get a protocol.</p>
+                <p className="text-[11px] font-semibold text-foreground">Never broken</p>
+                <p className="text-[10px] text-muted-foreground leading-snug mt-0.5">Claude is primary. If it's down, Groq takes over. If both fail, a rule-based engine still gives you a plan.</p>
               </div>
             </div>
           </div>

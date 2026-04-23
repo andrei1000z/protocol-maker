@@ -71,11 +71,12 @@ export function TodaysAgenda() {
             <CalendarCheck className="w-5 h-5 text-accent" />
           </div>
           <div>
-            <h2 className="text-base sm:text-lg font-semibold tracking-tight">Today&apos;s agenda</h2>
+            <h2 className="text-base sm:text-lg font-semibold tracking-tight">What to do today</h2>
             <p className="text-[11px] text-muted-foreground mt-0.5 leading-relaxed">
-              {summary.overdue > 0 && <span className="text-amber-400">{summary.overdue} overdue · </span>}
-              <span>{summary.pending} pending</span>
-              {summary.done > 0 && <span className="text-accent"> · {summary.done} done</span>}
+              {summary.overdue > 0 && <span className="text-amber-400">{summary.overdue} behind · </span>}
+              {summary.pending === 0 && summary.overdue === 0
+                ? <span className="text-accent">All done — nice.</span>
+                : <><span>{summary.pending} left</span>{summary.done > 0 && <span className="text-accent"> · {summary.done} done</span>}</>}
             </p>
           </div>
         </div>
@@ -109,7 +110,7 @@ export function TodaysAgenda() {
                         : item.status === 'now' ? 'text-accent bg-accent/10 border-accent/30'
                         : item.status === 'done' ? 'text-muted-foreground bg-surface-3 border-card-border'
                         : 'text-muted bg-surface-3/60 border-card-border')}>
-                        {item.status === 'now' ? 'now' : item.status === 'overdue' ? 'overdue' : item.status === 'done' ? 'done' : bucketLabel.toLowerCase()}
+                        {item.status === 'now' ? 'do now' : item.status === 'overdue' ? 'missed' : item.status === 'done' ? 'done' : bucketLabel.toLowerCase()}
                       </span>
                     </div>
                     {item.detail && (

@@ -98,11 +98,11 @@ export function MealLogger() {
             <Utensils className="w-5 h-5 text-accent" />
           </div>
           <div>
-            <h2 className="text-base sm:text-lg font-semibold tracking-tight">Meal log</h2>
+            <h2 className="text-base sm:text-lg font-semibold tracking-tight">What you ate</h2>
             <p className="text-[11px] text-muted-foreground leading-relaxed mt-0.5">
               {todaysMeals.length === 0
-                ? 'Snap a photo or describe what you ate. AI reads macros + gives a verdict.'
-                : `${todaysMeals.length} logged today · ${Math.round(todaysCalories)} kcal so far. Feeds into your next regen.`}
+                ? 'Take a photo of your plate. Get calories, protein, verdict in 5 seconds.'
+                : `${todaysMeals.length} meal${todaysMeals.length === 1 ? '' : 's'} today · ~${Math.round(todaysCalories)} kcal so far.`}
             </p>
           </div>
         </div>
@@ -111,7 +111,7 @@ export function MealLogger() {
           className="shrink-0 inline-flex items-center gap-1.5 text-xs sm:text-sm font-semibold px-3.5 py-2 rounded-xl bg-accent text-black hover:bg-accent-bright transition-colors"
         >
           <Camera className="w-4 h-4" />
-          Log meal
+          Add meal
         </button>
       </div>
 
@@ -120,7 +120,7 @@ export function MealLogger() {
         <div className="h-16 rounded-xl bg-surface-3/40 animate-pulse" />
       ) : recent.length === 0 ? (
         <p className="text-[11px] text-muted-foreground italic">
-          No meals logged yet. Your next protocol regen will include whatever you log here over the next 7 days.
+          Nothing logged yet. What you eat over the next week shapes your next protocol update.
         </p>
       ) : (
         <>
@@ -304,10 +304,10 @@ function MealLoggerModal({ onClose }: { onClose: () => void }) {
         <div className="sticky top-0 z-10 bg-surface-1/95 backdrop-blur-lg border-b border-card-border p-5 flex items-center justify-between">
           <div>
             <p className="text-[10px] font-mono uppercase tracking-widest text-accent">
-              {analysis ? 'Review analysis' : 'Log a meal'}
+              {analysis ? 'Check this looks right' : 'Add a meal'}
             </p>
             <h2 id="meal-logger-title" className="text-lg font-semibold mt-0.5">
-              {analysis ? editableTitle : 'What did you eat?'}
+              {analysis ? editableTitle : 'Snap it or describe it'}
             </h2>
           </div>
           <button onClick={onClose} aria-label="Close" className="p-1.5 rounded-lg text-muted-foreground hover:text-foreground hover:bg-surface-2 transition-colors">
@@ -321,7 +321,7 @@ function MealLoggerModal({ onClose }: { onClose: () => void }) {
             {/* Photo picker. On iOS the capture attr opens the camera
                 directly; desktop browsers show a file picker. Both supported. */}
             <div>
-              <p className="text-[11px] font-semibold uppercase tracking-widest text-muted mb-2">Photo</p>
+              <p className="text-[11px] font-semibold uppercase tracking-widest text-muted mb-2">1. Photo <span className="text-muted/60 font-normal normal-case tracking-normal">(fastest option)</span></p>
               {preview ? (
                 <div className="relative rounded-2xl overflow-hidden border border-card-border">
                   <Image src={preview} alt="Meal preview" width={800} height={600} className="w-full max-h-72 object-cover" unoptimized />
@@ -337,7 +337,7 @@ function MealLoggerModal({ onClose }: { onClose: () => void }) {
                 <div className="grid grid-cols-2 gap-2">
                   <label className="rounded-xl bg-surface-2 border border-card-border hover:border-accent/40 p-4 text-center cursor-pointer transition-colors">
                     <Camera className="w-5 h-5 mx-auto text-accent" />
-                    <p className="text-[11px] font-medium mt-1.5">Take photo</p>
+                    <p className="text-[11px] font-medium mt-1.5">Open camera</p>
                     <input
                       ref={fileRef}
                       type="file"
@@ -349,7 +349,7 @@ function MealLoggerModal({ onClose }: { onClose: () => void }) {
                   </label>
                   <label className="rounded-xl bg-surface-2 border border-card-border hover:border-accent/40 p-4 text-center cursor-pointer transition-colors">
                     <Upload className="w-5 h-5 mx-auto text-muted-foreground" />
-                    <p className="text-[11px] font-medium mt-1.5">Upload</p>
+                    <p className="text-[11px] font-medium mt-1.5">Choose file</p>
                     <input type="file" accept="image/*" className="hidden" onChange={handleFileChange} />
                   </label>
                 </div>
@@ -359,12 +359,12 @@ function MealLoggerModal({ onClose }: { onClose: () => void }) {
             {/* Text */}
             <div>
               <p className="text-[11px] font-semibold uppercase tracking-widest text-muted mb-2 flex items-center gap-1.5">
-                <Type className="w-3 h-3" /> Description <span className="text-muted/60 font-normal normal-case tracking-normal">(optional, or use instead of photo)</span>
+                <Type className="w-3 h-3" /> 2. Or type what you ate <span className="text-muted/60 font-normal normal-case tracking-normal">(skip if you added a photo)</span>
               </p>
               <textarea
                 value={userText}
                 onChange={e => setUserText(e.target.value)}
-                placeholder="e.g. chicken rice + avocado + olive oil"
+                placeholder="chicken with rice, avocado, olive oil"
                 rows={3}
                 className="w-full rounded-xl bg-surface-2 border border-card-border px-3 py-2.5 text-sm outline-none focus:border-accent/50 placeholder:text-muted-foreground/50 resize-none"
               />
@@ -373,7 +373,7 @@ function MealLoggerModal({ onClose }: { onClose: () => void }) {
             {/* Time picker */}
             <div>
               <p className="text-[11px] font-semibold uppercase tracking-widest text-muted mb-2 flex items-center gap-1.5">
-                <Clock className="w-3 h-3" /> When
+                <Clock className="w-3 h-3" /> 3. When did you eat?
               </p>
               <div className="flex flex-wrap gap-1.5">
                 {TIME_PRESETS.map(p => (
@@ -410,17 +410,17 @@ function MealLoggerModal({ onClose }: { onClose: () => void }) {
               {analyzing ? (
                 <>
                   <span className="w-4 h-4 border-2 border-black/40 border-t-black rounded-full animate-spin" />
-                  Analyzing…
+                  Reading the plate…
                 </>
               ) : (
                 <>
                   <Sparkles className="w-4 h-4" />
-                  Analyze with AI
+                  See what's in it
                 </>
               )}
             </button>
             <p className="text-[10px] text-center text-muted">
-              Photos are discarded after analysis. We only save the structured data.
+              Your photo isn't saved — only the title, macros, and verdict.
             </p>
           </div>
         )}
@@ -457,22 +457,22 @@ function MealLoggerModal({ onClose }: { onClose: () => void }) {
               </div>
             )}
 
-            <div className="text-[10px] text-muted font-mono pt-2 border-t border-card-border">
-              Logged at {fmtTime(analysis.eatenAt)} · analyzed by {analysis.model}
+            <div className="text-[10px] text-muted pt-2 border-t border-card-border">
+              Eaten at {fmtTime(analysis.eatenAt)}
             </div>
 
             {error && (
               <p className="text-[11px] text-danger bg-red-500/5 border border-red-500/20 rounded-lg p-2">{error}</p>
             )}
 
-            <div className="grid grid-cols-2 gap-2">
+            <div className="grid grid-cols-[auto_1fr] gap-2">
               <button
                 onClick={handleRetry}
                 disabled={saving}
-                className="py-3 rounded-xl bg-surface-3 border border-card-border text-sm text-muted-foreground hover:text-foreground transition-colors inline-flex items-center justify-center gap-1.5"
+                className="px-4 py-3 rounded-xl bg-surface-3 border border-card-border text-sm text-muted-foreground hover:text-foreground transition-colors inline-flex items-center justify-center gap-1.5"
               >
                 <RefreshCw className="w-3.5 h-3.5" />
-                Start over
+                Try again
               </button>
               <button
                 onClick={handleSave}
@@ -487,7 +487,7 @@ function MealLoggerModal({ onClose }: { onClose: () => void }) {
                 ) : (
                   <>
                     <Check className="w-3.5 h-3.5" />
-                    Save meal
+                    Looks right — save
                   </>
                 )}
               </button>
@@ -501,9 +501,9 @@ function MealLoggerModal({ onClose }: { onClose: () => void }) {
 
 function VerdictPill({ verdict, reasons }: { verdict: MealAnalysis['verdict']; reasons: string[] }) {
   const toneMap = {
-    good:  { bg: 'bg-accent/5 border-accent/25',        text: 'text-accent',       label: 'Good choice' },
-    mixed: { bg: 'bg-amber-500/5 border-amber-500/25',  text: 'text-amber-400',    label: 'Mixed' },
-    bad:   { bg: 'bg-red-500/5 border-red-500/20',      text: 'text-danger',       label: 'Not great' },
+    good:  { bg: 'bg-accent/5 border-accent/25',        text: 'text-accent',       label: 'Solid meal' },
+    mixed: { bg: 'bg-amber-500/5 border-amber-500/25',  text: 'text-amber-400',    label: 'Decent — a few things to tweak' },
+    bad:   { bg: 'bg-red-500/5 border-red-500/20',      text: 'text-danger',       label: 'Not your best' },
   } as const;
   const tone = toneMap[verdict];
   return (

@@ -2056,7 +2056,7 @@ export default function OnboardingPage() {
           onClick={() => step < 4 ? handleNext() : setShowReview(true)}
           disabled={!canNext() || loading}
           className="flex-1 py-3 rounded-xl bg-accent text-black font-semibold text-sm transition-all hover:bg-accent-dim active:scale-[0.98] disabled:opacity-40">
-          {step < 4 ? 'Continue →' : 'Review & generate →'}
+          {step < 4 ? 'Next →' : 'Check your answers →'}
         </button>
         </div>
       </div>
@@ -2101,14 +2101,14 @@ export default function OnboardingPage() {
                 onClick={() => { setShowRedFlagModal(false); setRedFlagAck(false); }}
                 className="flex-1 py-3 rounded-xl bg-surface-3 text-foreground text-sm font-medium hover:bg-card-hover transition-colors"
               >
-                Go to a doctor first
+                See a doctor first
               </button>
               <button
                 onClick={() => { setShowRedFlagModal(false); handleFinish(); }}
                 disabled={!redFlagAck}
                 className="flex-1 py-3 rounded-xl bg-accent text-black text-sm font-semibold hover:bg-accent-bright transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
               >
-                I understand, continue
+                Got it, continue
               </button>
             </div>
           </div>
@@ -2132,8 +2132,8 @@ export default function OnboardingPage() {
           <div className="relative bg-surface-1 rounded-t-3xl sm:rounded-3xl w-full sm:max-w-lg mx-0 sm:mx-4 max-h-[88dvh] overflow-y-auto border border-card-border animate-fade-in-up">
             <div className="sticky top-0 bg-surface-1/95 backdrop-blur-lg border-b border-card-border p-5 flex items-center justify-between">
               <div>
-                <p className="text-[10px] font-mono uppercase tracking-widest text-accent">One last look</p>
-                <h2 id="review-title" className="text-lg font-semibold mt-0.5">Review before generating</h2>
+                <p className="text-[10px] font-mono uppercase tracking-widest text-accent">Almost done</p>
+                <h2 id="review-title" className="text-lg font-semibold mt-0.5">Does this look right?</h2>
               </div>
               <button onClick={() => setShowReview(false)} aria-label="Close review" className="p-1.5 rounded-lg text-muted-foreground hover:text-foreground hover:bg-surface-2 transition-colors">
                 <X className="w-4 h-4" />
@@ -2220,7 +2220,7 @@ export default function OnboardingPage() {
               </div>
 
               <p className="text-[11px] text-muted-foreground leading-relaxed pt-3 border-t border-card-border">
-                Generating the protocol takes ~15 seconds. You can come back to tweak answers any time from Settings.
+                This takes about 15 seconds. You can edit anything later from Settings.
               </p>
             </div>
 
@@ -2229,13 +2229,13 @@ export default function OnboardingPage() {
                 onClick={() => setShowReview(false)}
                 className="flex-1 py-3 rounded-xl bg-surface-3 border border-card-border text-sm text-muted-foreground hover:text-foreground transition-colors"
               >
-                Go back to edit
+                Back to edit
               </button>
               <button
                 onClick={() => { setShowReview(false); handleFinish(); }}
                 className="flex-1 py-3 rounded-xl bg-accent text-black font-semibold text-sm hover:bg-accent-bright transition-colors"
               >
-                ⚡ Generate protocol
+                Build my protocol →
               </button>
             </div>
           </div>

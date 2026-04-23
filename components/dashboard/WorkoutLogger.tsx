@@ -52,11 +52,11 @@ export function WorkoutLogger() {
             <Dumbbell className="w-5 h-5 text-accent" />
           </div>
           <div>
-            <h2 className="text-base sm:text-lg font-semibold tracking-tight">Workout</h2>
+            <h2 className="text-base sm:text-lg font-semibold tracking-tight">Training</h2>
             <p className="text-[11px] text-muted-foreground mt-0.5 leading-relaxed">
               {today?.workout_done
-                ? `${today.workout_minutes ?? '?'} min · ${today.workout_intensity ?? '?'} intensity logged today.`
-                : 'Pick a preset or enter custom — counts toward your weekly volume.'}
+                ? `Done today: ${today.workout_minutes ?? '?'} min · ${today.workout_intensity ?? '?'}.`
+                : "Tap to log what you did today — one click logs the whole session."}
             </p>
           </div>
         </div>
@@ -65,7 +65,7 @@ export function WorkoutLogger() {
           className="shrink-0 inline-flex items-center gap-1.5 text-xs sm:text-sm font-semibold px-3.5 py-2 rounded-xl bg-accent text-black hover:bg-accent-bright transition-colors"
         >
           <Zap className="w-4 h-4" />
-          {today?.workout_done ? 'Log another' : 'Log workout'}
+          {today?.workout_done ? 'Log another' : 'I trained today'}
         </button>
       </div>
 

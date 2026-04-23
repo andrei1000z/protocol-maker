@@ -4,10 +4,9 @@ import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
 import { useEffect, useRef, useState } from 'react';
 import clsx from 'clsx';
-import { LogOut, Settings, User } from 'lucide-react';
+import { LogOut, Settings, User, ChevronDown } from 'lucide-react';
 import { useMyData, invalidate } from '@/lib/hooks/useApiData';
 import { ThemeToggle } from './ThemeToggle';
-import { Avatar } from '@/components/ui/Avatar';
 
 const LINKS = [
   { href: '/dashboard', label: 'Protocol' },
@@ -32,9 +31,16 @@ function UserMenu() {
 
   const od = (myData?.profile?.onboarding_data || {}) as Record<string, unknown>;
   const name = (typeof od.name === 'string' && od.name.trim()) ? od.name.trim() : null;
-  // Stable per-user seed for the gradient avatar — uses the profile id
-  // so the same user gets the same colours across sessions and devices.
-  const avatarSeed = myData?.profile?.id || name || 'anon';
+  const initial = (name || 'Y').charAt(0).toUpperCase();
+  // Show the first name + last-initial when we have it ("Andrei M."), so
+  // the header reads as a person not an avatar. Falls back to "Account"
+  // when we don't have a name on file yet.
+  const shortLabel = (() => {
+    if (!name) return 'Account';
+    const parts = name.split(/\s+/).filter(Boolean);
+    if (parts.length === 1) return parts[0];
+    return `${parts[0]} ${parts[parts.length - 1].charAt(0).toUpperCase()}.`;
+  })();
 
   const handleLogout = async () => {
     await fetch('/api/logout', { method: 'POST' });
@@ -46,16 +52,23 @@ function UserMenu() {
     <div ref={ref} className="relative">
       <button
         onClick={() => setOpen(o => !o)}
-        className="rounded-xl hover:opacity-80 transition-opacity focus:outline-none focus:ring-2 focus:ring-accent/40"
+        className="inline-flex items-center gap-2 pl-1 pr-2 py-1 rounded-xl border border-card-border bg-surface-2 hover:border-card-border-hover hover:bg-surface-3 transition-colors focus:outline-none focus:ring-2 focus:ring-accent/40"
         aria-label="Account menu"
+        aria-expanded={open}
       >
-        <Avatar seed={avatarSeed} name={name} size={36} className="rounded-xl" />
+        {/* Simple initial chip — no gradient. Reads as "you" without
+            looking like a generated image. */}
+        <span className="inline-flex items-center justify-center w-7 h-7 rounded-lg bg-accent/10 border border-accent/25 text-[11px] font-semibold text-accent">
+          {initial}
+        </span>
+        <span className="hidden sm:inline text-xs font-medium text-foreground/90 max-w-[120px] truncate">{shortLabel}</span>
+        <ChevronDown className={clsx('w-3.5 h-3.5 text-muted-foreground transition-transform', open && 'rotate-180')} />
       </button>
       {open && (
-        <div className="absolute right-0 top-full mt-2 w-56 rounded-xl bg-surface-1 border border-card-border shadow-xl p-1.5 z-50 animate-fade-in-up">
+        <div className="absolute right-0 top-full mt-2 w-60 rounded-xl bg-surface-1 border border-card-border shadow-xl p-1.5 z-50 animate-fade-in-up">
           <div className="px-3 py-2.5 border-b border-card-border mb-1">
-            <p className="text-[10px] uppercase tracking-widest text-muted">Signed in</p>
-            <p className="text-sm font-medium truncate mt-0.5">{name || 'Your account'}</p>
+            <p className="text-[10px] uppercase tracking-widest text-muted">Signed in as</p>
+            <p className="text-sm font-medium truncate mt-0.5">{name || 'Unnamed account'}</p>
           </div>
           <Link
             href="/settings"
@@ -86,7 +99,7 @@ function UserMenu() {
             className="w-full flex items-center gap-2.5 px-3 py-2 rounded-lg hover:bg-red-500/10 text-sm text-danger text-left transition-colors"
           >
             <LogOut className="w-4 h-4" />
-            Log out
+            Sign out
           </button>
         </div>
       )}

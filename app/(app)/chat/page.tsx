@@ -51,25 +51,25 @@ interface UserContext {
   name: string | null;
 }
 
-// Contextual suggestions based on what the user actually has
+// Contextual suggestions — short, direct, the way people actually ask.
 function buildSuggestions(ctx: UserContext | null): string[] {
   const defaults = [
-    'How am I doing overall?',
-    'What\'s my biggest risk right now?',
-    'Which supplement matters most this week?',
-    'My energy is low lately — what can I change?',
-    'Am I on track vs Bryan Johnson?',
+    'How am I doing?',
+    'What should I fix first?',
+    'Which supplement matters most?',
+    'My energy is low — why?',
+    'What would Bryan Johnson change?',
   ];
   if (!ctx) return defaults;
   const prompts: string[] = [];
-  if (ctx.hasProtocol) prompts.push('Give me a 30-second status update.');
-  if (ctx.hasProtocol) prompts.push('What should I focus on this week?');
-  if (ctx.metricsDays >= 3) prompts.push('Look at my tracked data — any red flags?');
-  if (ctx.bloodTests > 0) prompts.push('Explain my weakest biomarker in plain English.');
-  if (ctx.bloodTests === 0) prompts.push('Which blood panel should I order first?');
-  prompts.push('Are any of my supplements redundant?');
+  if (ctx.hasProtocol) prompts.push('Give me a 30-second read.');
+  if (ctx.hasProtocol) prompts.push('One thing to focus on this week?');
+  if (ctx.metricsDays >= 3) prompts.push('Anything red in my last few days?');
+  if (ctx.bloodTests > 0) prompts.push('Explain my worst biomarker in plain words.');
+  if (ctx.bloodTests === 0) prompts.push('Which labs should I order first?');
+  prompts.push('Am I taking anything I don\'t need?');
   prompts.push('How do I improve my HRV?');
-  prompts.push('What\'s the #1 thing holding back my bio age?');
+  prompts.push('What\'s blocking my biological age?');
   return prompts.slice(0, 6);
 }
 
@@ -621,7 +621,7 @@ export default function ChatPage() {
             onChange={(e) => setInput(e.target.value)}
             onKeyDown={handleKeyDown}
             rows={1}
-            placeholder={ctx?.hasProtocol ? 'Ask about your protocol, biomarkers, habits…' : 'Finish onboarding to get specific answers'}
+            placeholder={ctx?.hasProtocol ? 'Ask anything — labs, sleep, supplements, food…' : 'Finish onboarding so I can give you real answers'}
             className="w-full bg-transparent px-4 py-3 text-sm outline-none resize-none placeholder:text-muted-foreground/60 font-normal leading-relaxed max-h-[180px]"
             disabled={streaming}
           />

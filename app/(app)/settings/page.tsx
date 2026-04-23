@@ -1251,15 +1251,15 @@ export default function SettingsPage() {
           /api/my-data?full=1 endpoint — transforms happen client-side. */}
       <div className="glass-card rounded-2xl p-5 space-y-3 animate-fade-in-up">
         <div>
-          <p className="text-sm font-semibold">Export your data</p>
-          <p className="text-[11px] text-muted-foreground leading-relaxed mt-0.5">Take your record anywhere. Everything below is generated from your own data, unredacted.</p>
+          <p className="text-sm font-semibold">Download your data</p>
+          <p className="text-[11px] text-muted-foreground leading-relaxed mt-0.5">Everything here comes from your own records, unredacted. Open the CSVs in Excel or Sheets.</p>
         </div>
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
           {[
-            { label: 'Biomarkers (CSV)',       desc: 'One row per test × code. Excel/Sheets ready.', onClick: handleExportBiomarkersCsv },
-            { label: 'Daily metrics (CSV)',    desc: 'Last month of sleep, HRV, steps, etc.',         onClick: handleExportMetricsCsv },
-            { label: 'Protocol history (CSV)', desc: 'Score, bio age, pace across every regen.',      onClick: handleExportProtocolHistoryCsv },
-            { label: 'Doctor snapshot (MD)',   desc: 'One-page readable summary for a consult.',      onClick: handleExportDoctorMd },
+            { label: 'Biomarkers (CSV)',       desc: 'Every lab value you\'ve uploaded.', onClick: handleExportBiomarkersCsv },
+            { label: 'Daily metrics (CSV)',    desc: 'Sleep, HRV, steps — last month.',    onClick: handleExportMetricsCsv },
+            { label: 'Protocol history (CSV)', desc: 'Every regeneration with scores.',    onClick: handleExportProtocolHistoryCsv },
+            { label: 'Doctor summary (.md)',   desc: 'One-pager to show your GP.',         onClick: handleExportDoctorMd },
           ].map(x => (
             <button
               key={x.label}
@@ -1281,29 +1281,29 @@ export default function SettingsPage() {
         {[
           {
             icon: RotateCcw,
-            label: 'Regenerate protocol',
-            desc: 'Re-run onboarding with fresh data',
+            label: 'Rebuild my protocol from scratch',
+            desc: 'Walks you through onboarding again with fresh answers',
             tone: 'accent' as const,
             onClick: async () => { await fetch('/api/reset-onboarding', { method: 'POST' }); window.location.href = '/onboarding'; },
           },
           {
             icon: Download,
-            label: 'Export all data',
-            desc: 'JSON backup of profile + protocols + tests',
+            label: 'Full data archive (JSON)',
+            desc: 'Everything in one file — GDPR Article 15',
             tone: 'neutral' as const,
             onClick: handleExport,
           },
           {
             icon: LogOut,
-            label: 'Log out',
-            desc: 'Sign out of this device',
+            label: 'Sign out',
+            desc: 'Sign out of this device only',
             tone: 'neutral' as const,
             onClick: handleLogout,
           },
           {
             icon: Trash2,
-            label: 'Delete account',
-            desc: 'Permanently erase account and all data',
+            label: 'Delete my account',
+            desc: 'Permanent. Wipes profile, labs, protocols, chat.',
             tone: 'danger' as const,
             onClick: () => setDeleteOpen(true),
           },

@@ -34,29 +34,29 @@ const ROWS: Array<{
   {
     key: 'protocolRegen',
     apiKey: 'notifProtocolRegen',
-    label: 'Protocol regen alerts',
-    desc: 'When your longevity score or biological age shifts by a meaningful amount after a refresh.',
+    label: 'When my protocol changes',
+    desc: 'Get notified when your score or biological age moves after an update.',
     defaultOn: true,
   },
   {
     key: 'weeklyDigest',
     apiKey: 'notifWeeklyDigest',
-    label: 'Weekly digest',
-    desc: 'Monday morning summary — best and worst day, adherence, biomarkers trending.',
+    label: 'Weekly Monday recap',
+    desc: 'A short email Monday morning with best day, worst day, and what\'s trending.',
     defaultOn: false,
   },
   {
     key: 'retestReminders',
     apiKey: 'notifRetestReminders',
-    label: 'Retest reminders',
-    desc: 'Ping me when a biomarker has been out of range long enough that a follow-up lab is due.',
+    label: 'Lab retest reminders',
+    desc: 'Nudge me when a biomarker has been off for a while and it\'s time to retest.',
     defaultOn: false,
   },
   {
     key: 'streakMilestones',
     apiKey: 'notifStreakMilestones',
     label: 'Streak milestones',
-    desc: 'Celebrate 7 / 30 / 100-day streaks.',
+    desc: 'Quick note at 7, 30, and 100-day streaks.',
     defaultOn: false,
   },
 ];
@@ -125,8 +125,8 @@ export function NotificationPrefs({ initial }: NotificationPrefsProps) {
           <Bell className="w-4 h-4 text-accent" />
         </div>
         <div>
-          <p className="text-sm font-semibold">Notifications</p>
-          <p className="text-[11px] text-muted-foreground leading-relaxed">Pick what to hear about. Email delivery ships with the companion app.</p>
+          <p className="text-sm font-semibold">What should I tell you about?</p>
+          <p className="text-[11px] text-muted-foreground leading-relaxed">Pick what you want alerts for. Email delivery ships with the mobile app.</p>
         </div>
       </div>
 

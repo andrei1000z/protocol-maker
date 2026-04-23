@@ -12,9 +12,9 @@ import clsx from 'clsx';
 import { getThemeMode, setThemeMode, watchSystemTheme, type ThemeMode } from '@/lib/theme';
 
 const OPTIONS: Array<{ id: ThemeMode; label: string; hint: string; icon: React.ElementType }> = [
-  { id: 'system', label: 'System',     hint: 'Match my OS preference', icon: Monitor },
-  { id: 'light',  label: 'Light',      hint: 'Bright surfaces',         icon: Sun },
-  { id: 'dark',   label: 'Dark',       hint: 'Default — easy on eyes',  icon: Moon },
+  { id: 'system', label: 'Auto',  hint: 'Follow my phone / OS',  icon: Monitor },
+  { id: 'light',  label: 'Light', hint: 'Bright white',          icon: Sun },
+  { id: 'dark',   label: 'Dark',  hint: 'Easier on the eyes',    icon: Moon },
 ];
 
 export function ThemePicker() {
@@ -41,7 +41,7 @@ export function ThemePicker() {
       <div>
         <p className="text-sm font-semibold">Theme</p>
         <p className="text-[11px] text-muted-foreground leading-relaxed mt-0.5">
-          Default is dark. System follows your OS appearance setting.
+          Dark by default. Auto switches when your phone does.
         </p>
       </div>
       <div className="grid grid-cols-3 gap-2">

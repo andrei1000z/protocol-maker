@@ -57,11 +57,18 @@ export function buildAgenda(input: AgendaInput): AgendaItem[] {
     if (bucket === 'anytime') continue;
     const sups = grouped[bucket];
     if (!sups || sups.length === 0) continue;
+    // Friendly bucket label — "supplements with breakfast" beats "supplements
+    // (morning bucket)". Stays honest if timing is unknown ("anytime").
+    const slot = bucket === 'morning' ? 'with breakfast'
+              : bucket === 'midday'  ? 'with lunch'
+              : bucket === 'evening' ? 'with dinner'
+              : bucket === 'bedtime' ? 'before bed'
+              : 'any time today';
     items.push({
       id: `sup-${bucket}`,
       category: 'supplement',
-      title: `${sups.length} supplement${sups.length === 1 ? '' : 's'}`,
-      detail: sups.slice(0, 4).map(s => s.name).filter(Boolean).join(' · '),
+      title: `Take ${sups.length} supplement${sups.length === 1 ? '' : 's'} ${slot}`,
+      detail: sups.slice(0, 4).map(s => s.name).filter(Boolean).join(', '),
       bucket,
       status: statusForBucket(bucket, currentBucket),
       href: '/dashboard#supplements',
@@ -75,10 +82,10 @@ export function buildAgenda(input: AgendaInput): AgendaItem[] {
     items.push({
       id: 'sleep-target',
       category: 'sleep',
-      title: 'Wind down',
+      title: input.sleepLoggedToday ? 'Sleep logged ✓' : 'Get to bed',
       detail: [
-        sleep.targetBedtime ? `Bedtime ${sleep.targetBedtime}` : null,
-        sleep.targetHours ? `${sleep.targetHours}h target` : null,
+        sleep.targetBedtime ? `by ${sleep.targetBedtime}` : null,
+        sleep.targetHours ? `aim for ${sleep.targetHours}h` : null,
       ].filter(Boolean).join(' · '),
       bucket: 'bedtime',
       status: input.sleepLoggedToday ? 'done' : statusForBucket('bedtime', currentBucket),
@@ -98,7 +105,7 @@ export function buildAgenda(input: AgendaInput): AgendaItem[] {
     items.push({
       id: 'workout',
       category: 'workout',
-      title: input.workoutDoneToday ? 'Workout logged ✓' : 'Move today',
+      title: input.workoutDoneToday ? 'Workout done ✓' : 'Get a session in',
       detail: parts.join(' · '),
       bucket: 'midday',
       status: input.workoutDoneToday ? 'done' : statusForBucket('midday', currentBucket),
@@ -115,8 +122,8 @@ export function buildAgenda(input: AgendaInput): AgendaItem[] {
       items.push({
         id: 'meal-morning',
         category: 'meal',
-        title: 'Log breakfast',
-        detail: 'Snap a photo so today\'s macros count.',
+        title: 'Log what you had for breakfast',
+        detail: 'Snap the plate — AI does the macros.',
         bucket: 'morning',
         status: statusForBucket('morning', currentBucket),
         href: '/dashboard',
@@ -126,8 +133,8 @@ export function buildAgenda(input: AgendaInput): AgendaItem[] {
       items.push({
         id: 'meal-midday',
         category: 'meal',
-        title: 'Log lunch',
-        detail: 'Two clicks. Feeds your next regen.',
+        title: 'Log what you had for lunch',
+        detail: 'Two taps. Shapes your next protocol update.',
         bucket: 'midday',
         status: statusForBucket('midday', currentBucket),
         href: '/dashboard',
@@ -137,8 +144,8 @@ export function buildAgenda(input: AgendaInput): AgendaItem[] {
       items.push({
         id: 'meal-evening',
         category: 'meal',
-        title: 'Log dinner',
-        detail: 'Last meal of the day.',
+        title: 'Log what you had for dinner',
+        detail: 'Close the food loop for today.',
         bucket: 'evening',
         status: statusForBucket('evening', currentBucket),
         href: '/dashboard',
@@ -153,8 +160,8 @@ export function buildAgenda(input: AgendaInput): AgendaItem[] {
     items.push({
       id: 'retest-' + top.shortName,
       category: 'retest',
-      title: `Order ${top.shortName} retest`,
-      detail: `${top.weeksOverdue}w overdue. Book a lab.`,
+      title: `Book a ${top.shortName} retest`,
+      detail: `It's been ${top.weeksOverdue}w past the retest window.`,
       bucket: 'morning',
       status: 'overdue',
       href: '/dashboard#biomarkers',

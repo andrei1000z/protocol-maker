@@ -237,7 +237,7 @@ export default function HistoryPage() {
 
       {/* Protocol timeline chart */}
       {protocols.length >= 2 && (
-        <Section icon={Activity} title="Longevity score timeline" subtitle={`${protocols.length} protocol regenerations over ${Math.round((new Date(protocols[protocols.length - 1].created_at).getTime() - new Date(protocols[0].created_at).getTime()) / 864e5)} days`}>
+        <Section icon={Activity} title="Score over time" subtitle={`${protocols.length} updates across ${Math.round((new Date(protocols[protocols.length - 1].created_at).getTime() - new Date(protocols[0].created_at).getTime()) / 864e5)} days`}>
           <div className="rounded-xl bg-surface-2 border border-card-border p-4 -mx-1">
             <MetricLineChart
               data={protocolChartData.map(p => ({ date: p.date, dateLabel: p.date, value: p.score }))}
@@ -264,7 +264,7 @@ export default function HistoryPage() {
 
       {/* Biggest biomarker movers */}
       {biomarkerChanges.length > 0 && (
-        <Section icon={Sparkles} title="Biggest movers" subtitle={`How your top ${biomarkerChanges.length} biomarkers changed between first and latest test`}>
+        <Section icon={Sparkles} title="What's moved the most" subtitle={`Top ${biomarkerChanges.length} biomarkers, first panel vs latest`}>
           <div className="space-y-1.5">
             {biomarkerChanges.map(c => (
               <div key={c.code} className="flex items-center justify-between gap-3 p-3 rounded-xl bg-surface-2 border border-card-border hover:border-card-border-hover transition-colors">
@@ -404,14 +404,14 @@ export default function HistoryPage() {
           no blood work yet. The top-level empty state only fires when both
           lists are empty, so this catches the "onboarded lifestyle-only" case. */}
       {tests.length === 0 && protocols.length > 0 && (
-        <Section icon={FileText} title="Blood tests" subtitle="Upload lab work to unlock biomarker-driven recommendations">
+        <Section icon={FileText} title="Blood tests" subtitle="Add a lab panel to unlock biomarker-level advice">
           <div className="rounded-2xl border border-dashed border-card-border bg-surface-2/40 p-6 text-center space-y-3">
-            <p className="text-sm font-medium">No blood tests on file yet</p>
+            <p className="text-sm font-medium">No labs uploaded yet</p>
             <p className="text-[11px] text-muted-foreground max-w-sm mx-auto leading-relaxed">
-              Your protocol is running on lifestyle signal only. Add one panel (Synevo / Regina Maria / Medlife) and the AI picks up 20-30 more adjustments you can&apos;t see without bloodwork.
+              Right now your protocol runs on lifestyle answers only. Add a panel from Synevo, Regina Maria, MedLife, or Bioclinica and get 20-30 extra adjustments keyed to your actual numbers.
             </p>
             <a href="/settings" className="inline-block px-4 py-2 rounded-xl bg-accent text-black text-xs font-semibold hover:bg-accent-bright transition-colors">
-              Upload test (Settings)
+              Upload a PDF
             </a>
           </div>
         </Section>
