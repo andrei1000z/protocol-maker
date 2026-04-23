@@ -14,6 +14,19 @@ export function createClient() {
     throw new Error('Supabase env vars missing');
   }
 
-  client = createBrowserClient(url, key);
+  client = createBrowserClient(url, key, {
+    auth: {
+      // Pass these explicitly so a future Supabase version flipping the
+      // defaults doesn't silently sign users out when they reload.
+      persistSession: true,
+      autoRefreshToken: true,
+      // Needed for magic-link email callbacks that pass the token back
+      // in the URL hash fragment.
+      detectSessionInUrl: true,
+      // PKCE keeps the refresh token server-only — recommended flow for
+      // SSR apps and lower XSS risk than implicit.
+      flowType: 'pkce',
+    },
+  });
   return client;
 }

@@ -13,7 +13,19 @@ export default async function proxy(request: NextRequest) {
         setAll(cookiesToSet) {
           cookiesToSet.forEach(({ name, value }) => request.cookies.set(name, value));
           supabaseResponse = NextResponse.next({ request });
-          cookiesToSet.forEach(({ name, value, options }) => supabaseResponse.cookies.set(name, value, options));
+          cookiesToSet.forEach(({ name, value, options }) => {
+            // Force a long maxAge when Supabase doesn't set one, so the
+            // auth cookie isn't dropped when the tab closes. Browsers
+            // treat a cookie with no maxAge/expires as a "session cookie"
+            // → gone when the last tab for this origin closes. Was
+            // happening even though Supabase passes maxAge for the main
+            // token, because a few auxiliary cookies (code verifier,
+            // provider token) omit it. 400 days matches Chrome's ceiling.
+            const cookieOpts = options?.maxAge || options?.expires
+              ? options
+              : { ...options, maxAge: 400 * 24 * 60 * 60 };
+            supabaseResponse.cookies.set(name, value, cookieOpts);
+          });
         },
       },
     }
@@ -25,23 +37,37 @@ export default async function proxy(request: NextRequest) {
   const isDemoMode = path === '/dashboard' && request.nextUrl.searchParams.has('demo');
   const isPublic = path === '/' || path === '/login' || path.startsWith('/api') || path === '/auth/callback' || path.startsWith('/share') || path === '/privacy' || path === '/terms' || path === '/sitemap.xml' || path === '/robots.txt' || isDemoMode;
 
+  // Every redirect we emit has to carry forward the Set-Cookie headers
+  // that Supabase wrote to `supabaseResponse` during getUser(). If we
+  // return a bare NextResponse.redirect(), the refreshed auth token is
+  // silently thrown away — the next page load sends the stale token,
+  // Supabase rejects it, and the user gets kicked to /login. This was
+  // the cause of "close the tab, come back, I'm signed out": access
+  // tokens expire after 1h, the first navigation refreshes them, but
+  // the redirect response didn't include the rotated cookies.
+  const redirectWithCookies = (url: URL) => {
+    const res = NextResponse.redirect(url);
+    supabaseResponse.cookies.getAll().forEach(c => res.cookies.set(c));
+    return res;
+  };
+
   if (isPublic) return supabaseResponse;
 
   if (!user) {
-    return NextResponse.redirect(new URL('/login', request.url));
+    return redirectWithCookies(new URL('/login', request.url));
   }
 
   if (path !== '/onboarding') {
     const { data: profile } = await supabase.from('profiles').select('onboarding_completed').eq('id', user.id).single();
     if (!profile?.onboarding_completed) {
-      return NextResponse.redirect(new URL('/onboarding', request.url));
+      return redirectWithCookies(new URL('/onboarding', request.url));
     }
   }
 
   if (path === '/onboarding') {
     const { data: profile } = await supabase.from('profiles').select('onboarding_completed').eq('id', user.id).single();
     if (profile?.onboarding_completed) {
-      return NextResponse.redirect(new URL('/dashboard', request.url));
+      return redirectWithCookies(new URL('/dashboard', request.url));
     }
   }
 
