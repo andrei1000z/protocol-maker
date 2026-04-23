@@ -187,6 +187,23 @@ interface MealRowPartial {
   fiber_g: number | null;
   verdict: 'good' | 'mixed' | 'bad' | null;
   verdict_reasons: string[];
+  longevity_impact_score: number | null;
+  nutrition_detail: {
+    sugar_g?: number | null;
+    added_sugar_g?: number | null;
+    saturated_fat_g?: number | null;
+    unsaturated_fat_g?: number | null;
+    trans_fat_g?: number | null;
+    sodium_mg?: number | null;
+    cholesterol_mg?: number | null;
+    omega_3_g?: number | null;
+    caffeine_mg?: number | null;
+    alcohol_g?: number | null;
+    processing_nova?: number | null;
+    glycemic_index?: number | null;
+    micros?: Record<string, number | null | undefined>;
+    quality_flags?: string[];
+  } | null;
   ai_model: string | null;
   created_at: string;
 }

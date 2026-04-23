@@ -311,6 +311,23 @@ create table if not exists public.meals (
   updated_at timestamptz default now()
 );
 
+-- Extended nutrition columns, added idempotently so existing installs keep
+-- working. `nutrition_detail` is a JSONB bag for everything beyond the core
+-- 5 macros (sugar, sodium, cholesterol, micronutrients, NOVA, GI, quality
+-- flags). One JSONB column avoids a schema migration every time we add a
+-- new field. `longevity_impact_score` stays top-level because we want
+-- range-constrained, indexable -5..+5 integers for sparkline/heatmap queries.
+alter table public.meals add column if not exists nutrition_detail jsonb default '{}'::jsonb;
+alter table public.meals add column if not exists longevity_impact_score smallint;
+
+do $$ begin
+  if not exists (select 1 from pg_constraint where conname = 'meals_longevity_impact_range') then
+    alter table public.meals add constraint meals_longevity_impact_range
+      check (longevity_impact_score is null or longevity_impact_score between -5 and 5) not valid;
+    alter table public.meals validate constraint meals_longevity_impact_range;
+  end if;
+exception when others then null; end $$;
+
 -- Range constraints on macros so a hallucinated "8500 calories in this
 -- salad" doesn't corrupt the 7-day summary fed to the protocol prompt.
 do $$ begin

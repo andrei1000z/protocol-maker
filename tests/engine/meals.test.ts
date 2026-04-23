@@ -4,6 +4,7 @@ import {
   parseMealJson,
   aggregateMeals,
   describeMealsForPrompt,
+  sumTodayTotals,
   type MealRow,
 } from '@/lib/engine/meals';
 
@@ -25,6 +26,8 @@ const mkMeal = (overrides: Partial<MealRow> = {}): MealRow => ({
   fiber_g: null,
   verdict: null,
   verdict_reasons: [],
+  longevity_impact_score: null,
+  nutrition_detail: null,
   ai_model: 'claude-sonnet-4-5',
   created_at: new Date().toISOString(),
   ...overrides,
@@ -187,5 +190,63 @@ describe('describeMealsForPrompt', () => {
       mkMeal({ verdict: 'bad' }),
     ], 7);
     expect(out).toContain('Verdict mix');
+  });
+
+  test('flags watch thresholds on the summary line', () => {
+    const out = describeMealsForPrompt([
+      mkMeal({ nutrition_detail: { sodium_mg: 3000, added_sugar_g: 50 } }),
+      mkMeal({ nutrition_detail: { sodium_mg: 3000, added_sugar_g: 50 } }),
+    ], 1);
+    expect(out).toContain('sodium');
+    expect(out).toContain('added sugar');
+  });
+
+  test('surfaces longevity-impact average when present', () => {
+    const out = describeMealsForPrompt([
+      mkMeal({ longevity_impact_score: 3 }),
+      mkMeal({ longevity_impact_score: 4 }),
+    ], 7);
+    expect(out).toContain('longevity');
+  });
+});
+
+describe('sumTodayTotals', () => {
+  test('returns zeros for empty array', () => {
+    const t = sumTodayTotals([]);
+    expect(t.calories).toBe(0);
+    expect(t.count).toBe(0);
+  });
+
+  test('sums core macros + nutrition_detail fields', () => {
+    const t = sumTodayTotals([
+      mkMeal({ calories: 400, protein_g: 30, fiber_g: 10,
+        nutrition_detail: { sodium_mg: 600, added_sugar_g: 5, saturated_fat_g: 3 } }),
+      mkMeal({ calories: 500, protein_g: 40, fiber_g: 8,
+        nutrition_detail: { sodium_mg: 400, added_sugar_g: 10, saturated_fat_g: 7 } }),
+    ]);
+    expect(t.calories).toBe(900);
+    expect(t.protein_g).toBe(70);
+    expect(t.fiber_g).toBe(18);
+    expect(t.sodium_mg).toBe(1000);
+    expect(t.added_sugar_g).toBe(15);
+    expect(t.saturated_fat_g).toBe(10);
+    expect(t.count).toBe(2);
+  });
+
+  test('handles null nutrition_detail gracefully', () => {
+    const t = sumTodayTotals([
+      mkMeal({ calories: 300, protein_g: 20, nutrition_detail: null }),
+    ]);
+    expect(t.calories).toBe(300);
+    expect(t.sodium_mg).toBe(0);
+  });
+
+  test('sums longevity_impact_score across meals', () => {
+    const t = sumTodayTotals([
+      mkMeal({ longevity_impact_score: 3 }),
+      mkMeal({ longevity_impact_score: -2 }),
+      mkMeal({ longevity_impact_score: 4 }),
+    ]);
+    expect(t.longevity_impact_sum).toBe(5);
   });
 });

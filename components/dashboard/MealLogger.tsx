@@ -18,15 +18,17 @@
 //   - Time picker defaults to NOW with three quick-shift buttons so a user
 //     logging brunch at 3pm can pick "2h ago" in one tap.
 
-import { useRef, useState } from 'react';
+import { useMemo, useRef, useState } from 'react';
 import Image from 'next/image';
 import clsx from 'clsx';
 import {
   Camera, Upload, Type, Clock, X, Check, RefreshCw, Trash2, Utensils, Sparkles,
-  ChevronDown, ChevronUp, Flame,
+  ChevronDown, ChevronUp, Flame, Zap, TrendingUp, AlertTriangle,
 } from 'lucide-react';
 import { useMeals, invalidate } from '@/lib/hooks/useApiData';
-import type { MealAnalysis } from '@/lib/engine/meals';
+import { toast } from '@/lib/toast';
+import type { MealAnalysis, MealRow as EngineMealRow } from '@/lib/engine/meals';
+import { DEFAULT_DAILY_TARGETS, sumTodayTotals } from '@/lib/engine/meals';
 
 // Vision models don't benefit from images larger than ~1600px on the long
 // edge. Downscale in-browser before upload so we never hit the 3.5MB server
@@ -133,15 +135,46 @@ function fmtRelative(iso: string): string {
 export function MealLogger() {
   const [open, setOpen] = useState(false);
   const [expanded, setExpanded] = useState(false);
+  const [regenerating, setRegenerating] = useState(false);
   const { data: mealsData, isLoading } = useMeals(7);
 
   const recent = mealsData?.meals ?? [];
-  const todaysMeals = recent.filter(m => {
+  const todaysMeals = useMemo(() => recent.filter(m => {
     const d = new Date(m.eaten_at);
     const now = new Date();
     return d.toDateString() === now.toDateString();
-  });
-  const todaysCalories = todaysMeals.reduce((sum, m) => sum + (m.calories || 0), 0);
+  }), [recent]);
+
+  // Cast the SWR row shape (which mirrors MealRow) through to the engine
+  // util. The two types are identical at runtime; SWR types use a structural
+  // copy to avoid a cross-package import in the hook file.
+  const todayTotals = useMemo(() => sumTodayTotals(todaysMeals as unknown as EngineMealRow[]), [todaysMeals]);
+  const targets = DEFAULT_DAILY_TARGETS;
+
+  // Surface the "regen with meal data" CTA once the user has a useful signal
+  // worth feeding into the prompt. 5 meals across 7 days is a reasonable
+  // minimum — below that, nutrition aggregates are too noisy to be load-bearing.
+  const showRegenCTA = recent.length >= 5;
+
+  const handleRegenerate = async () => {
+    if (regenerating) return;
+    setRegenerating(true);
+    try {
+      const res = await fetch('/api/generate-protocol', { method: 'POST' });
+      if (!res.ok) {
+        const j = await res.json().catch(() => ({}));
+        throw new Error(j.error || `Regen failed (${res.status})`);
+      }
+      invalidate.myData();
+      invalidate.liveScores();
+      invalidate.protocolHistory();
+      toast({ tone: 'success', title: 'Protocol refreshed', description: 'Your meals are now factored into nutrition picks and supplements.' });
+    } catch (e) {
+      toast({ tone: 'error', title: 'Regen failed', description: e instanceof Error ? e.message : 'Try again.' });
+    } finally {
+      setRegenerating(false);
+    }
+  };
 
   return (
     <section className="rounded-3xl bg-surface-1 border border-card-border p-5 sm:p-6 space-y-4">
@@ -154,8 +187,8 @@ export function MealLogger() {
             <h2 className="text-base sm:text-lg font-semibold tracking-tight">What you ate</h2>
             <p className="text-[11px] text-muted-foreground leading-relaxed mt-0.5">
               {todaysMeals.length === 0
-                ? 'Take a photo of your plate. Get calories, protein, verdict in 5 seconds.'
-                : `${todaysMeals.length} meal${todaysMeals.length === 1 ? '' : 's'} today · ~${Math.round(todaysCalories)} kcal so far.`}
+                ? 'Take a photo. Get calories, protein, verdict, and longevity impact in 5 seconds.'
+                : `${todaysMeals.length} meal${todaysMeals.length === 1 ? '' : 's'} today · ${Math.round(todayTotals.calories)} kcal · ${Math.round(todayTotals.protein_g)}g protein.`}
             </p>
           </div>
         </div>
@@ -167,6 +200,11 @@ export function MealLogger() {
           Add meal
         </button>
       </div>
+
+      {/* Today's intake — only shown when at least 1 meal is logged today. */}
+      {todaysMeals.length > 0 && (
+        <TodaysIntakeStrip totals={todayTotals} targets={targets} />
+      )}
 
       {/* Recent meals — compact list. Shows up to 3 without expanding. */}
       {isLoading ? (
@@ -194,8 +232,132 @@ export function MealLogger() {
         </>
       )}
 
+      {/* Regen CTA — encourages the user to refresh the protocol once enough
+          meal data has accumulated to actually move the recommendations. */}
+      {showRegenCTA && (
+        <div className="mt-3 p-3 rounded-2xl border border-accent/25 bg-accent/5 flex items-center justify-between gap-3">
+          <div className="flex items-center gap-2.5 min-w-0">
+            <Sparkles className="w-4 h-4 text-accent shrink-0" />
+            <div className="min-w-0">
+              <p className="text-xs font-semibold">Refresh your protocol with this week&apos;s meals</p>
+              <p className="text-[10px] text-muted-foreground leading-relaxed">
+                {recent.length} meals analyzed. Supplements + timing re-tune to what you actually eat.
+              </p>
+            </div>
+          </div>
+          <button
+            onClick={handleRegenerate}
+            disabled={regenerating}
+            className="shrink-0 inline-flex items-center gap-1.5 text-xs font-semibold px-3 py-1.5 rounded-lg bg-accent text-black hover:bg-accent-bright disabled:opacity-50 transition-colors"
+          >
+            {regenerating ? (
+              <>
+                <span className="w-3 h-3 border-2 border-black/40 border-t-black rounded-full animate-spin" />
+                Regenerating…
+              </>
+            ) : (
+              <>
+                <RefreshCw className="w-3 h-3" />
+                Refresh
+              </>
+            )}
+          </button>
+        </div>
+      )}
+
       {open && <MealLoggerModal onClose={() => setOpen(false)} />}
     </section>
+  );
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Today's intake strip — 4 bars (kcal, protein, fiber, and one "watch" tile
+// that shows whichever ceiling is closest to the limit: sodium / added
+// sugar / saturated fat). Uses very loose default targets; individualized
+// targets land once the profile has enough data.
+// ─────────────────────────────────────────────────────────────────────────────
+function TodaysIntakeStrip({
+  totals, targets,
+}: {
+  totals: ReturnType<typeof sumTodayTotals>;
+  targets: typeof DEFAULT_DAILY_TARGETS;
+}) {
+  // Pick the single most-exceeded "watch" macro so we show one clear warning
+  // tile instead of three noisy ones. Order matters: sodium first because
+  // it correlates most strongly with blood pressure, then sat fat, then
+  // added sugar.
+  const watch = (() => {
+    const candidates: Array<{ key: string; value: number; cap: number; unit: string; label: string }> = [
+      { key: 'sodium',    value: totals.sodium_mg,       cap: targets.sodium_mg_max,       unit: 'mg', label: 'Sodium' },
+      { key: 'satfat',    value: totals.saturated_fat_g, cap: targets.saturated_fat_g_max, unit: 'g',  label: 'Sat fat' },
+      { key: 'addsugar',  value: totals.added_sugar_g,   cap: targets.added_sugar_g_max,   unit: 'g',  label: 'Added sugar' },
+    ];
+    // Return the one with the highest ratio — but only if any is above 0, so
+    // early-morning breakfast of oatmeal shows the user "nothing to worry about".
+    const ranked = candidates.filter(c => c.value > 0).sort((a, b) => (b.value / b.cap) - (a.value / a.cap));
+    return ranked[0] ?? candidates[0];
+  })();
+
+  return (
+    <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+      <IntakeBar label="Calories" unit="kcal"  value={totals.calories}  target={targets.calories}       type="target"  icon={Flame} />
+      <IntakeBar label="Protein"  unit="g"     value={totals.protein_g} target={targets.protein_g}      type="target" />
+      <IntakeBar label="Fiber"    unit="g"     value={totals.fiber_g}   target={targets.fiber_g}        type="target" />
+      <IntakeBar label={watch.label} unit={watch.unit} value={watch.value} target={watch.cap} type="ceiling" icon={AlertTriangle} />
+    </div>
+  );
+}
+
+function IntakeBar({
+  label, unit, value, target, type, icon: Icon,
+}: {
+  label: string;
+  unit: string;
+  value: number;
+  target: number;
+  type: 'target' | 'ceiling';
+  icon?: React.ElementType;
+}) {
+  const pct = Math.min(100, Math.round((value / Math.max(1, target)) * 100));
+  // For "ceiling" metrics (sodium, sat fat, added sugar) a high % is bad.
+  // For "target" metrics (calories, protein, fiber) a high % is good.
+  const status =
+    type === 'ceiling'
+      ? pct >= 100 ? 'over' : pct >= 75 ? 'watch' : 'ok'
+      : pct >= 90 ? 'full' : pct >= 50 ? 'on-track' : 'low';
+
+  const bar = {
+    'over':     'bg-danger',
+    'watch':    'bg-amber-500',
+    'ok':       'bg-accent/70',
+    'full':     'bg-accent',
+    'on-track': 'bg-accent',
+    'low':      'bg-accent/40',
+  }[status];
+
+  const labelColor =
+    status === 'over'  ? 'text-danger'
+    : status === 'watch' ? 'text-amber-400'
+    : 'text-muted-foreground';
+
+  return (
+    <div className="rounded-xl bg-surface-2 border border-card-border p-2.5">
+      <div className="flex items-center justify-between gap-1">
+        <p className={clsx('text-[9px] font-mono uppercase tracking-widest', labelColor)}>
+          {Icon && <Icon className="w-2.5 h-2.5 inline mr-1 -mt-0.5" />}
+          {label}
+        </p>
+        <p className="text-[9px] font-mono text-muted">{pct}%</p>
+      </div>
+      <p className="text-sm font-bold font-mono tabular-nums mt-0.5">
+        {Math.round(value)}
+        <span className="text-[9px] text-muted ml-0.5">{unit}</span>
+        <span className="text-[9px] text-muted"> / {target}</span>
+      </p>
+      <div className="mt-1.5 h-1 rounded-full bg-surface-3 overflow-hidden">
+        <div className={clsx('h-full rounded-full transition-all', bar)} style={{ width: `${pct}%` }} />
+      </div>
+    </div>
   );
 }
 
@@ -208,6 +370,15 @@ function MealRow({ meal }: { meal: NonNullable<ReturnType<typeof useMeals>['data
     : meal.verdict === 'bad' ? 'text-danger bg-red-500/10 border-red-500/25'
     : 'text-amber-400 bg-amber-500/10 border-amber-500/25';
 
+  const lis = meal.longevity_impact_score;
+  const impactColor =
+    lis === null || lis === undefined ? null
+    : lis >= 3 ? 'text-accent'
+    : lis >= 1 ? 'text-accent/80'
+    : lis <= -3 ? 'text-danger'
+    : lis <= -1 ? 'text-amber-400'
+    : 'text-muted-foreground';
+
   const handleDelete = async () => {
     if (!window.confirm(`Delete "${meal.title}"?`)) return;
     await fetch(`/api/meals?id=${encodeURIComponent(meal.id)}`, { method: 'DELETE' });
@@ -217,11 +388,16 @@ function MealRow({ meal }: { meal: NonNullable<ReturnType<typeof useMeals>['data
   return (
     <li className="group flex items-center justify-between gap-2.5 p-2.5 rounded-xl bg-surface-2 border border-card-border">
       <div className="flex-1 min-w-0">
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2 flex-wrap">
           <p className="text-[13px] font-medium truncate">{meal.title}</p>
           {meal.verdict && (
             <span className={clsx('text-[9px] font-mono uppercase tracking-widest px-1.5 py-0.5 rounded-full border shrink-0', verdictColor)}>
               {meal.verdict}
+            </span>
+          )}
+          {impactColor && typeof lis === 'number' && (
+            <span className={clsx('text-[9px] font-mono font-semibold tabular-nums shrink-0', impactColor)}>
+              {lis > 0 ? `+${lis}` : lis} impact
             </span>
           )}
         </div>
@@ -231,6 +407,7 @@ function MealRow({ meal }: { meal: NonNullable<ReturnType<typeof useMeals>['data
           {meal.protein_g ? ` · ${Math.round(meal.protein_g)}p` : ''}
           {meal.carbs_g ? `/${Math.round(meal.carbs_g)}c` : ''}
           {meal.fat_g ? `/${Math.round(meal.fat_g)}f` : ''}
+          {meal.fiber_g ? ` · ${Math.round(meal.fiber_g)}g fib` : ''}
         </p>
       </div>
       <button
@@ -518,10 +695,26 @@ function MealLoggerModal({ onClose }: { onClose: () => void }) {
               aria-label="Meal title"
             />
 
-            <VerdictPill verdict={analysis.analysis.verdict} reasons={analysis.analysis.verdict_reasons} />
+            <div className="grid grid-cols-[1fr_auto] gap-2">
+              <VerdictPill verdict={analysis.analysis.verdict} reasons={analysis.analysis.verdict_reasons} />
+              <LongevityImpactTile score={analysis.analysis.longevity_impact_score ?? null} />
+            </div>
 
             {/* Macro pills — compact row. Missing values simply don't render. */}
             <MacrosRow analysis={analysis.analysis} />
+
+            {/* Extended macros — sugar, sodium, sat fat, omega-3, etc.
+                Hidden behind an expander so the core verdict + macros stay
+                the focus. Opens by default when anything is "watch-worthy". */}
+            <ExtendedNutrition analysis={analysis.analysis} />
+
+            {/* Quality flag chips — instant visual of "high polyphenols", etc. */}
+            {(analysis.analysis.quality_flags?.length ?? 0) > 0 && (
+              <QualityFlags flags={analysis.analysis.quality_flags || []} />
+            )}
+
+            {/* Classification chips — NOVA + GI, which most nutrition apps don't surface. */}
+            <ClassificationChips nova={analysis.analysis.processing_nova ?? null} gi={analysis.analysis.glycemic_index ?? null} />
 
             {analysis.analysis.description && (
               <p className="text-[13px] text-foreground/90 leading-relaxed">{analysis.analysis.description}</p>
@@ -628,6 +821,212 @@ function MacrosRow({ analysis }: { analysis: MealAnalysis }) {
           </div>
         );
       })}
+    </div>
+  );
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Longevity-impact hero tile. Big number, colored by score. Shown next to the
+// verdict pill in the preview phase.
+// ─────────────────────────────────────────────────────────────────────────────
+function LongevityImpactTile({ score }: { score: number | null }) {
+  if (score === null || score === undefined) return null;
+  const tone =
+    score >= 3 ? { text: 'text-accent',      bg: 'bg-accent/5 border-accent/25' }
+    : score >= 1 ? { text: 'text-accent/80', bg: 'bg-accent/5 border-accent/20' }
+    : score <= -3 ? { text: 'text-danger',   bg: 'bg-red-500/5 border-red-500/25' }
+    : score <= -1 ? { text: 'text-amber-400', bg: 'bg-amber-500/5 border-amber-500/25' }
+    : { text: 'text-muted-foreground', bg: 'bg-surface-2 border-card-border' };
+
+  return (
+    <div className={clsx('rounded-xl border p-3 flex flex-col items-center justify-center min-w-[84px]', tone.bg)}>
+      <TrendingUp className={clsx('w-3 h-3 mb-0.5', tone.text)} />
+      <p className={clsx('text-lg font-bold font-mono tabular-nums leading-none', tone.text)}>
+        {score > 0 ? `+${score}` : score}
+      </p>
+      <p className="text-[8px] text-muted uppercase tracking-widest mt-1">Longevity</p>
+      <p className="text-[8px] text-muted">impact</p>
+    </div>
+  );
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Extended nutrition expander — sugar (total + added), sodium, sat fat,
+// omega-3, caffeine, alcohol, cholesterol, potassium, plus the micros bag.
+// Auto-opens when anything hits a watch threshold so the user sees the
+// relevant number without clicking.
+// ─────────────────────────────────────────────────────────────────────────────
+function ExtendedNutrition({ analysis }: { analysis: MealAnalysis }) {
+  const d = analysis;
+  type Row = { label: string; value: number | null | undefined; unit: string; tone?: 'watch' | 'ok'; hint?: string };
+
+  const rows: Row[] = [
+    { label: 'Sugar',          value: d.sugar_g,         unit: 'g',  hint: 'total including natural' },
+    { label: 'Added sugar',    value: d.added_sugar_g,   unit: 'g',  tone: (d.added_sugar_g ?? 0) > 15 ? 'watch' : 'ok' },
+    { label: 'Saturated fat',  value: d.saturated_fat_g, unit: 'g',  tone: (d.saturated_fat_g ?? 0) > 10 ? 'watch' : 'ok' },
+    { label: 'Sodium',         value: d.sodium_mg,       unit: 'mg', tone: (d.sodium_mg ?? 0) > 800 ? 'watch' : 'ok' },
+    { label: 'Cholesterol',    value: d.cholesterol_mg,  unit: 'mg' },
+    { label: 'Omega-3',        value: d.omega_3_g,       unit: 'g',  tone: (d.omega_3_g ?? 0) >= 1 ? 'ok' : undefined },
+    { label: 'Caffeine',       value: d.caffeine_mg,     unit: 'mg' },
+    { label: 'Alcohol',        value: d.alcohol_g,       unit: 'g',  tone: (d.alcohol_g ?? 0) > 0 ? 'watch' : undefined },
+  ];
+
+  const microsObj = d.micros ?? {};
+  const microRows: Row[] = [
+    { label: 'Vit C',    value: microsObj.vitamin_c_mg, unit: 'mg' },
+    { label: 'Iron',     value: microsObj.iron_mg,      unit: 'mg' },
+    { label: 'Magnesium',value: microsObj.magnesium_mg, unit: 'mg' },
+    { label: 'Calcium',  value: microsObj.calcium_mg,   unit: 'mg' },
+    { label: 'Potassium',value: microsObj.potassium_mg, unit: 'mg' },
+    { label: 'Zinc',     value: microsObj.zinc_mg,      unit: 'mg' },
+    { label: 'Vit D',    value: microsObj.vitamin_d_iu, unit: 'IU' },
+  ];
+
+  const macroFilled = rows.filter(r => typeof r.value === 'number' && (r.value as number) > 0);
+  const microFilled = microRows.filter(r => typeof r.value === 'number' && (r.value as number) > 0);
+  if (macroFilled.length === 0 && microFilled.length === 0) return null;
+
+  // Auto-open if any row is in a "watch" state — user should see the issue
+  // without having to click to expand.
+  const anyWatch = macroFilled.some(r => r.tone === 'watch');
+  const [open, setOpen] = useState(anyWatch);
+
+  return (
+    <div className="rounded-xl border border-card-border bg-surface-2/50 overflow-hidden">
+      <button
+        type="button"
+        onClick={() => setOpen(o => !o)}
+        className="w-full flex items-center justify-between px-3 py-2 text-left hover:bg-surface-2 transition-colors"
+        aria-expanded={open}
+      >
+        <span className="flex items-center gap-2">
+          <Zap className="w-3.5 h-3.5 text-accent" />
+          <span className="text-[11px] font-semibold uppercase tracking-widest">Full nutrition breakdown</span>
+          {anyWatch && !open && (
+            <span className="text-[9px] text-amber-400 font-mono">· check sodium / sugar</span>
+          )}
+        </span>
+        {open ? <ChevronUp className="w-3.5 h-3.5 text-muted" /> : <ChevronDown className="w-3.5 h-3.5 text-muted" />}
+      </button>
+      {open && (
+        <div className="px-3 pb-3 pt-1 space-y-3">
+          {macroFilled.length > 0 && (
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-1.5">
+              {macroFilled.map(r => (
+                <div
+                  key={r.label}
+                  className={clsx('rounded-lg p-2 border',
+                    r.tone === 'watch' ? 'bg-amber-500/5 border-amber-500/25'
+                    : 'bg-surface-1 border-card-border')}
+                >
+                  <p className="text-[9px] text-muted uppercase tracking-widest">{r.label}</p>
+                  <p className={clsx('text-xs font-bold font-mono tabular-nums',
+                    r.tone === 'watch' ? 'text-amber-400' : 'text-foreground')}>
+                    {Math.round(r.value as number)}
+                    <span className="text-[8px] text-muted ml-0.5">{r.unit}</span>
+                  </p>
+                </div>
+              ))}
+            </div>
+          )}
+          {microFilled.length > 0 && (
+            <div>
+              <p className="text-[9px] text-muted uppercase tracking-widest mb-1">Micronutrients</p>
+              <div className="grid grid-cols-3 sm:grid-cols-4 gap-1.5">
+                {microFilled.map(r => (
+                  <div key={r.label} className="rounded-lg p-1.5 bg-surface-1 border border-card-border">
+                    <p className="text-[9px] text-muted uppercase tracking-widest leading-none">{r.label}</p>
+                    <p className="text-[11px] font-bold font-mono tabular-nums mt-1">
+                      {Math.round(r.value as number)}
+                      <span className="text-[8px] text-muted ml-0.5">{r.unit}</span>
+                    </p>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Quality flag chips — color-coded by whether the flag is positive, a
+// watchpoint, or negative. Unrecognized flags render in neutral gray so
+// the AI can surface a new classification without breaking the UI.
+// ─────────────────────────────────────────────────────────────────────────────
+const FLAG_TONES: Record<string, { label: string; cls: string }> = {
+  // Positive
+  whole_food:           { label: 'Whole food',           cls: 'bg-accent/10 text-accent border-accent/25' },
+  high_protein:         { label: 'High protein',         cls: 'bg-accent/10 text-accent border-accent/25' },
+  high_fiber:           { label: 'High fiber',           cls: 'bg-accent/10 text-accent border-accent/25' },
+  high_omega3:          { label: 'High omega-3',         cls: 'bg-accent/10 text-accent border-accent/25' },
+  high_polyphenols:     { label: 'High polyphenols',     cls: 'bg-accent/10 text-accent border-accent/25' },
+  leafy_greens:         { label: 'Leafy greens',         cls: 'bg-accent/10 text-accent border-accent/25' },
+  fermented:            { label: 'Fermented',            cls: 'bg-accent/10 text-accent border-accent/25' },
+  nutrient_dense:       { label: 'Nutrient-dense',       cls: 'bg-accent/10 text-accent border-accent/25' },
+  anti_inflammatory:    { label: 'Anti-inflammatory',    cls: 'bg-accent/10 text-accent border-accent/25' },
+  // Watch
+  high_added_sugar:     { label: 'High added sugar',     cls: 'bg-amber-500/10 text-amber-400 border-amber-500/25' },
+  high_sodium:          { label: 'High sodium',          cls: 'bg-amber-500/10 text-amber-400 border-amber-500/25' },
+  high_saturated_fat:   { label: 'High sat fat',         cls: 'bg-amber-500/10 text-amber-400 border-amber-500/25' },
+  low_protein:          { label: 'Low protein',          cls: 'bg-amber-500/10 text-amber-400 border-amber-500/25' },
+  high_processed_carbs: { label: 'Processed carbs',      cls: 'bg-amber-500/10 text-amber-400 border-amber-500/25' },
+  fried:                { label: 'Fried',                cls: 'bg-amber-500/10 text-amber-400 border-amber-500/25' },
+  alcohol:              { label: 'Alcohol',              cls: 'bg-amber-500/10 text-amber-400 border-amber-500/25' },
+  // Negative
+  ultra_processed:      { label: 'Ultra-processed',      cls: 'bg-red-500/10 text-danger border-red-500/25' },
+  low_nutrient_density: { label: 'Low nutrient density', cls: 'bg-red-500/10 text-danger border-red-500/25' },
+  high_refined_sugar:   { label: 'Refined sugar',        cls: 'bg-red-500/10 text-danger border-red-500/25' },
+  trans_fat_risk:       { label: 'Trans fat risk',       cls: 'bg-red-500/10 text-danger border-red-500/25' },
+};
+
+function QualityFlags({ flags }: { flags: string[] }) {
+  if (!flags.length) return null;
+  return (
+    <div>
+      <p className="text-[10px] font-mono uppercase tracking-widest text-muted mb-1.5">What stood out</p>
+      <div className="flex flex-wrap gap-1">
+        {flags.map(f => {
+          const tone = FLAG_TONES[f] ?? { label: f.replace(/_/g, ' '), cls: 'bg-surface-2 text-muted-foreground border-card-border' };
+          return (
+            <span key={f} className={clsx('text-[10px] px-2 py-0.5 rounded-full border', tone.cls)}>
+              {tone.label}
+            </span>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// NOVA processing classification + glycemic-index chips.
+// ─────────────────────────────────────────────────────────────────────────────
+function ClassificationChips({ nova, gi }: { nova: number | null; gi: number | null }) {
+  if (nova === null && gi === null) return null;
+
+  const novaMeta = (() => {
+    if (nova === null) return null;
+    switch (nova) {
+      case 1: return { label: 'NOVA 1 · Whole food',          cls: 'bg-accent/10 text-accent border-accent/25' };
+      case 2: return { label: 'NOVA 2 · Culinary ingredient', cls: 'bg-accent/10 text-accent border-accent/25' };
+      case 3: return { label: 'NOVA 3 · Processed',           cls: 'bg-amber-500/10 text-amber-400 border-amber-500/25' };
+      case 4: return { label: 'NOVA 4 · Ultra-processed',     cls: 'bg-red-500/10 text-danger border-red-500/25' };
+      default: return null;
+    }
+  })();
+
+  const giMeta = gi === null ? null
+    : gi < 55 ? { label: `GI ${gi} · Low`,    cls: 'bg-accent/10 text-accent border-accent/25' }
+    : gi < 70 ? { label: `GI ${gi} · Medium`, cls: 'bg-amber-500/10 text-amber-400 border-amber-500/25' }
+    :           { label: `GI ${gi} · High`,   cls: 'bg-red-500/10 text-danger border-red-500/25' };
+
+  return (
+    <div className="flex flex-wrap gap-1.5">
+      {novaMeta && <span className={clsx('text-[10px] px-2 py-0.5 rounded-full border', novaMeta.cls)}>{novaMeta.label}</span>}
+      {giMeta   && <span className={clsx('text-[10px] px-2 py-0.5 rounded-full border', giMeta.cls)}>{giMeta.label}</span>}
     </div>
   );
 }

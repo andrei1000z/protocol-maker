@@ -48,6 +48,26 @@ export async function POST(request: Request) {
     }
     const { analysis, source, eatenAt, userText, model } = parsed.data;
 
+    // Everything outside the core 5 macros lands in a single JSONB column so
+    // we don't need a schema migration every time we extend the nutrition
+    // shape. Fields set to undefined are trimmed out before insert.
+    const nutrition_detail = {
+      sugar_g:         analysis.sugar_g         ?? null,
+      added_sugar_g:   analysis.added_sugar_g   ?? null,
+      saturated_fat_g: analysis.saturated_fat_g ?? null,
+      unsaturated_fat_g: analysis.unsaturated_fat_g ?? null,
+      trans_fat_g:     analysis.trans_fat_g     ?? null,
+      sodium_mg:       analysis.sodium_mg       ?? null,
+      cholesterol_mg:  analysis.cholesterol_mg  ?? null,
+      omega_3_g:       analysis.omega_3_g       ?? null,
+      caffeine_mg:     analysis.caffeine_mg     ?? null,
+      alcohol_g:       analysis.alcohol_g       ?? null,
+      micros:          analysis.micros          ?? {},
+      processing_nova: analysis.processing_nova ?? null,
+      glycemic_index:  analysis.glycemic_index  ?? null,
+      quality_flags:   analysis.quality_flags   ?? [],
+    };
+
     const { data: inserted, error } = await supabase.from('meals').insert({
       user_id: user.id,
       eaten_at: eatenAt,
@@ -63,6 +83,8 @@ export async function POST(request: Request) {
       fiber_g: analysis.fiber_g ?? null,
       verdict: analysis.verdict,
       verdict_reasons: analysis.verdict_reasons,
+      longevity_impact_score: analysis.longevity_impact_score ?? null,
+      nutrition_detail,
       ai_model: model ?? null,
     }).select('*').single();
 
