@@ -10,6 +10,8 @@ import { BiomarkerSparkline, extractBiomarkerSeries } from '@/components/dashboa
 import { SupplementTimeGroups } from '@/components/dashboard/SupplementTimeGroups';
 import { DailyBriefing } from '@/components/dashboard/DailyBriefing';
 import { MealLogger } from '@/components/dashboard/MealLogger';
+import { TodaysAgenda } from '@/components/dashboard/TodaysAgenda';
+import { WorkoutLogger } from '@/components/dashboard/WorkoutLogger';
 import { useDailyMetrics } from '@/lib/hooks/useDailyMetrics';
 import { TrendingUp, TrendingDown, Minus } from 'lucide-react';
 import { AnimatedNumber } from '@/components/ui/AnimatedNumber';
@@ -674,11 +676,22 @@ export default function DashboardPage() {
         />
       )}
 
+      {/* ═══════════════ TODAY'S AGENDA ═══════════════
+          Single timeline of everything actionable for today: supplements
+          per bucket, workout, sleep target, meal log nudges, retest. */}
+      {!demoMode && <TodaysAgenda />}
+
       {/* ═══════════════ MEAL LOGGER ═══════════════
           Photo / text meal input → AI analysis → save. Feeds a 7-day meal
           summary into the next protocol regen. Demo mode hides because the
           sample protocol has no real user to attach meals to. */}
       {!demoMode && <MealLogger />}
+
+      {/* ═══════════════ WORKOUT LOGGER ═══════════════
+          One-tap preset library. Suggestions adapt to the user's protocol
+          (strength volume + cardio target + gym vs home). Writes to today's
+          daily_metrics row so adherence + statistics pick it up. */}
+      {!demoMode && <WorkoutLogger />}
 
       {/* ═══════════════ HERO DIAGNOSTIC ═══════════════ */}
       <div id="diagnostic" className="hero-card rounded-3xl p-8 scroll-mt-20 animate-fade-in-up relative overflow-hidden">

@@ -7,7 +7,15 @@
    Deep slate base, soft emerald accent, refined typography, glass cards.
    ============================================================================ */
 
-:root {
+/* ============================================================================
+   THEME — variables shipped in two presets: dark (default) + light.
+   The HTML `data-theme` attribute switches between them. The ThemeProvider
+   in lib/theme.ts writes that attribute on mount based on the user's saved
+   preference (or system preference) — no flash of wrong theme because the
+   inline boot script in app/layout.tsx applies it pre-hydration.
+   ============================================================================ */
+
+:root, [data-theme="dark"] {
   /* Surface layers — subtle elevation through lightness, not borders */
   --background: #08090d;
   --surface-1: #0e1014;
@@ -49,6 +57,44 @@
   --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.4);
   --shadow-md: 0 4px 16px rgba(0, 0, 0, 0.4), 0 1px 2px rgba(0, 0, 0, 0.5);
   --shadow-lg: 0 8px 32px rgba(0, 0, 0, 0.5), 0 2px 4px rgba(0, 0, 0, 0.6);
+  --shadow-glow: 0 0 24px var(--accent-glow);
+}
+
+/* Light theme — hand-tuned to keep the same emerald-on-dark personality
+   without the eye-strain of pure white. The accent stays slightly darker
+   (#059669) so it has enough contrast on a near-white surface. */
+[data-theme="light"] {
+  --background: #f7f8fa;
+  --surface-1: #ffffff;
+  --surface-2: #f1f3f7;
+  --surface-3: #e8ebf0;
+  --foreground: #0e1014;
+
+  --card: #ffffff;
+  --card-hover: #f1f3f7;
+  --card-border: #e2e6ed;
+  --card-border-hover: #cbd2dc;
+
+  --accent: #059669;
+  --accent-dim: #047857;
+  --accent-bright: #10b981;
+  --accent-glow: rgba(5, 150, 105, 0.10);
+  --accent-subtle: rgba(5, 150, 105, 0.05);
+
+  --muted: #6b7280;
+  --muted-foreground: #4b5563;
+  --danger: #dc2626;
+  --warning: #d97706;
+  --info: #2563eb;
+
+  --optimal: #059669;
+  --suboptimal: #d97706;
+  --deficient: #ea580c;
+  --critical: #dc2626;
+
+  --shadow-sm: 0 1px 2px rgba(15, 23, 42, 0.06);
+  --shadow-md: 0 4px 16px rgba(15, 23, 42, 0.06), 0 1px 2px rgba(15, 23, 42, 0.04);
+  --shadow-lg: 0 8px 32px rgba(15, 23, 42, 0.08), 0 2px 4px rgba(15, 23, 42, 0.04);
   --shadow-glow: 0 0 24px var(--accent-glow);
 }
 

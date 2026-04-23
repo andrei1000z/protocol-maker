@@ -10,6 +10,7 @@ import {
   TrendingUp, TrendingDown, Minus,
 } from 'lucide-react';
 import { SectionCard as Section } from '@/components/ui/SectionCard';
+import { EmptyState } from '@/components/ui/EmptyState';
 
 // Recharts is ~60KB gzipped. Dynamic-import with ssr:false so a user who
 // navigates to /dashboard (no charts) never pays the download. Loading
@@ -410,22 +411,14 @@ export default function StatisticsPage() {
 
       {/* Empty state */}
       {metricsWithData.length === 0 && (
-        <Section icon={Activity} title="No metrics logged yet" subtitle="Open /tracking and start logging to see trends here.">
-          <div className="text-center py-8 space-y-4">
-            <div className="w-16 h-16 rounded-2xl bg-surface-2 border border-card-border mx-auto flex items-center justify-center">
-              <Sparkles className="w-7 h-7 text-muted" />
-            </div>
-            <div>
-              <p className="text-sm font-medium">Charts appear after your first reading</p>
-              <p className="text-xs text-muted-foreground mt-1.5 max-w-sm mx-auto leading-relaxed">
-                Each measurement gets its own line chart here — weight trend, HRV recovery, sleep score, BP — so you see exactly what's improving and what's drifting.
-              </p>
-            </div>
-            <a href="/tracking" className="inline-block px-5 py-2.5 rounded-xl bg-accent text-black text-sm font-semibold hover:bg-accent-bright transition-colors">
-              Open tracking
-            </a>
-          </div>
-        </Section>
+        <EmptyState
+          icon={Sparkles}
+          title="Charts appear after your first reading"
+          description="Every measurement gets its own line chart — weight, HRV recovery, sleep score, BP. You'll see exactly what's improving and what's drifting."
+          primary={{ label: 'Open tracking →', href: '/tracking' }}
+          secondary={{ label: 'Browse biomarkers', href: '/biomarkers' }}
+          tone="accent"
+        />
       )}
 
       {/* Overall stats row */}

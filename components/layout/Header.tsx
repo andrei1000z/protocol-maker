@@ -6,6 +6,8 @@ import { useEffect, useRef, useState } from 'react';
 import clsx from 'clsx';
 import { LogOut, Settings, User } from 'lucide-react';
 import { useMyData, invalidate } from '@/lib/hooks/useApiData';
+import { ThemeToggle } from './ThemeToggle';
+import { Avatar } from '@/components/ui/Avatar';
 
 const LINKS = [
   { href: '/dashboard', label: 'Protocol' },
@@ -30,7 +32,9 @@ function UserMenu() {
 
   const od = (myData?.profile?.onboarding_data || {}) as Record<string, unknown>;
   const name = (typeof od.name === 'string' && od.name.trim()) ? od.name.trim() : null;
-  const initial = (name || 'P').charAt(0).toUpperCase();
+  // Stable per-user seed for the gradient avatar — uses the profile id
+  // so the same user gets the same colours across sessions and devices.
+  const avatarSeed = myData?.profile?.id || name || 'anon';
 
   const handleLogout = async () => {
     await fetch('/api/logout', { method: 'POST' });
@@ -42,10 +46,10 @@ function UserMenu() {
     <div ref={ref} className="relative">
       <button
         onClick={() => setOpen(o => !o)}
-        className="w-8 h-8 sm:w-9 sm:h-9 rounded-xl bg-accent/10 border border-accent/25 hover:bg-accent/15 hover:border-accent/40 flex items-center justify-center text-xs font-semibold text-accent transition-all"
+        className="rounded-xl hover:opacity-80 transition-opacity focus:outline-none focus:ring-2 focus:ring-accent/40"
         aria-label="Account menu"
       >
-        {initial}
+        <Avatar seed={avatarSeed} name={name} size={36} className="rounded-xl" />
       </button>
       {open && (
         <div className="absolute right-0 top-full mt-2 w-56 rounded-xl bg-surface-1 border border-card-border shadow-xl p-1.5 z-50 animate-fade-in-up">
@@ -120,6 +124,7 @@ export function Header() {
         })}
       </nav>
       <div className="flex items-center gap-2">
+        <ThemeToggle />
         {/* Cmd+K hint — desktop only. Pressing dispatches a fake hotkey event
             so users without keyboards can still trigger the palette. */}
         <button

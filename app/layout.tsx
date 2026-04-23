@@ -3,8 +3,11 @@ import { Inter, JetBrains_Mono } from "next/font/google";
 import { Analytics } from "@vercel/analytics/react";
 import { SWRegister } from "@/components/layout/SWRegister";
 import { InstallPrompt } from "@/components/layout/InstallPrompt";
+import { ToastViewport } from "@/components/layout/ToastViewport";
 import { Providers } from "./providers";
 import { SITE_URL } from "@/lib/config";
+import { THEME_BOOT_SCRIPT } from "@/lib/theme";
+import { I18N_BOOT_SCRIPT } from "@/lib/i18n/boot";
 import { BIOMARKER_DB } from "@/lib/engine/biomarkers";
 import { PATTERN_COUNT } from "@/lib/engine/patterns";
 import "./globals.css";
@@ -114,8 +117,20 @@ const jsonLd = {
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
-    <html lang="en" className={`${inter.variable} ${jetbrains.variable}`}>
+    <html lang="en" className={`${inter.variable} ${jetbrains.variable}`} suppressHydrationWarning>
       <head>
+        {/* Theme boot — runs synchronously before React hydrates so the
+            user's saved theme (or OS preference) is applied to <html>
+            before first paint. Prevents the dark→light flash an effect-
+            based applier would cause. */}
+        <script
+          // eslint-disable-next-line react/no-danger
+          dangerouslySetInnerHTML={{ __html: THEME_BOOT_SCRIPT }}
+        />
+        <script
+          // eslint-disable-next-line react/no-danger
+          dangerouslySetInnerHTML={{ __html: I18N_BOOT_SCRIPT }}
+        />
         <script
           type="application/ld+json"
           // eslint-disable-next-line react/no-danger
@@ -129,6 +144,10 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         <Analytics />
         <SWRegister />
         <InstallPrompt />
+        {/* Global toast viewport — listens for events from lib/toast.ts.
+            Mounted once at the root so any client component can call
+            toast(...) and have it appear without provider plumbing. */}
+        <ToastViewport />
       </body>
     </html>
   );

@@ -9,6 +9,8 @@ import {
 } from 'lucide-react';
 import { OAuthPermissionsModal } from '@/components/settings/OAuthPermissionsModal';
 import { NotificationPrefs } from '@/components/settings/NotificationPrefs';
+import { ThemePicker } from '@/components/settings/ThemePicker';
+import { LanguagePicker } from '@/components/settings/LanguagePicker';
 import {
   buildBiomarkersCsv,
   buildDailyMetricsCsv,
@@ -1220,6 +1222,15 @@ export default function SettingsPage() {
           </div>
         )}
       </SettingsCard>
+
+      {/* Theme picker — system / light / dark. Writes localStorage; the
+          boot script in app/layout.tsx applies pre-hydration to avoid the
+          dark→light flash. */}
+      <ThemePicker />
+
+      {/* Language picker — EN / RO scaffolded. Uses the i18n module's
+          dictionary lookup; new strings flow through `t()` in components. */}
+      <LanguagePicker />
 
       {/* Notification preferences — writes through /api/save-profile with
           a partial payload so toggling a switch doesn't null unrelated
