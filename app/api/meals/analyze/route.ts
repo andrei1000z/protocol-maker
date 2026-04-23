@@ -18,10 +18,11 @@
 
 import { NextResponse } from 'next/server';
 import Anthropic from '@anthropic-ai/sdk';
+import Groq from 'groq-sdk';
 import { createClient } from '@/lib/supabase/server';
 import { getMealAnalyzeRateLimit, checkRateLimit } from '@/lib/rate-limit';
 import { logger, describeError } from '@/lib/logger';
-import { logAiTokens, usageFromAnthropic } from '@/lib/ai-costs';
+import { logAiTokens, usageFromAnthropic, usageFromGroq } from '@/lib/ai-costs';
 import { MealAnalysisSchema, parseMealJson } from '@/lib/engine/meals';
 
 export const runtime = 'nodejs';
@@ -79,18 +80,18 @@ export async function POST(request: Request) {
       imageMime = file.type;
     }
 
-    const apiKey = process.env.ANTHROPIC_API_KEY;
-    if (!apiKey) {
-      return NextResponse.json({ error: 'AI provider not configured' }, { status: 500 });
+    const anthropicKey = process.env.ANTHROPIC_API_KEY;
+    const groqKey = process.env.GROQ_API_KEY;
+    if (!anthropicKey && !groqKey) {
+      return NextResponse.json({ error: 'AI provider not configured (set ANTHROPIC_API_KEY or GROQ_API_KEY).' }, { status: 500 });
     }
 
-    const anthropic = new Anthropic({ apiKey });
     const source: 'photo' | 'text' | 'photo_with_text' =
       hasImage && userText ? 'photo_with_text' : hasImage ? 'photo' : 'text';
 
-    // Prompt intentionally single-block so the prefix cache picks it up on
-    // every meal — the volatile content (user text + image) goes in the
-    // user message after the cached system. Saves ~700 tokens per repeat call.
+    // Prompt is identical for both providers — Groq's OpenAI-style messages
+    // API puts the system prompt in a "system" role instead of Anthropic's
+    // top-level `system` field, but the text is the same.
     const SYSTEM_PROMPT = `You are a nutrition-aware meal analyzer. A user is logging what they just ate — either a photo, a short text description, or both.
 
 Return ONE JSON object, and nothing else (no markdown, no preamble, no trailing commentary). Start with { and end with }.
@@ -120,62 +121,125 @@ Rules:
 - NEVER include markdown, \`\`\` fences, or text outside the JSON object.
 - Keep verdict_reasons short: 5-15 words each, specific not generic ("Low protein relative to carbs" > "Could be more balanced").`;
 
-    const userContent: Anthropic.MessageParam['content'] = [];
-    if (imageBase64 && imageMime) {
-      userContent.push({
-        type: 'image',
-        source: { type: 'base64', media_type: imageMime as 'image/jpeg' | 'image/png' | 'image/webp' | 'image/gif', data: imageBase64 },
-      });
-    }
     const userTextBody = userText
       ? `User's description: ${userText}\n\nAnalyze and return the JSON.`
       : 'Analyze the photo and return the JSON.';
-    userContent.push({ type: 'text', text: userTextBody });
 
     const aiStartMs = Date.now();
-    let response: Anthropic.Message;
-    try {
-      response = await anthropic.messages.create({
-        model: 'claude-sonnet-4-5',
-        max_tokens: 1500,
-        // Cache the system prompt across meals for this user. At ~700 tokens
-        // cached × 3-5 meals/day, saves ~3000 tokens/user/day on input.
-        system: [
-          { type: 'text', text: SYSTEM_PROMPT, cache_control: { type: 'ephemeral' } },
-        ],
-        messages: [{ role: 'user', content: userContent }],
-      });
-    } catch (err) {
-      logger.error('meal_analyze.claude_failed', { userId: user.id, errorMessage: describeError(err) });
+    let rawText = '';
+    let modelUsed: 'claude-sonnet-4-5' | 'meta-llama/llama-4-scout-17b-16e-instruct' = 'claude-sonnet-4-5';
+    let tokenUsage = { inputTokens: 0, outputTokens: 0, cacheReadTokens: 0, cacheCreationTokens: 0 };
+    let lastError: unknown = null;
+
+    // Try Claude first — better vision + JSON reliability. Fall back to Groq
+    // (Llama 4 Scout, multimodal) if Claude is missing or fails. If Claude
+    // isn't configured at all, skip straight to Groq.
+    if (anthropicKey) {
+      try {
+        const anthropic = new Anthropic({ apiKey: anthropicKey });
+        const userContent: Anthropic.MessageParam['content'] = [];
+        if (imageBase64 && imageMime) {
+          userContent.push({
+            type: 'image',
+            source: { type: 'base64', media_type: imageMime as 'image/jpeg' | 'image/png' | 'image/webp' | 'image/gif', data: imageBase64 },
+          });
+        }
+        userContent.push({ type: 'text', text: userTextBody });
+
+        const response = await anthropic.messages.create({
+          model: 'claude-sonnet-4-5',
+          max_tokens: 1500,
+          // Cache the system prompt across meals for this user. At ~700 tokens
+          // cached × 3-5 meals/day, saves ~3000 tokens/user/day on input.
+          system: [
+            { type: 'text', text: SYSTEM_PROMPT, cache_control: { type: 'ephemeral' } },
+          ],
+          messages: [{ role: 'user', content: userContent }],
+        });
+
+        const textBlock = response.content.find((b): b is Anthropic.TextBlock => b.type === 'text');
+        if (!textBlock?.text) throw new Error('Claude returned empty response');
+        rawText = textBlock.text;
+        const usage = usageFromAnthropic(response.usage);
+        tokenUsage = {
+          inputTokens: usage.inputTokens,
+          outputTokens: usage.outputTokens,
+          cacheReadTokens: usage.cacheReadTokens ?? 0,
+          cacheCreationTokens: usage.cacheCreationTokens ?? 0,
+        };
+      } catch (err) {
+        lastError = err;
+        logger.warn('meal_analyze.claude_failed_fallback_groq', {
+          userId: user.id,
+          errorMessage: describeError(err),
+          hasGroqKey: !!groqKey,
+        });
+      }
+    }
+
+    // Groq fallback — Llama 4 Scout is multimodal and handles base64 images
+    // via OpenAI-style `image_url` content. Only used if Claude failed or is
+    // not configured.
+    if (!rawText && groqKey) {
+      try {
+        const groq = new Groq({ apiKey: groqKey });
+        // Groq accepts OpenAI-style content arrays; images go in as data URLs.
+        const userContent: Groq.Chat.ChatCompletionContentPart[] = [];
+        if (imageBase64 && imageMime) {
+          userContent.push({
+            type: 'image_url',
+            image_url: { url: `data:${imageMime};base64,${imageBase64}` },
+          });
+        }
+        userContent.push({ type: 'text', text: userTextBody });
+
+        const completion = await groq.chat.completions.create({
+          model: 'meta-llama/llama-4-scout-17b-16e-instruct',
+          max_tokens: 1500,
+          temperature: 0.3,
+          messages: [
+            { role: 'system', content: SYSTEM_PROMPT },
+            { role: 'user', content: userContent },
+          ],
+        });
+        const text = completion.choices[0]?.message?.content?.trim() ?? '';
+        if (!text) throw new Error('Groq returned empty response');
+        rawText = text;
+        modelUsed = 'meta-llama/llama-4-scout-17b-16e-instruct';
+        const usage = usageFromGroq(completion.usage);
+        tokenUsage = {
+          inputTokens: usage.inputTokens,
+          outputTokens: usage.outputTokens,
+          cacheReadTokens: 0,
+          cacheCreationTokens: 0,
+        };
+      } catch (err) {
+        lastError = err;
+        logger.error('meal_analyze.groq_failed', { userId: user.id, errorMessage: describeError(err) });
+      }
+    }
+
+    if (!rawText) {
+      logger.error('meal_analyze.all_providers_failed', { userId: user.id, errorMessage: describeError(lastError) });
       return NextResponse.json({ error: 'Analysis failed. Try again in a moment.' }, { status: 502 });
     }
 
-    // Structured token-cost event — same shape all other AI calls emit.
-    const usage = usageFromAnthropic(response.usage);
     logAiTokens({
       op: 'meal_analyze',
-      model: 'claude-sonnet-4-5',
+      model: modelUsed,
       userId: user.id,
       latencyMs: Date.now() - aiStartMs,
-      inputTokens: usage.inputTokens,
-      outputTokens: usage.outputTokens,
-      cacheReadTokens: usage.cacheReadTokens,
-      cacheCreationTokens: usage.cacheCreationTokens,
+      inputTokens: tokenUsage.inputTokens,
+      outputTokens: tokenUsage.outputTokens,
+      cacheReadTokens: tokenUsage.cacheReadTokens,
+      cacheCreationTokens: tokenUsage.cacheCreationTokens,
       extra: { source, hasImage, hasText: userText.length > 0 },
     });
 
-    // Pull the single text block. Vision responses always return text-only
-    // content unless we asked for tool use, which we didn't.
-    const textBlock = response.content.find((b): b is Anthropic.TextBlock => b.type === 'text');
-    if (!textBlock?.text) {
-      logger.warn('meal_analyze.empty_response', { userId: user.id });
-      return NextResponse.json({ error: 'AI returned empty response' }, { status: 502 });
-    }
-
     let parsed: unknown;
-    try { parsed = parseMealJson(textBlock.text); }
+    try { parsed = parseMealJson(rawText); }
     catch (err) {
-      logger.warn('meal_analyze.parse_failed', { userId: user.id, errorMessage: describeError(err) });
+      logger.warn('meal_analyze.parse_failed', { userId: user.id, model: modelUsed, errorMessage: describeError(err) });
       return NextResponse.json({ error: 'Could not parse AI response. Try again.' }, { status: 502 });
     }
 
@@ -183,6 +247,7 @@ Rules:
     if (!validated.success) {
       logger.warn('meal_analyze.schema_drift', {
         userId: user.id,
+        model: modelUsed,
         issues: validated.error.issues.slice(0, 5).map(i => ({ path: i.path.join('.'), code: i.code })),
       });
       return NextResponse.json({ error: 'AI response shape invalid. Try again.' }, { status: 502 });
@@ -193,11 +258,11 @@ Rules:
       source,
       eatenAt,
       userText: userText || null,
-      model: 'claude-sonnet-4-5',
+      model: modelUsed,
       tokens: {
-        input: usage.inputTokens,
-        output: usage.outputTokens,
-        cacheRead: usage.cacheReadTokens ?? 0,
+        input: tokenUsage.inputTokens,
+        output: tokenUsage.outputTokens,
+        cacheRead: tokenUsage.cacheReadTokens,
       },
     });
   } catch (err) {

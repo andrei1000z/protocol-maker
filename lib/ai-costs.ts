@@ -26,6 +26,8 @@ export const AI_PRICING: Record<string, { input: number; output: number; cacheRe
   'claude-sonnet-4-5':        { input: 3.00, output: 15.00, cacheRead: 0.30, cacheCreate: 3.75 },
   // Groq inference is substantially cheaper and does not support caching.
   'llama-3.3-70b-versatile':  { input: 0.59, output: 0.79 },
+  // Llama 4 Scout — Groq's multimodal model used as meal-vision fallback.
+  'meta-llama/llama-4-scout-17b-16e-instruct': { input: 0.11, output: 0.34 },
   // Deterministic fallback is free — logging it keeps the event shape uniform.
   'fallback':                 { input: 0, output: 0 },
 };
