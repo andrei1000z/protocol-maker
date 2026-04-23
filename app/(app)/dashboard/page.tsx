@@ -9,6 +9,7 @@ import { AskAIPill } from '@/components/dashboard/AskAIPill';
 import { BiomarkerSparkline, extractBiomarkerSeries } from '@/components/dashboard/BiomarkerSparkline';
 import { SupplementTimeGroups } from '@/components/dashboard/SupplementTimeGroups';
 import { DailyBriefing } from '@/components/dashboard/DailyBriefing';
+import { MealLogger } from '@/components/dashboard/MealLogger';
 import { useDailyMetrics } from '@/lib/hooks/useDailyMetrics';
 import { TrendingUp, TrendingDown, Minus } from 'lucide-react';
 import { AnimatedNumber } from '@/components/ui/AnimatedNumber';
@@ -672,6 +673,12 @@ export default function DashboardPage() {
           }
         />
       )}
+
+      {/* ═══════════════ MEAL LOGGER ═══════════════
+          Photo / text meal input → AI analysis → save. Feeds a 7-day meal
+          summary into the next protocol regen. Demo mode hides because the
+          sample protocol has no real user to attach meals to. */}
+      {!demoMode && <MealLogger />}
 
       {/* ═══════════════ HERO DIAGNOSTIC ═══════════════ */}
       <div id="diagnostic" className="hero-card rounded-3xl p-8 scroll-mt-20 animate-fade-in-up relative overflow-hidden">

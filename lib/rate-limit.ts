@@ -12,6 +12,7 @@ let parseBloodworkRatelimit: Ratelimit | null = null;
 let saveBloodtestRatelimit: Ratelimit | null = null;
 let complianceRatelimit: Ratelimit | null = null;
 let saveProfileRatelimit: Ratelimit | null = null;
+let mealAnalyzeRatelimit: Ratelimit | null = null;
 
 function getRedis(): Redis | null {
   const url = process.env.UPSTASH_REDIS_REST_URL;
@@ -130,6 +131,23 @@ export function getSaveProfileRateLimit(): Ratelimit | null {
     prefix: 'save_profile',
   });
   return saveProfileRatelimit;
+}
+
+// Meal analyze: vision-enabled Claude call — our single most expensive
+// endpoint per request (~1500 input + 500 output tokens on Sonnet 4.5,
+// roughly $0.02 per call). Legit usage is 3-5 meals/day; 30/day hard cap
+// leaves headroom for "retry after editing the text" flows while capping
+// abuse cost at ~$0.60/user/day worst case.
+export function getMealAnalyzeRateLimit(): Ratelimit | null {
+  if (mealAnalyzeRatelimit) return mealAnalyzeRatelimit;
+  const redis = getRedis();
+  if (!redis) return null;
+  mealAnalyzeRatelimit = new Ratelimit({
+    redis,
+    limiter: Ratelimit.slidingWindow(30, '1 d'),
+    prefix: 'meal_analyze',
+  });
+  return mealAnalyzeRatelimit;
 }
 
 // Bypass allowlist — founders / admins get unlimited generations.

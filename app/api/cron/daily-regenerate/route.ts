@@ -13,6 +13,7 @@ import { buildFallbackProtocol } from '@/lib/engine/fallback-protocol';
 import { logger } from '@/lib/logger';
 import { logAiTokens, usageFromAnthropic, usageFromGroq, type AiTokenUsage } from '@/lib/ai-costs';
 import { inspectProtocolShape } from '@/lib/engine/schemas';
+import { describeMealsForPrompt, type MealRow } from '@/lib/engine/meals';
 import { syncProvider } from '@/lib/integrations/sync';
 import { isConfigured as ouraConfigured } from '@/lib/integrations/oura';
 import { isConfigured as fitbitConfigured } from '@/lib/integrations/fitbit';
@@ -329,10 +330,24 @@ async function regenerateForUser(userId: string): Promise<{ skipped?: boolean; s
   let firstProviderErrorCode: string | null = null;
   let tokenUsage: AiTokenUsage | null = null;
   const aiStartMs = Date.now();
+  // 7-day meal summary. Same pattern as the interactive route — silent
+  // failure if the table isn't migrated yet.
+  let mealsSummary: string | null = null;
+  try {
+    const since = new Date(Date.now() - 7 * 864e5).toISOString();
+    const { data: mealRows } = await supabase.from('meals')
+      .select('*').eq('user_id', userId).gte('eaten_at', since)
+      .order('eaten_at', { ascending: false }).limit(100);
+    if (Array.isArray(mealRows) && mealRows.length > 0) {
+      mealsSummary = describeMealsForPrompt(mealRows as MealRow[], 7);
+    }
+  } catch { /* ignore */ }
+
   const prompt = buildMasterPromptV2(
     mergedProfile as UserProfile, classified, patterns, BIOMARKER_DB,
     longevityScore, biologicalAge, recentSignalsSummary,
     { rate30d: adherenceRate30d, topMissedItems: adherenceTopMissed, activeDays: activeDates.size },
+    mealsSummary ?? undefined,
   );
 
   try {

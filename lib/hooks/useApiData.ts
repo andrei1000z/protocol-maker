@@ -172,6 +172,31 @@ export function useComplianceHistory(startDate: string, endDate: string) {
   );
 }
 
+interface MealRowPartial {
+  id: string;
+  eaten_at: string;
+  source: 'photo' | 'text' | 'photo_with_text';
+  user_text: string | null;
+  title: string;
+  description: string | null;
+  ingredients: string[];
+  calories: number | null;
+  protein_g: number | null;
+  carbs_g: number | null;
+  fat_g: number | null;
+  fiber_g: number | null;
+  verdict: 'good' | 'mixed' | 'bad' | null;
+  verdict_reasons: string[];
+  ai_model: string | null;
+  created_at: string;
+}
+interface MealsResponse { meals: MealRowPartial[]; days: number; }
+
+/** Recent meal log — 7-day window by default. Invalidated after every save. */
+export function useMeals(days = 7) {
+  return useSWR<MealsResponse>(`/api/meals?days=${days}`, realtimeish);
+}
+
 // ─────────────────────────────────────────────────────────────────────────────
 // Cache invalidators — call after mutations that change server state
 // ─────────────────────────────────────────────────────────────────────────────
@@ -182,5 +207,6 @@ export const invalidate = {
   liveScores:       () => globalMutate('/api/live-scores'),
   compliance:       () => globalMutate((key) => typeof key === 'string' && key.startsWith('/api/compliance')),
   dailyMetrics:     () => globalMutate((key) => typeof key === 'string' && key.startsWith('/api/daily-metrics')),
+  meals:            () => globalMutate((key) => typeof key === 'string' && key.startsWith('/api/meals')),
   all:              () => globalMutate(() => true),
 };

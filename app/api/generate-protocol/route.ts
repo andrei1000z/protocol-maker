@@ -17,6 +17,7 @@ import { logger, describeError } from '@/lib/logger';
 import { logAiTokens, usageFromAnthropic, usageFromGroq, type AiTokenUsage } from '@/lib/ai-costs';
 import { trackServer } from '@/lib/analytics';
 import { inspectProtocolShape } from '@/lib/engine/schemas';
+import { describeMealsForPrompt, type MealRow } from '@/lib/engine/meals';
 
 // 90s budget: Claude ~40-55s on long-tail, Groq fallback 20-30s on top.
 // 60s was tight — a Claude that barely fails at 55s left <5s for Groq.
@@ -214,10 +215,25 @@ export async function POST(request: Request) {
     const aiStartMs = Date.now();
 
     const recentSignalsSummary = describeRecentSignals(recentSignals);
+
+    // Pull the last 7 days of logged meals. Failure is silent — meal
+    // logging is opt-in; missing meals shouldn't block a regen.
+    let mealsSummary: string | null = null;
+    try {
+      const since = new Date(Date.now() - 7 * 864e5).toISOString();
+      const { data: mealRows } = await supabase.from('meals')
+        .select('*').eq('user_id', user.id).gte('eaten_at', since)
+        .order('eaten_at', { ascending: false }).limit(100);
+      if (Array.isArray(mealRows) && mealRows.length > 0) {
+        mealsSummary = describeMealsForPrompt(mealRows as MealRow[], 7);
+      }
+    } catch { /* meals table may not exist yet on pre-migration DBs — ignore */ }
+
     const prompt = buildMasterPromptV2(
       profile, classified, patterns, BIOMARKER_DB,
       longevityScore, biologicalAge, recentSignalsSummary,
       { rate30d: adherenceScore30d, topMissedItems: adherenceTopMissed, activeDays: adherenceActiveDays },
+      mealsSummary ?? undefined,
     );
 
     // Try Claude Opus first (best medical reasoning), fallback to Groq, then deterministic

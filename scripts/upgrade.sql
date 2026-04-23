@@ -279,6 +279,66 @@ create table if not exists public.chat_messages (
 );
 
 -- ┌──────────────────────────────────────────────────────────────────────────┐
+-- │ 6c. MEALS — AI-analyzed meal log (photo + text → macros + verdict)       │
+-- └──────────────────────────────────────────────────────────────────────────┘
+-- Each row is one meal the user logged — via photo, text description, or
+-- both. The AI vision pass writes title, ingredients, macros, and a simple
+-- good/mixed/bad verdict with short reasons. The raw photo is NOT stored
+-- (zero storage cost + minimal GDPR surface); the user re-takes the photo
+-- if they want to re-analyze. Meals from the last 7 days feed back into
+-- the protocol regeneration prompt so the AI can see what the user is
+-- actually eating.
+create table if not exists public.meals (
+  id uuid default gen_random_uuid() primary key,
+  user_id uuid references auth.users on delete cascade not null,
+  eaten_at timestamptz not null default now(),
+  source text not null check (source in ('photo', 'text', 'photo_with_text')),
+  user_text text,                      -- whatever the user typed, preserved verbatim
+  title text not null,
+  description text,
+  ingredients text[] default '{}',
+  calories integer,
+  protein_g real,
+  carbs_g real,
+  fat_g real,
+  fiber_g real,
+  verdict text check (verdict in ('good', 'mixed', 'bad')),
+  verdict_reasons text[] default '{}',
+  ai_model text,
+  input_tokens integer,                -- for cost tracking — vision is the most expensive call in the app
+  output_tokens integer,
+  created_at timestamptz default now(),
+  updated_at timestamptz default now()
+);
+
+-- Range constraints on macros so a hallucinated "8500 calories in this
+-- salad" doesn't corrupt the 7-day summary fed to the protocol prompt.
+do $$ begin
+  if not exists (select 1 from pg_constraint where conname = 'meals_calories_range') then
+    alter table public.meals add constraint meals_calories_range
+      check (calories is null or calories between 0 and 10000) not valid;
+    alter table public.meals validate constraint meals_calories_range;
+  end if;
+exception when others then null; end $$;
+
+do $$ begin
+  if not exists (select 1 from pg_constraint where conname = 'meals_macros_range') then
+    alter table public.meals add constraint meals_macros_range
+      check (
+        (protein_g is null or protein_g between 0 and 500)
+        and (carbs_g is null or carbs_g between 0 and 1000)
+        and (fat_g   is null or fat_g   between 0 and 500)
+        and (fiber_g is null or fiber_g between 0 and 300)
+      ) not valid;
+    alter table public.meals validate constraint meals_macros_range;
+  end if;
+exception when others then null; end $$;
+
+-- Hot-path index: "last N days of meals for this user" is what both the
+-- dashboard timeline and the protocol-regen prompt fetch.
+create index if not exists idx_meals_user_eaten on public.meals(user_id, eaten_at desc);
+
+-- ┌──────────────────────────────────────────────────────────────────────────┐
 -- │ 7. CHECK CONSTRAINTS — add as NOT VALID, then VALIDATE (non-blocking)    │
 -- └──────────────────────────────────────────────────────────────────────────┘
 -- Each constraint wrapped in DO block so it's idempotent (skips if exists).
@@ -397,6 +457,7 @@ alter table public.share_links enable row level security;
 alter table public.compliance_logs enable row level security;
 alter table public.chat_messages enable row level security;
 alter table public.oauth_connections enable row level security;
+alter table public.meals enable row level security;
 
 -- Defense in depth: force RLS even for table owner. Applies to EVERY user-
 -- scoped table — a future route that accidentally uses the service-role
@@ -409,6 +470,7 @@ alter table public.oauth_connections force row level security;  -- tokens are se
 alter table public.daily_metrics force row level security;
 alter table public.share_links force row level security;        -- slug enum-guessed = public, but owner writes must stay scoped
 alter table public.compliance_logs force row level security;
+alter table public.meals force row level security;
 
 drop policy if exists "profiles_select" on public.profiles;
 drop policy if exists "profiles_insert" on public.profiles;
@@ -481,6 +543,13 @@ drop policy if exists "oauth_connections_own" on public.oauth_connections;
 create policy "oauth_connections_own" on public.oauth_connections for select
   using (auth.uid() = user_id);
 
+-- Meals: owner only. Force RLS above blocks service-role reads without a
+-- user filter — keeps the meal photos' analysis private even if a future
+-- background job uses the admin client by mistake.
+drop policy if exists "meals_own" on public.meals;
+create policy "meals_own" on public.meals for all
+  using (auth.uid() = user_id) with check (auth.uid() = user_id);
+
 -- ┌──────────────────────────────────────────────────────────────────────────┐
 -- │ 10. GRANTS                                                               │
 -- └──────────────────────────────────────────────────────────────────────────┘
@@ -528,6 +597,10 @@ create trigger profiles_set_updated_at before update on public.profiles
 
 drop trigger if exists daily_metrics_set_updated_at on public.daily_metrics;
 create trigger daily_metrics_set_updated_at before update on public.daily_metrics
+  for each row execute procedure public.set_updated_at();
+
+drop trigger if exists meals_set_updated_at on public.meals;
+create trigger meals_set_updated_at before update on public.meals
   for each row execute procedure public.set_updated_at();
 
 create or replace function public.set_completed_at()

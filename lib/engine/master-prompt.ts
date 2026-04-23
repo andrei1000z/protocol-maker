@@ -311,6 +311,10 @@ export function buildMasterPromptV2(
   // doesn't prescribe 15 supplements to someone who's been ignoring 8 of
   // them for a month.
   adherence?: AdherenceSignal,
+  // Optional — one-line summary of the user's last 7 days of logged meals
+  // (from /api/meals). When present the AI can calibrate nutrition advice
+  // to what the user actually eats, not what onboarding claimed.
+  mealsSummary?: string,
 ): string {
   const bmi = profile.weightKg / ((profile.heightCm / 100) ** 2);
   const bmiCategory = bmi < 18.5 ? 'underweight' : bmi < 25 ? 'normal' : bmi < 30 ? 'overweight' : 'obese';
@@ -644,6 +648,17 @@ If sleep is inconsistent (σ > 1h), that IS aging the user faster regardless of
 profile claims — call it out as a top risk. Use the ACTUAL averages above in
 your topWins/topRisks bullets (e.g. "Your 52 ms average HRV sits above the
 typical 41 ms for your age — keep guarding this").
+` : ''}
+${mealsSummary ? `
+═══ RECENT MEALS (last 7 days — ground truth on nutrition, beats the onboarding claim) ═══
+${mealsSummary}
+
+Use this to calibrate the nutrition section. If the user's average calories or
+macros are far from the targets you'd normally prescribe, acknowledge the gap
+in topWins/topRisks and pick realistic adjustments (shift composition first,
+volume second). Don't prescribe a Mediterranean plan to someone who's clearly
+eating mostly ultra-processed food — meet them where they are and name the
+highest-impact single swap.
 ` : ''}
 ${adherence && adherence.rate30d !== null ? `
 ═══ ADHERENCE SIGNAL (last 30 days — reality check on the previous protocol) ═══
