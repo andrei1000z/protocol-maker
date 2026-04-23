@@ -28,6 +28,59 @@ import {
 import { useMeals, invalidate } from '@/lib/hooks/useApiData';
 import type { MealAnalysis } from '@/lib/engine/meals';
 
+// Vision models don't benefit from images larger than ~1600px on the long
+// edge. Downscale in-browser before upload so we never hit the 3.5MB server
+// cap (or Vercel's 4.5MB platform cap, which returns 413 before our handler
+// runs). iPhone JPEGs are typically 3-8MB raw; this brings them to ~200-500KB.
+const MAX_EDGE_PX = 1600;
+const JPEG_QUALITY = 0.82;
+
+async function compressImageForUpload(file: File): Promise<File> {
+  // Non-image files (if any slip through) and already-small images skip the
+  // canvas round-trip — no point re-encoding a 200KB photo.
+  if (!file.type.startsWith('image/')) return file;
+  if (file.size < 900 * 1024) return file;
+
+  const dataUrl = await new Promise<string>((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => resolve(reader.result as string);
+    reader.onerror = () => reject(reader.error ?? new Error('Read failed'));
+    reader.readAsDataURL(file);
+  });
+
+  const img = await new Promise<HTMLImageElement>((resolve, reject) => {
+    const el = document.createElement('img');
+    el.onload = () => resolve(el);
+    el.onerror = () => reject(new Error('Image decode failed'));
+    el.src = dataUrl;
+  });
+
+  const scale = Math.min(1, MAX_EDGE_PX / Math.max(img.naturalWidth, img.naturalHeight));
+  const w = Math.round(img.naturalWidth * scale);
+  const h = Math.round(img.naturalHeight * scale);
+
+  const canvas = document.createElement('canvas');
+  canvas.width = w;
+  canvas.height = h;
+  const ctx = canvas.getContext('2d');
+  if (!ctx) return file;
+  ctx.drawImage(img, 0, 0, w, h);
+
+  const blob = await new Promise<Blob | null>(resolve =>
+    canvas.toBlob(resolve, 'image/jpeg', JPEG_QUALITY),
+  );
+  if (!blob) return file;
+
+  // Fall back to the original if compression somehow made it bigger (rare —
+  // usually when input was already heavily compressed small JPEG).
+  if (blob.size >= file.size) return file;
+
+  return new File([blob], file.name.replace(/\.[^.]+$/, '') + '.jpg', {
+    type: 'image/jpeg',
+    lastModified: Date.now(),
+  });
+}
+
 interface AnalysisResponse {
   analysis: MealAnalysis;
   source: 'photo' | 'text' | 'photo_with_text';
@@ -207,14 +260,31 @@ function MealLoggerModal({ onClose }: { onClose: () => void }) {
   const [error, setError] = useState<string | null>(null);
   const fileRef = useRef<HTMLInputElement>(null);
 
-  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const f = e.target.files?.[0] ?? null;
-    setFile(f);
+  const [compressing, setCompressing] = useState(false);
+  const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const raw = e.target.files?.[0] ?? null;
     setError(null);
-    // Object URL for preview. Revoked when this component unmounts or when
-    // the user replaces the file.
-    if (preview) URL.revokeObjectURL(preview);
-    setPreview(f ? URL.createObjectURL(f) : null);
+    if (!raw) {
+      setFile(null);
+      if (preview) URL.revokeObjectURL(preview);
+      setPreview(null);
+      return;
+    }
+    setCompressing(true);
+    try {
+      const compressed = await compressImageForUpload(raw);
+      setFile(compressed);
+      if (preview) URL.revokeObjectURL(preview);
+      setPreview(URL.createObjectURL(compressed));
+    } catch {
+      // If compression failed for any reason, fall back to the raw file —
+      // the server will still reject at 3.5MB but with a clear message.
+      setFile(raw);
+      if (preview) URL.revokeObjectURL(preview);
+      setPreview(URL.createObjectURL(raw));
+    } finally {
+      setCompressing(false);
+    }
   };
 
   const resolveEatenAt = (): string => {
@@ -240,7 +310,10 @@ function MealLoggerModal({ onClose }: { onClose: () => void }) {
       const res = await fetch('/api/meals/analyze', { method: 'POST', body: fd });
       if (!res.ok) {
         const j = await res.json().catch(() => ({}));
-        throw new Error(j.error || `Analysis failed (${res.status})`);
+        if (res.status === 413) {
+          throw new Error('Photo still too big after shrinking. Try a smaller photo or describe the meal in text.');
+        }
+        throw new Error(j.error || `Couldn't read the plate (${res.status}). Try again.`);
       }
       const data = (await res.json()) as AnalysisResponse;
       setAnalysis(data);
@@ -332,6 +405,16 @@ function MealLoggerModal({ onClose }: { onClose: () => void }) {
                   >
                     <X className="w-4 h-4" />
                   </button>
+                  {file && (
+                    <span className="absolute bottom-2 left-2 text-[10px] font-mono px-2 py-0.5 rounded-full bg-black/60 text-white">
+                      {(file.size / 1024).toFixed(0)} KB
+                    </span>
+                  )}
+                </div>
+              ) : compressing ? (
+                <div className="rounded-2xl border border-card-border bg-surface-2 p-6 flex flex-col items-center gap-2">
+                  <span className="w-5 h-5 border-2 border-accent/30 border-t-accent rounded-full animate-spin" />
+                  <p className="text-[11px] text-muted-foreground">Shrinking photo…</p>
                 </div>
               ) : (
                 <div className="grid grid-cols-2 gap-2">
@@ -404,7 +487,7 @@ function MealLoggerModal({ onClose }: { onClose: () => void }) {
 
             <button
               onClick={handleAnalyze}
-              disabled={analyzing || (!file && !userText.trim())}
+              disabled={analyzing || compressing || (!file && !userText.trim())}
               className="w-full py-3 rounded-xl bg-accent text-black font-semibold text-sm hover:bg-accent-bright disabled:opacity-50 transition-colors inline-flex items-center justify-center gap-2"
             >
               {analyzing ? (
