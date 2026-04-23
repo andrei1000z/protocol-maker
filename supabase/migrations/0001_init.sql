@@ -1,37 +1,58 @@
 -- ============================================================================
--- PROTOCOL MAKER — UPGRADE SCRIPT (idempotent, safe to re-run)
+-- PROTOCOL MAKER — INITIAL SCHEMA (unified, idempotent, safe to re-run)
 -- ============================================================================
--- Brings an existing live database up to the latest schema WITHOUT dropping
--- any user data. Run in Supabase Dashboard → SQL Editor. Safe to re-run 10×.
+-- This is the single source of truth for the database schema. Paste this
+-- into Supabase SQL Editor once. It creates everything from scratch on a
+-- fresh database AND brings an existing database up to date (all DDL uses
+-- IF NOT EXISTS / IF EXISTS / DROP+CREATE patterns).
 --
--- Applies 2026 best practices:
---   - pg_trgm extension for fuzzy text search
---   - JSONB GIN indexes with jsonb_path_ops (faster + smaller)
---   - Array GIN indexes on text[] columns
---   - Check constraints added as NOT VALID then VALIDATE (non-blocking)
---   - biological_age_decimal column for sub-year precision
---   - Soft delete (deleted_at) on profiles, protocols, blood_tests
---   - Covering partial indexes on hot paths
---   - Helper SQL functions (streak, adherence, latest diagnostics)
---   - Realtime publication for daily_metrics + compliance_logs + protocols
---   - Explicit grants to authenticated/anon/service_role
+-- 9 tables: profiles, blood_tests, protocols, daily_metrics, share_links,
+-- compliance_logs, oauth_connections, chat_messages, meals.
+--
+-- Also installs: 2 extensions, 40+ indexes, RLS policies, FORCE RLS on 9
+-- tables, 13 RPC functions, triggers (updated_at / completed_at / new-user
+-- signup / referral code), realtime publication on 3 tables, grants.
+--
+-- Structure:
+--   §0  Extensions
+--   §1  Tables (CREATE TABLE IF NOT EXISTS, then ALTER ... ADD COLUMN IF
+--       NOT EXISTS for every nullable column — covers both fresh installs
+--       and upgrades from older partial schemas).
+--   §2  Check constraints (wrapped in DO blocks for idempotency)
+--   §3  Indexes
+--   §4  RLS enable + force
+--   §5  Policies
+--   §6  Grants
+--   §7  Triggers + trigger functions
+--   §8  RPC functions
+--   §9  Realtime publication
+--   §10 Backfill
 -- ============================================================================
 
 -- ┌──────────────────────────────────────────────────────────────────────────┐
--- │ 0. EXTENSIONS                                                            │
+-- │ §0. EXTENSIONS                                                           │
 -- └──────────────────────────────────────────────────────────────────────────┘
-create extension if not exists "pgcrypto";
-create extension if not exists "pg_trgm";
+create extension if not exists "pgcrypto";   -- gen_random_uuid()
+create extension if not exists "pg_trgm";    -- fuzzy text search on biomarkers
 
 -- ┌──────────────────────────────────────────────────────────────────────────┐
--- │ 1. PROFILES — add missing columns                                        │
+-- │ §1. TABLES                                                               │
 -- └──────────────────────────────────────────────────────────────────────────┘
-alter table public.profiles add column if not exists onboarding_data jsonb default '{}'::jsonb;
-alter table public.profiles add column if not exists onboarding_step integer default 0;
-alter table public.profiles add column if not exists onboarding_completed boolean default false;
+
+-- 1.1 PROFILES — one row per user, grown during onboarding.
+create table if not exists public.profiles (
+  id uuid references auth.users on delete cascade primary key,
+  created_at timestamptz default now()
+);
+
+alter table public.profiles add column if not exists age integer;
+alter table public.profiles add column if not exists sex text;
+alter table public.profiles add column if not exists height_cm real;
+alter table public.profiles add column if not exists weight_kg real;
 alter table public.profiles add column if not exists ethnicity text;
 alter table public.profiles add column if not exists latitude real;
 alter table public.profiles add column if not exists occupation text;
+alter table public.profiles add column if not exists activity_level text default 'moderate';
 alter table public.profiles add column if not exists sleep_hours_avg real;
 alter table public.profiles add column if not exists sleep_quality integer;
 alter table public.profiles add column if not exists diet_type text default 'omnivore';
@@ -48,122 +69,270 @@ alter table public.profiles add column if not exists goals jsonb default '[]'::j
 alter table public.profiles add column if not exists time_budget_min integer default 60;
 alter table public.profiles add column if not exists monthly_budget_ron integer default 500;
 alter table public.profiles add column if not exists experimental_openness text default 'otc_only';
-alter table public.profiles add column if not exists activity_level text default 'moderate';
+alter table public.profiles add column if not exists onboarding_completed boolean default false;
+alter table public.profiles add column if not exists onboarding_step integer default 0;
+alter table public.profiles add column if not exists onboarding_data jsonb default '{}'::jsonb;
 alter table public.profiles add column if not exists updated_at timestamptz default now();
-alter table public.profiles add column if not exists deleted_at timestamptz;  -- soft delete
-alter table public.profiles add column if not exists referral_code text unique;   -- user's own shareable code
-alter table public.profiles add column if not exists referred_by_user_id uuid references auth.users on delete set null;
-alter table public.profiles add column if not exists referred_by_code text;       -- raw code used at signup (kept even if referrer deletes)
-
--- Notification preferences — opt-in, default off for everything except
--- protocol-regen-alert (users expect to know when their score changed
--- meaningfully). Stored as a narrow bitmap so adding a new channel doesn't
--- require a fresh migration. Actual email sending requires a transactional
--- email provider (Resend/Postmark) — until that ships, these flags are a
--- preference record that future workers read.
-alter table public.profiles add column if not exists notif_weekly_digest       boolean default false;
-alter table public.profiles add column if not exists notif_protocol_regen      boolean default true;
-alter table public.profiles add column if not exists notif_retest_reminders    boolean default false;
-alter table public.profiles add column if not exists notif_streak_milestones   boolean default false;
-
--- Stripe subscription state — kept on the profile row so RLS gates access
--- without a second table. Populated by the Stripe webhook route (server-
--- to-server); clients never write these fields directly. Nullable because
--- a user doesn't need a subscription to use the app during beta.
-alter table public.profiles add column if not exists subscription_status       text;       -- 'active' | 'trialing' | 'past_due' | 'canceled' | null
-alter table public.profiles add column if not exists subscription_tier         text;       -- 'free' | 'plus' | 'pro' (future-proofing for tier gating)
-alter table public.profiles add column if not exists subscription_customer_id  text;       -- Stripe customer id — stable across subscriptions
+alter table public.profiles add column if not exists deleted_at timestamptz;
+-- Notification preferences — opt-in bitmap. Actual email delivery requires
+-- a transactional provider (Resend/Postmark); until that ships these flags
+-- are a preference record that future workers read.
+alter table public.profiles add column if not exists notif_weekly_digest boolean default false;
+alter table public.profiles add column if not exists notif_protocol_regen boolean default true;
+alter table public.profiles add column if not exists notif_retest_reminders boolean default false;
+alter table public.profiles add column if not exists notif_streak_milestones boolean default false;
+-- Stripe subscription state — written server-side only via webhook.
+alter table public.profiles add column if not exists subscription_status text;
+alter table public.profiles add column if not exists subscription_tier text;
+alter table public.profiles add column if not exists subscription_customer_id text;
 alter table public.profiles add column if not exists subscription_current_period_end timestamptz;
+-- Referral system — 6-char uppercase code, generated on insert.
+alter table public.profiles add column if not exists referral_code text unique;
+alter table public.profiles add column if not exists referred_by_user_id uuid references auth.users on delete set null;
+alter table public.profiles add column if not exists referred_by_code text;
 
--- ┌──────────────────────────────────────────────────────────────────────────┐
--- │ 2. PROTOCOLS — precision bio age, aging pace, soft delete                │
--- └──────────────────────────────────────────────────────────────────────────┘
-alter table public.protocols add column if not exists aging_pace numeric(4,2);
-alter table public.protocols add column if not exists biological_age_decimal numeric(4,1);
-alter table public.protocols add column if not exists longevity_score integer;
-alter table public.protocols add column if not exists biological_age integer;
-alter table public.protocols add column if not exists detected_patterns jsonb;
-alter table public.protocols add column if not exists classified_biomarkers jsonb;
-alter table public.protocols add column if not exists model_used text default 'claude-sonnet-4-5';
-alter table public.protocols add column if not exists generation_source text;
-alter table public.protocols add column if not exists deleted_at timestamptz;
-
--- Drop legacy columns that caused insert errors in older app versions
-alter table public.protocols drop column if exists prompt_hash;
-alter table public.protocols drop column if exists generation_time_ms;
-
--- ┌──────────────────────────────────────────────────────────────────────────┐
--- │ 3. BLOOD_TESTS — soft delete + notes                                     │
--- └──────────────────────────────────────────────────────────────────────────┘
+-- 1.2 BLOOD_TESTS — each upload creates a new row; full history kept.
+create table if not exists public.blood_tests (
+  id uuid default gen_random_uuid() primary key,
+  user_id uuid references auth.users on delete cascade not null,
+  taken_at date not null,
+  biomarkers jsonb not null default '[]'::jsonb,
+  created_at timestamptz default now()
+);
+alter table public.blood_tests add column if not exists lab_name text;
 alter table public.blood_tests add column if not exists notes text;
 alter table public.blood_tests add column if not exists deleted_at timestamptz;
 
--- ┌──────────────────────────────────────────────────────────────────────────┐
--- │ 4. DAILY_METRICS — create if missing + expand with smartwatch metrics    │
--- └──────────────────────────────────────────────────────────────────────────┘
+-- 1.3 PROTOCOLS — generated longevity protocols; full history kept.
+create table if not exists public.protocols (
+  id uuid default gen_random_uuid() primary key,
+  user_id uuid references auth.users on delete cascade not null,
+  based_on_blood_test_id uuid references public.blood_tests on delete set null,
+  protocol_json jsonb not null,
+  created_at timestamptz default now()
+);
+alter table public.protocols add column if not exists classified_biomarkers jsonb;
+alter table public.protocols add column if not exists detected_patterns jsonb;
+alter table public.protocols add column if not exists longevity_score integer;
+alter table public.protocols add column if not exists biological_age integer;
+alter table public.protocols add column if not exists biological_age_decimal numeric(4,1);
+alter table public.protocols add column if not exists aging_pace numeric(4,2);
+alter table public.protocols add column if not exists model_used text default 'claude-sonnet-4-5';
+alter table public.protocols add column if not exists generation_source text;
+alter table public.protocols add column if not exists deleted_at timestamptz;
+-- Drop legacy columns from older app versions that caused insert errors.
+alter table public.protocols drop column if exists prompt_hash;
+alter table public.protocols drop column if exists generation_time_ms;
+
+-- 1.4 DAILY_METRICS — tracking, one row per user per day.
 create table if not exists public.daily_metrics (
   id uuid default gen_random_uuid() primary key,
   user_id uuid references auth.users on delete cascade not null,
   date date not null,
-  weight_kg real,
-  sleep_hours real,
-  sleep_quality integer,
-  mood integer,
-  energy integer,
-  hrv integer,
-  resting_hr integer,
-  steps integer,
-  workout_done boolean default false,
-  workout_minutes integer,
-  workout_intensity text,
-  stress_level integer,
-  habits_completed text[] default '{}',
-  notes text,
   created_at timestamptz default now(),
   updated_at timestamptz default now(),
   unique(user_id, date)
 );
-
--- Smartwatch / wearable-grade metrics (Galaxy Watch, Oura, WHOOP, Apple Watch, Garmin)
-alter table public.daily_metrics add column if not exists sleep_hours_planned real;      -- target last night
-alter table public.daily_metrics add column if not exists sleep_score integer;            -- 0-100 from wearable
+-- Self-reported core
+alter table public.daily_metrics add column if not exists weight_kg real;
+alter table public.daily_metrics add column if not exists sleep_hours real;
+alter table public.daily_metrics add column if not exists sleep_quality integer;
+alter table public.daily_metrics add column if not exists mood integer;
+alter table public.daily_metrics add column if not exists energy integer;
+alter table public.daily_metrics add column if not exists hrv integer;
+alter table public.daily_metrics add column if not exists resting_hr integer;
+alter table public.daily_metrics add column if not exists steps integer;
+alter table public.daily_metrics add column if not exists workout_done boolean default false;
+alter table public.daily_metrics add column if not exists workout_minutes integer;
+alter table public.daily_metrics add column if not exists workout_intensity text;
+alter table public.daily_metrics add column if not exists stress_level integer;
+alter table public.daily_metrics add column if not exists habits_completed text[] default '{}';
+alter table public.daily_metrics add column if not exists notes text;
+-- Wearable-grade metrics
+alter table public.daily_metrics add column if not exists sleep_hours_planned real;
+alter table public.daily_metrics add column if not exists sleep_score integer;
 alter table public.daily_metrics add column if not exists deep_sleep_min integer;
 alter table public.daily_metrics add column if not exists light_sleep_min integer;
 alter table public.daily_metrics add column if not exists rem_sleep_min integer;
 alter table public.daily_metrics add column if not exists awake_min integer;
-alter table public.daily_metrics add column if not exists blood_oxygen_avg_sleep real;    -- SpO2 % during sleep
-alter table public.daily_metrics add column if not exists skin_temp_deviation real;       -- °C vs recent avg (single-reading fallback)
-alter table public.daily_metrics add column if not exists skin_temp_deviation_min real;   -- °C lowest delta vs recent avg
-alter table public.daily_metrics add column if not exists skin_temp_deviation_max real;   -- °C highest delta vs recent avg
-alter table public.daily_metrics add column if not exists hrv_sleep_avg integer;          -- HRV during sleep
+alter table public.daily_metrics add column if not exists blood_oxygen_avg_sleep real;
+alter table public.daily_metrics add column if not exists skin_temp_deviation real;
+alter table public.daily_metrics add column if not exists skin_temp_deviation_min real;
+alter table public.daily_metrics add column if not exists skin_temp_deviation_max real;
+alter table public.daily_metrics add column if not exists hrv_sleep_avg integer;
 alter table public.daily_metrics add column if not exists bp_systolic_morning integer;
 alter table public.daily_metrics add column if not exists bp_diastolic_morning integer;
 alter table public.daily_metrics add column if not exists bp_systolic_evening integer;
 alter table public.daily_metrics add column if not exists bp_diastolic_evening integer;
-alter table public.daily_metrics add column if not exists avg_heart_rate integer;         -- whole day avg
-alter table public.daily_metrics add column if not exists min_heart_rate integer;         -- lowest today
-alter table public.daily_metrics add column if not exists max_heart_rate integer;         -- peak today
-alter table public.daily_metrics add column if not exists avg_respiratory_rate real;      -- breaths/min
-alter table public.daily_metrics add column if not exists energy_score integer;           -- wearable energy 0-100
+alter table public.daily_metrics add column if not exists avg_heart_rate integer;
+alter table public.daily_metrics add column if not exists min_heart_rate integer;
+alter table public.daily_metrics add column if not exists max_heart_rate integer;
+alter table public.daily_metrics add column if not exists avg_respiratory_rate real;
+alter table public.daily_metrics add column if not exists energy_score integer;
 alter table public.daily_metrics add column if not exists active_time_min integer;
 alter table public.daily_metrics add column if not exists activity_calories integer;
-alter table public.daily_metrics add column if not exists antioxidant_index integer;      -- Galaxy Watch 0-100
-alter table public.daily_metrics add column if not exists ages_index real;                -- Advanced Glycation End products
+alter table public.daily_metrics add column if not exists antioxidant_index integer;
+-- Morning fasted composition
+alter table public.daily_metrics add column if not exists body_fat_pct real;
+alter table public.daily_metrics add column if not exists muscle_mass_kg real;
+alter table public.daily_metrics add column if not exists visceral_fat integer;
+alter table public.daily_metrics add column if not exists body_water_pct real;
+alter table public.daily_metrics add column if not exists bone_mass_kg real;
+alter table public.daily_metrics add column if not exists bmr_kcal integer;
+alter table public.daily_metrics add column if not exists basal_body_temp_c real;
+alter table public.daily_metrics add column if not exists body_score integer;
+alter table public.daily_metrics add column if not exists stress_level_avg integer;
+alter table public.daily_metrics add column if not exists stress_bedtime integer;
+-- ORPHAN: ages_index — created in older schemas, never written by any device
+-- or read by any UI. Drop if present to keep the column list clean.
+alter table public.daily_metrics drop column if exists ages_index;
 
--- ── MORNING FASTED measurements (weight, body composition, basal temp) ──
--- Do AFTER waking, BEFORE food/water — lowest-noise baseline.
-alter table public.daily_metrics add column if not exists body_fat_pct real;              -- smart scale BIA
-alter table public.daily_metrics add column if not exists muscle_mass_kg real;            -- smart scale
-alter table public.daily_metrics add column if not exists visceral_fat integer;           -- Tanita rating 1-60
-alter table public.daily_metrics add column if not exists body_water_pct real;            -- smart scale
-alter table public.daily_metrics add column if not exists bone_mass_kg real;              -- smart scale
-alter table public.daily_metrics add column if not exists bmr_kcal integer;               -- smart scale estimate
-alter table public.daily_metrics add column if not exists basal_body_temp_c real;         -- oral/forehead thermometer on waking
-alter table public.daily_metrics add column if not exists body_score integer;             -- smart scale composite 0-100 (Withings/Renpho/Xiaomi)
-alter table public.daily_metrics add column if not exists stress_level_avg integer;       -- evening self-report — avg stress across the day
-alter table public.daily_metrics add column if not exists stress_bedtime integer;         -- night self-report — stress right before bed
+-- 1.5 SHARE_LINKS — public read-only snapshot by slug.
+create table if not exists public.share_links (
+  id uuid default gen_random_uuid() primary key,
+  user_id uuid references auth.users on delete cascade not null,
+  protocol_id uuid references public.protocols on delete cascade not null,
+  slug text unique not null,
+  view_count integer default 0,
+  created_at timestamptz default now()
+);
+alter table public.share_links add column if not exists expires_at timestamptz;
 
--- Range constraints — silent skip if data violates (NOT VALID + VALIDATE pattern)
+-- 1.6 COMPLIANCE_LOGS — per-day adherence ticks.
+create table if not exists public.compliance_logs (
+  id uuid default gen_random_uuid() primary key,
+  user_id uuid references auth.users on delete cascade not null,
+  protocol_id uuid,
+  item_type text not null,
+  item_name text not null,
+  date date not null,
+  completed boolean default false,
+  unique(user_id, item_type, item_name, date)
+);
+alter table public.compliance_logs add column if not exists completed_at timestamptz;
+
+-- 1.7 OAUTH_CONNECTIONS — third-party wearable tokens. Sensitive; owner
+-- reads via service role, writes only from the OAuth callback routes.
+create table if not exists public.oauth_connections (
+  id uuid default gen_random_uuid() primary key,
+  user_id uuid references auth.users on delete cascade not null,
+  provider text not null,
+  access_token text not null,
+  created_at timestamptz default now(),
+  updated_at timestamptz default now(),
+  unique (user_id, provider)
+);
+alter table public.oauth_connections add column if not exists refresh_token text;
+alter table public.oauth_connections add column if not exists token_type text default 'Bearer';
+alter table public.oauth_connections add column if not exists expires_at timestamptz;
+alter table public.oauth_connections add column if not exists scopes text;
+alter table public.oauth_connections add column if not exists provider_user_id text;
+alter table public.oauth_connections add column if not exists last_synced_at timestamptz;
+alter table public.oauth_connections add column if not exists last_sync_error text;
+
+-- 1.8 CHAT_MESSAGES — server-persisted conversation history. 90-day retention
+-- via prune_old_chat_messages() RPC called from the daily cron.
+create table if not exists public.chat_messages (
+  id uuid default gen_random_uuid() primary key,
+  user_id uuid references auth.users on delete cascade not null,
+  role text not null check (role in ('user', 'assistant')),
+  content text not null,
+  created_at timestamptz default now()
+);
+alter table public.chat_messages add column if not exists model text;
+
+-- 1.9 MEALS — AI-analyzed meal log (photo + text → macros + verdict).
+-- Photo bytes NEVER stored; only extracted data + short reasons. The
+-- nutrition_detail JSONB bag holds everything beyond the core 5 macros
+-- (sugar, sodium, cholesterol, micros, NOVA, GI, quality flags) — one
+-- JSONB column avoids migrations for every new field.
+create table if not exists public.meals (
+  id uuid default gen_random_uuid() primary key,
+  user_id uuid references auth.users on delete cascade not null,
+  eaten_at timestamptz not null default now(),
+  source text not null check (source in ('photo', 'text', 'photo_with_text')),
+  title text not null,
+  created_at timestamptz default now(),
+  updated_at timestamptz default now()
+);
+alter table public.meals add column if not exists user_text text;
+alter table public.meals add column if not exists description text;
+alter table public.meals add column if not exists ingredients text[] default '{}';
+alter table public.meals add column if not exists calories integer;
+alter table public.meals add column if not exists protein_g real;
+alter table public.meals add column if not exists carbs_g real;
+alter table public.meals add column if not exists fat_g real;
+alter table public.meals add column if not exists fiber_g real;
+alter table public.meals add column if not exists verdict text check (verdict in ('good', 'mixed', 'bad'));
+alter table public.meals add column if not exists verdict_reasons text[] default '{}';
+alter table public.meals add column if not exists ai_model text;
+alter table public.meals add column if not exists input_tokens integer;
+alter table public.meals add column if not exists output_tokens integer;
+alter table public.meals add column if not exists nutrition_detail jsonb default '{}'::jsonb;
+alter table public.meals add column if not exists longevity_impact_score smallint;
+
+-- ┌──────────────────────────────────────────────────────────────────────────┐
+-- │ §2. CHECK CONSTRAINTS — added as NOT VALID then VALIDATEd (non-blocking) │
+-- └──────────────────────────────────────────────────────────────────────────┘
+-- Each constraint wrapped in DO block so it's idempotent. Existing data that
+-- violates is silently tolerated (exception-catch at the end).
+
+do $$ begin
+  if not exists (select 1 from pg_constraint where conname = 'profiles_sex_check') then
+    alter table public.profiles add constraint profiles_sex_check
+      check (sex in ('male', 'female', 'intersex') or sex is null) not valid;
+    alter table public.profiles validate constraint profiles_sex_check;
+  end if;
+exception when others then null; end $$;
+
+do $$ begin
+  if not exists (select 1 from pg_constraint where conname = 'profiles_activity_check') then
+    alter table public.profiles add constraint profiles_activity_check
+      check (activity_level in ('sedentary', 'light', 'moderate', 'active', 'elite')) not valid;
+    alter table public.profiles validate constraint profiles_activity_check;
+  end if;
+exception when others then null; end $$;
+
+do $$ begin
+  if not exists (select 1 from pg_constraint where conname = 'profiles_diet_check') then
+    alter table public.profiles add constraint profiles_diet_check
+      check (diet_type in ('omnivore','vegetarian','vegan','keto','carnivore','mediterranean','custom') or diet_type is null) not valid;
+    alter table public.profiles validate constraint profiles_diet_check;
+  end if;
+exception when others then null; end $$;
+
+do $$ begin
+  if not exists (select 1 from pg_constraint where conname = 'profiles_experimental_check') then
+    alter table public.profiles add constraint profiles_experimental_check
+      check (experimental_openness in ('otc_only', 'open_rx', 'open_experimental')) not valid;
+    alter table public.profiles validate constraint profiles_experimental_check;
+  end if;
+exception when others then null; end $$;
+
+do $$ begin
+  if not exists (select 1 from pg_constraint where conname = 'protocols_score_range') then
+    alter table public.protocols add constraint protocols_score_range
+      check (longevity_score is null or longevity_score between 0 and 100) not valid;
+    alter table public.protocols validate constraint protocols_score_range;
+  end if;
+exception when others then null; end $$;
+
+do $$ begin
+  if not exists (select 1 from pg_constraint where conname = 'protocols_pace_range') then
+    alter table public.protocols add constraint protocols_pace_range
+      check (aging_pace is null or aging_pace between 0.4 and 2.0) not valid;
+    alter table public.protocols validate constraint protocols_pace_range;
+  end if;
+exception when others then null; end $$;
+
+do $$ begin
+  if not exists (select 1 from pg_constraint where conname = 'compliance_item_type_check') then
+    alter table public.compliance_logs add constraint compliance_item_type_check
+      check (item_type in ('task', 'supplement', 'habit', 'meal', 'workout')) not valid;
+    alter table public.compliance_logs validate constraint compliance_item_type_check;
+  end if;
+exception when others then null; end $$;
+
 do $$ begin
   if not exists (select 1 from pg_constraint where conname = 'dm_sleep_score_range') then
     alter table public.daily_metrics add constraint dm_sleep_score_range
@@ -207,119 +376,6 @@ do $$ begin
   end if;
 exception when others then null; end $$;
 
--- ┌──────────────────────────────────────────────────────────────────────────┐
--- │ 5. SHARE_LINKS                                                           │
--- └──────────────────────────────────────────────────────────────────────────┘
-create table if not exists public.share_links (
-  id uuid default gen_random_uuid() primary key,
-  user_id uuid references auth.users on delete cascade not null,
-  protocol_id uuid references public.protocols on delete cascade not null,
-  slug text unique not null,
-  view_count integer default 0,
-  expires_at timestamptz,
-  created_at timestamptz default now()
-);
-alter table public.share_links add column if not exists expires_at timestamptz;
-
--- ┌──────────────────────────────────────────────────────────────────────────┐
--- │ 6. COMPLIANCE_LOGS                                                       │
--- └──────────────────────────────────────────────────────────────────────────┘
-create table if not exists public.compliance_logs (
-  id uuid default gen_random_uuid() primary key,
-  user_id uuid references auth.users on delete cascade not null,
-  protocol_id uuid,
-  item_type text not null,
-  item_name text not null,
-  date date not null,
-  completed boolean default false,
-  completed_at timestamptz,
-  unique(user_id, item_type, item_name, date)
-);
-alter table public.compliance_logs add column if not exists completed_at timestamptz;
-
--- ┌──────────────────────────────────────────────────────────────────────────┐
--- │ 6a. OAUTH_CONNECTIONS — third-party wearable / integration tokens        │
--- └──────────────────────────────────────────────────────────────────────────┘
--- One row per (user, provider). Stores the OAuth access + refresh tokens for
--- wearable integrations (Oura today; Fitbit / Garmin / WHOOP next). Tokens
--- are sensitive — never exposed to the client; all reads happen server-side
--- from the cron or an on-demand sync endpoint.
-create table if not exists public.oauth_connections (
-  id uuid default gen_random_uuid() primary key,
-  user_id uuid references auth.users on delete cascade not null,
-  provider text not null,               -- 'oura' / 'fitbit' / 'garmin' / …
-  access_token text not null,
-  refresh_token text,
-  token_type text default 'Bearer',
-  expires_at timestamptz,
-  scopes text,                          -- space-separated scopes granted by the user
-  provider_user_id text,                -- provider's own user id, for disambiguation
-  last_synced_at timestamptz,
-  last_sync_error text,
-  created_at timestamptz default now(),
-  updated_at timestamptz default now(),
-  unique (user_id, provider)
-);
-
--- ┌──────────────────────────────────────────────────────────────────────────┐
--- │ 6b. CHAT_MESSAGES — server-persisted conversation history                │
--- └──────────────────────────────────────────────────────────────────────────┘
--- Single-thread-per-user for the MVP. Every user turn + assistant reply is
--- appended, so a refresh doesn't wipe the context (the previous localStorage-
--- only path lost everything on first reload). Retention handled by a cron
--- cleanup task — any row older than 90 days is purged to keep the table lean
--- and avoid surprising GDPR obligations on unlimited data hoarding.
-create table if not exists public.chat_messages (
-  id uuid default gen_random_uuid() primary key,
-  user_id uuid references auth.users on delete cascade not null,
-  role text not null check (role in ('user', 'assistant')),
-  content text not null,
-  model text,                  -- 'claude-sonnet-4-5' / 'llama-3.3-70b' / null for user turns
-  created_at timestamptz default now()
-);
-
--- ┌──────────────────────────────────────────────────────────────────────────┐
--- │ 6c. MEALS — AI-analyzed meal log (photo + text → macros + verdict)       │
--- └──────────────────────────────────────────────────────────────────────────┘
--- Each row is one meal the user logged — via photo, text description, or
--- both. The AI vision pass writes title, ingredients, macros, and a simple
--- good/mixed/bad verdict with short reasons. The raw photo is NOT stored
--- (zero storage cost + minimal GDPR surface); the user re-takes the photo
--- if they want to re-analyze. Meals from the last 7 days feed back into
--- the protocol regeneration prompt so the AI can see what the user is
--- actually eating.
-create table if not exists public.meals (
-  id uuid default gen_random_uuid() primary key,
-  user_id uuid references auth.users on delete cascade not null,
-  eaten_at timestamptz not null default now(),
-  source text not null check (source in ('photo', 'text', 'photo_with_text')),
-  user_text text,                      -- whatever the user typed, preserved verbatim
-  title text not null,
-  description text,
-  ingredients text[] default '{}',
-  calories integer,
-  protein_g real,
-  carbs_g real,
-  fat_g real,
-  fiber_g real,
-  verdict text check (verdict in ('good', 'mixed', 'bad')),
-  verdict_reasons text[] default '{}',
-  ai_model text,
-  input_tokens integer,                -- for cost tracking — vision is the most expensive call in the app
-  output_tokens integer,
-  created_at timestamptz default now(),
-  updated_at timestamptz default now()
-);
-
--- Extended nutrition columns, added idempotently so existing installs keep
--- working. `nutrition_detail` is a JSONB bag for everything beyond the core
--- 5 macros (sugar, sodium, cholesterol, micronutrients, NOVA, GI, quality
--- flags). One JSONB column avoids a schema migration every time we add a
--- new field. `longevity_impact_score` stays top-level because we want
--- range-constrained, indexable -5..+5 integers for sparkline/heatmap queries.
-alter table public.meals add column if not exists nutrition_detail jsonb default '{}'::jsonb;
-alter table public.meals add column if not exists longevity_impact_score smallint;
-
 do $$ begin
   if not exists (select 1 from pg_constraint where conname = 'meals_longevity_impact_range') then
     alter table public.meals add constraint meals_longevity_impact_range
@@ -328,8 +384,6 @@ do $$ begin
   end if;
 exception when others then null; end $$;
 
--- Range constraints on macros so a hallucinated "8500 calories in this
--- salad" doesn't corrupt the 7-day summary fed to the protocol prompt.
 do $$ begin
   if not exists (select 1 from pg_constraint where conname = 'meals_calories_range') then
     alter table public.meals add constraint meals_calories_range
@@ -351,84 +405,13 @@ do $$ begin
   end if;
 exception when others then null; end $$;
 
--- Hot-path index: "last N days of meals for this user" is what both the
--- dashboard timeline and the protocol-regen prompt fetch.
-create index if not exists idx_meals_user_eaten on public.meals(user_id, eaten_at desc);
-
 -- ┌──────────────────────────────────────────────────────────────────────────┐
--- │ 7. CHECK CONSTRAINTS — add as NOT VALID, then VALIDATE (non-blocking)    │
+-- │ §3. INDEXES                                                              │
 -- └──────────────────────────────────────────────────────────────────────────┘
--- Each constraint wrapped in DO block so it's idempotent (skips if exists).
-
-do $$ begin
-  if not exists (select 1 from pg_constraint where conname = 'profiles_sex_check') then
-    alter table public.profiles add constraint profiles_sex_check
-      check (sex in ('male', 'female', 'intersex') or sex is null) not valid;
-    alter table public.profiles validate constraint profiles_sex_check;
-  end if;
-end $$;
-
-do $$ begin
-  if not exists (select 1 from pg_constraint where conname = 'profiles_activity_check') then
-    alter table public.profiles add constraint profiles_activity_check
-      check (activity_level in ('sedentary', 'light', 'moderate', 'active', 'elite')) not valid;
-    alter table public.profiles validate constraint profiles_activity_check;
-  end if;
-exception when others then null;  -- silently skip if existing data violates
-end $$;
-
-do $$ begin
-  if not exists (select 1 from pg_constraint where conname = 'profiles_diet_check') then
-    alter table public.profiles add constraint profiles_diet_check
-      check (diet_type in ('omnivore','vegetarian','vegan','keto','carnivore','mediterranean','custom') or diet_type is null) not valid;
-    alter table public.profiles validate constraint profiles_diet_check;
-  end if;
-exception when others then null;
-end $$;
-
-do $$ begin
-  if not exists (select 1 from pg_constraint where conname = 'profiles_experimental_check') then
-    alter table public.profiles add constraint profiles_experimental_check
-      check (experimental_openness in ('otc_only', 'open_rx', 'open_experimental')) not valid;
-    alter table public.profiles validate constraint profiles_experimental_check;
-  end if;
-exception when others then null;
-end $$;
-
-do $$ begin
-  if not exists (select 1 from pg_constraint where conname = 'protocols_score_range') then
-    alter table public.protocols add constraint protocols_score_range
-      check (longevity_score is null or longevity_score between 0 and 100) not valid;
-    alter table public.protocols validate constraint protocols_score_range;
-  end if;
-end $$;
-
-do $$ begin
-  if not exists (select 1 from pg_constraint where conname = 'protocols_pace_range') then
-    alter table public.protocols add constraint protocols_pace_range
-      check (aging_pace is null or aging_pace between 0.4 and 2.0) not valid;
-    alter table public.protocols validate constraint protocols_pace_range;
-  end if;
-end $$;
-
-do $$ begin
-  if not exists (select 1 from pg_constraint where conname = 'compliance_item_type_check') then
-    alter table public.compliance_logs add constraint compliance_item_type_check
-      check (item_type in ('task', 'supplement', 'habit', 'meal', 'workout')) not valid;
-    alter table public.compliance_logs validate constraint compliance_item_type_check;
-  end if;
-exception when others then null;
-end $$;
-
--- ┌──────────────────────────────────────────────────────────────────────────┐
--- │ 8. INDEXES — modern JSONB + GIN array + partial covering                 │
--- └──────────────────────────────────────────────────────────────────────────┘
+-- Hot paths
 create index if not exists idx_blood_tests_user_date on public.blood_tests(user_id, taken_at desc)
   where deleted_at is null;
-
--- One non-deleted blood test per user per day. The API dedupes at write time
--- (replacing the existing row instead of inserting a new one), but this index
--- catches any path — scripts, Studio, raw SQL — that skips the API.
+-- One non-deleted blood test per user per day (unique partial index).
 create unique index if not exists uq_blood_tests_user_date_active
   on public.blood_tests(user_id, taken_at)
   where deleted_at is null;
@@ -438,10 +421,10 @@ create index if not exists idx_daily_metrics_user_date on public.daily_metrics(u
 create index if not exists idx_compliance_user_date on public.compliance_logs(user_id, date desc);
 create index if not exists idx_compliance_completed on public.compliance_logs(user_id, date, completed)
   where completed = true;
-
 create index if not exists idx_profiles_onboarded on public.profiles(id)
   where onboarding_completed = true and deleted_at is null;
 
+-- JSONB GIN (jsonb_path_ops — smaller + faster than default jsonb_ops)
 create index if not exists idx_profiles_onboarding_data on public.profiles
   using gin (onboarding_data jsonb_path_ops);
 create index if not exists idx_profiles_medications on public.profiles
@@ -453,18 +436,18 @@ create index if not exists idx_protocols_json on public.protocols
 create index if not exists idx_blood_tests_biomarkers on public.blood_tests
   using gin (biomarkers jsonb_path_ops);
 
+-- Array GIN
 create index if not exists idx_profiles_conditions on public.profiles using gin (conditions);
 create index if not exists idx_profiles_allergies on public.profiles using gin (allergies);
 create index if not exists idx_daily_metrics_habits on public.daily_metrics using gin (habits_completed);
 
+-- Share + chat + meals
 create index if not exists idx_share_links_slug on public.share_links(slug);
-
--- Recent-first load for the chat page — last N messages per user.
-create index if not exists idx_chat_messages_user_created
-  on public.chat_messages(user_id, created_at desc);
+create index if not exists idx_chat_messages_user_created on public.chat_messages(user_id, created_at desc);
+create index if not exists idx_meals_user_eaten on public.meals(user_id, eaten_at desc);
 
 -- ┌──────────────────────────────────────────────────────────────────────────┐
--- │ 9. RLS — enable + (re)create policies                                    │
+-- │ §4. RLS                                                                  │
 -- └──────────────────────────────────────────────────────────────────────────┘
 alter table public.profiles enable row level security;
 alter table public.blood_tests enable row level security;
@@ -476,19 +459,22 @@ alter table public.chat_messages enable row level security;
 alter table public.oauth_connections enable row level security;
 alter table public.meals enable row level security;
 
--- Defense in depth: force RLS even for table owner. Applies to EVERY user-
--- scoped table — a future route that accidentally uses the service-role
--- client without a user filter would otherwise leak rows across users.
+-- Defense in depth: force RLS even for table owner. A future route that
+-- accidentally uses the service-role client without a user filter would
+-- otherwise leak rows across users.
 alter table public.profiles force row level security;
 alter table public.blood_tests force row level security;
 alter table public.protocols force row level security;
-alter table public.chat_messages force row level security;
-alter table public.oauth_connections force row level security;  -- tokens are sensitive
 alter table public.daily_metrics force row level security;
-alter table public.share_links force row level security;        -- slug enum-guessed = public, but owner writes must stay scoped
+alter table public.share_links force row level security;
 alter table public.compliance_logs force row level security;
+alter table public.chat_messages force row level security;
+alter table public.oauth_connections force row level security;
 alter table public.meals force row level security;
 
+-- ┌──────────────────────────────────────────────────────────────────────────┐
+-- │ §5. POLICIES                                                             │
+-- └──────────────────────────────────────────────────────────────────────────┘
 drop policy if exists "profiles_select" on public.profiles;
 drop policy if exists "profiles_insert" on public.profiles;
 drop policy if exists "profiles_update" on public.profiles;
@@ -532,19 +518,12 @@ create policy "daily_metrics_own" on public.daily_metrics for all
 drop policy if exists "share_links_owner" on public.share_links;
 drop policy if exists "share_links_public_read" on public.share_links;
 drop policy if exists "share_links_increment" on public.share_links;
-drop policy if exists "share_links_select" on public.share_links;
-drop policy if exists "share_links_insert" on public.share_links;
-drop policy if exists "share_links_public" on public.share_links;
 create policy "share_links_owner" on public.share_links for all
   using (auth.uid() = user_id) with check (auth.uid() = user_id);
 create policy "share_links_public_read" on public.share_links for select using (true);
 create policy "share_links_increment" on public.share_links for update using (true);
 
 drop policy if exists "compliance_own" on public.compliance_logs;
-drop policy if exists "compliance_select" on public.compliance_logs;
-drop policy if exists "compliance_insert" on public.compliance_logs;
-drop policy if exists "compliance_update" on public.compliance_logs;
-drop policy if exists "compliance_upsert" on public.compliance_logs;
 create policy "compliance_own" on public.compliance_logs for all
   using (auth.uid() = user_id) with check (auth.uid() = user_id);
 
@@ -552,23 +531,18 @@ drop policy if exists "chat_messages_own" on public.chat_messages;
 create policy "chat_messages_own" on public.chat_messages for all
   using (auth.uid() = user_id) with check (auth.uid() = user_id);
 
--- oauth_connections: owner can SELECT metadata (status badge in settings),
--- but NEVER writes tokens from the client. Inserts/updates happen via service
--- role from the callback + sync endpoints. Strict owner policy on the select
--- side; writes require service_role, which bypasses RLS anyway.
+-- oauth_connections: owner can SELECT metadata (status badge in settings);
+-- writes happen via service role (callback + sync), which bypasses RLS.
 drop policy if exists "oauth_connections_own" on public.oauth_connections;
 create policy "oauth_connections_own" on public.oauth_connections for select
   using (auth.uid() = user_id);
 
--- Meals: owner only. Force RLS above blocks service-role reads without a
--- user filter — keeps the meal photos' analysis private even if a future
--- background job uses the admin client by mistake.
 drop policy if exists "meals_own" on public.meals;
 create policy "meals_own" on public.meals for all
   using (auth.uid() = user_id) with check (auth.uid() = user_id);
 
 -- ┌──────────────────────────────────────────────────────────────────────────┐
--- │ 10. GRANTS                                                               │
+-- │ §6. GRANTS                                                               │
 -- └──────────────────────────────────────────────────────────────────────────┘
 grant usage on schema public to anon, authenticated, service_role;
 grant select, insert, update, delete on all tables in schema public to authenticated;
@@ -581,25 +555,22 @@ alter default privileges in schema public grant select, insert, update, delete o
 alter default privileges in schema public grant execute on functions to authenticated;
 
 -- ┌──────────────────────────────────────────────────────────────────────────┐
--- │ 11. TRIGGERS                                                             │
+-- │ §7. TRIGGERS                                                             │
 -- └──────────────────────────────────────────────────────────────────────────┘
+
+-- Auto-create profile on new user signup.
 create or replace function public.handle_new_user()
-returns trigger
-language plpgsql
-security definer
-set search_path = public
-as $$
+returns trigger language plpgsql security definer set search_path = public as $$
 begin
   insert into public.profiles (id) values (new.id) on conflict do nothing;
   return new;
 end;
 $$;
-
 drop trigger if exists on_auth_user_created on auth.users;
-create trigger on_auth_user_created
-  after insert on auth.users
+create trigger on_auth_user_created after insert on auth.users
   for each row execute procedure public.handle_new_user();
 
+-- Keep updated_at fresh on writes.
 create or replace function public.set_updated_at()
 returns trigger language plpgsql as $$
 begin
@@ -607,19 +578,20 @@ begin
   return new;
 end;
 $$;
-
 drop trigger if exists profiles_set_updated_at on public.profiles;
 create trigger profiles_set_updated_at before update on public.profiles
   for each row execute procedure public.set_updated_at();
-
 drop trigger if exists daily_metrics_set_updated_at on public.daily_metrics;
 create trigger daily_metrics_set_updated_at before update on public.daily_metrics
   for each row execute procedure public.set_updated_at();
-
 drop trigger if exists meals_set_updated_at on public.meals;
 create trigger meals_set_updated_at before update on public.meals
   for each row execute procedure public.set_updated_at();
+drop trigger if exists oauth_connections_set_updated_at on public.oauth_connections;
+create trigger oauth_connections_set_updated_at before update on public.oauth_connections
+  for each row execute procedure public.set_updated_at();
 
+-- Auto-stamp completed_at when compliance item is flipped to done.
 create or replace function public.set_completed_at()
 returns trigger language plpgsql as $$
 begin
@@ -631,14 +603,54 @@ begin
   return new;
 end;
 $$;
-
 drop trigger if exists compliance_set_completed_at on public.compliance_logs;
 create trigger compliance_set_completed_at before insert or update on public.compliance_logs
   for each row execute procedure public.set_completed_at();
 
+-- Referral code generator (6-char base32-ish, collision-retrying).
+create or replace function public.generate_referral_code()
+returns text language plpgsql as $$
+declare
+  alphabet text := 'ABCDEFGHJKMNPQRSTUVWXYZ23456789';  -- drops ambiguous 0/O/1/I/L
+  code text;
+  i int;
+begin
+  for i in 1..5 loop
+    code := '';
+    for i in 1..6 loop
+      code := code || substr(alphabet, 1 + floor(random() * length(alphabet))::int, 1);
+    end loop;
+    if not exists (select 1 from public.profiles where referral_code = code) then
+      return code;
+    end if;
+  end loop;
+  return code || to_char(extract(epoch from clock_timestamp()) * 1000, 'FM999999999999');
+end;
+$$;
+
+-- Backfill missing referral codes for existing profiles.
+update public.profiles
+set referral_code = public.generate_referral_code()
+where referral_code is null;
+
+create or replace function public.ensure_referral_code()
+returns trigger language plpgsql as $$
+begin
+  if new.referral_code is null then
+    new.referral_code := public.generate_referral_code();
+  end if;
+  return new;
+end;
+$$;
+drop trigger if exists profiles_ensure_referral_code on public.profiles;
+create trigger profiles_ensure_referral_code before insert on public.profiles
+  for each row execute procedure public.ensure_referral_code();
+
 -- ┌──────────────────────────────────────────────────────────────────────────┐
--- │ 12. HELPER FUNCTIONS                                                     │
+-- │ §8. RPC FUNCTIONS                                                        │
 -- └──────────────────────────────────────────────────────────────────────────┘
+
+-- Current streak: consecutive days with ≥1 completed compliance item.
 create or replace function public.get_current_streak(p_user_id uuid)
 returns integer language sql stable as $$
   with daily as (
@@ -647,12 +659,12 @@ returns integer language sql stable as $$
     group by date order by date desc
   ),
   gaps as (
-    select date, date - (row_number() over (order by date desc))::int as grp
-    from daily
+    select date, date - (row_number() over (order by date desc))::int as grp from daily
   )
   select count(*)::int from gaps where grp = (select grp from gaps limit 1);
 $$;
 
+-- Adherence rate (% completed) over the last N days.
 create or replace function public.get_adherence_rate(p_user_id uuid, p_days integer default 30)
 returns numeric language sql stable as $$
   select case when count(*) = 0 then 0
@@ -662,6 +674,7 @@ returns numeric language sql stable as $$
   where user_id = p_user_id and date >= current_date - p_days;
 $$;
 
+-- Latest bio age + pace + longevity score for a user.
 create or replace function public.get_latest_diagnostics(p_user_id uuid)
 returns table(
   biological_age_decimal numeric,
@@ -677,7 +690,6 @@ language sql stable as $$
 $$;
 
 -- Atomic increment of share_links.view_count — prevents read-then-update race.
--- Returns the new view_count so callers can show the updated value without re-querying.
 create or replace function public.increment_share_view(p_slug text)
 returns integer language sql as $$
   update public.share_links
@@ -687,23 +699,14 @@ returns integer language sql as $$
 $$;
 grant execute on function public.increment_share_view(text) to anon, authenticated;
 
--- Atomic partial-upsert for daily_metrics. Replaces the chat-action /api/daily-metrics
--- read-merge-write pattern which silently lost concurrent writes when two tabs
--- saved to the same date. Only keys present in p_patch are written; other columns
--- keep their existing values via COALESCE(excluded, current).
---
--- Security: enforces auth.uid() = p_user_id so even if a user patches another
--- user's row via SQL, the function refuses. Whitelist keys match daily_metrics
--- columns via information_schema to prevent SQL injection through patch keys.
+-- Atomic partial-upsert for daily_metrics. Replaces the read-merge-write path
+-- which silently lost writes when two tabs hit the same date.
 create or replace function public.apply_daily_metric_patch(
   p_user_id uuid,
   p_date date,
   p_patch jsonb
 ) returns void
-language plpgsql
-security definer
-set search_path = public
-as $$
+language plpgsql security definer set search_path = public as $$
 declare
   update_set text;
   rec public.daily_metrics;
@@ -711,13 +714,7 @@ begin
   if p_user_id is null or p_user_id <> auth.uid() then
     raise exception 'not authorized';
   end if;
-
-  -- Strip reserved/immutable keys so a client can't overwrite ownership.
   p_patch := p_patch - array['id','user_id','date','created_at','updated_at'];
-
-  -- Build the ON CONFLICT update list: only keys that both (a) appear in the
-  -- patch and (b) exist as real columns on daily_metrics. Any unknown key in
-  -- the patch is silently skipped — safer than raising on schema drift.
   select string_agg(format('%I = coalesce(excluded.%I, daily_metrics.%I)', key, key, key), ', ')
     into update_set
   from jsonb_object_keys(p_patch) as key
@@ -725,21 +722,15 @@ begin
     select 1 from information_schema.columns
     where table_schema = 'public' and table_name = 'daily_metrics' and column_name = key
   );
-
-  -- Coerce the jsonb patch to a typed record. Unset columns become NULL — that's
-  -- exactly what we need: COALESCE(NULL, existing) = existing on the UPDATE path.
   rec := jsonb_populate_record(
     null::public.daily_metrics,
     coalesce(p_patch, '{}'::jsonb) || jsonb_build_object('user_id', p_user_id, 'date', p_date)
   );
-
   if update_set is null then
-    -- Empty patch — ensure a row exists for the date but don't touch anything.
     insert into public.daily_metrics (user_id, date) values (p_user_id, p_date)
       on conflict (user_id, date) do nothing;
     return;
   end if;
-
   execute format(
     'insert into public.daily_metrics select ($1).* on conflict (user_id, date) do update set %s',
     update_set
@@ -748,11 +739,7 @@ end;
 $$;
 grant execute on function public.apply_daily_metric_patch(uuid, date, jsonb) to authenticated;
 
--- Atomic partial-update for profiles + onboarding_data JSONB. Same motivation
--- as apply_daily_metric_patch: stop losing writes when chat-action runs against
--- a profile the cron (or another tab) also just wrote. onboarding_data merges
--- shallowly via `||`; nested field collisions within a single key still last-
--- writer-wins, which is fine — the chat-action payload scope is single-field.
+-- Atomic partial-update for profiles + onboarding_data JSONB merge.
 create or replace function public.apply_profile_patch(
   p_user_id uuid,
   p_height_cm int,
@@ -766,15 +753,11 @@ create or replace function public.apply_profile_patch(
   p_smoker boolean,
   p_od_patch jsonb
 ) returns void
-language plpgsql
-security definer
-set search_path = public
-as $$
+language plpgsql security definer set search_path = public as $$
 begin
   if p_user_id is null or p_user_id <> auth.uid() then
     raise exception 'not authorized';
   end if;
-
   update public.profiles set
     height_cm                  = coalesce(p_height_cm,                  height_cm),
     weight_kg                  = coalesce(p_weight_kg,                  weight_kg),
@@ -795,35 +778,26 @@ end;
 $$;
 grant execute on function public.apply_profile_patch(uuid, int, numeric, int, numeric, int, int, int, int, boolean, jsonb) to authenticated;
 
--- Atomic jsonb_set on the user's latest protocol. Replaces the chat-action
--- read-deepSet-write pattern (two concurrent tap-to-apply chips from the same
--- user would silently drop one). p_path uses dot-notation; caller is already
--- allowlist-restricted in /api/chat-action so arbitrary paths can't reach here.
+-- Atomic jsonb_set on the user's latest protocol.
 create or replace function public.apply_protocol_adjust(
   p_user_id uuid,
   p_path text,
   p_value jsonb
 ) returns void
-language plpgsql
-security definer
-set search_path = public
-as $$
+language plpgsql security definer set search_path = public as $$
 declare
   path_parts text[];
 begin
   if p_user_id is null or p_user_id <> auth.uid() then
     raise exception 'not authorized';
   end if;
-
   path_parts := string_to_array(p_path, '.');
-
-  -- protocols has no updated_at column (unlike profiles); don't try to set it.
   update public.protocols p
   set protocol_json = jsonb_set(
         coalesce(p.protocol_json, '{}'::jsonb),
         path_parts,
         p_value,
-        true   -- create missing path segments
+        true
       )
   where p.id = (
     select id from public.protocols
@@ -834,15 +808,10 @@ end;
 $$;
 grant execute on function public.apply_protocol_adjust(uuid, text, jsonb) to authenticated;
 
--- 90-day retention on chat history. Keeps the table lean + matches what we
--- tell users in /api/my-data?full=1 so we don't quietly hoard indefinitely.
--- Called from the daily cron; returns the deleted row count for observability.
+-- 90-day retention on chat history. Called from the daily cron.
 create or replace function public.prune_old_chat_messages(p_days int default 90)
 returns integer
-language sql
-security definer
-set search_path = public
-as $$
+language sql security definer set search_path = public as $$
   with deleted as (
     delete from public.chat_messages
     where created_at < now() - (p_days || ' days')::interval
@@ -852,90 +821,48 @@ as $$
 $$;
 grant execute on function public.prune_old_chat_messages(int) to service_role;
 
--- Referral-code generator. Called from the new-user trigger so every profile
--- gets a short, shareable code (6 upper-case base32-ish chars). Retries on
--- collision up to 5 times; collision probability at 100k users is negligible.
-create or replace function public.generate_referral_code()
-returns text
-language plpgsql
-as $$
-declare
-  alphabet text := 'ABCDEFGHJKMNPQRSTUVWXYZ23456789';  -- drop ambiguous 0/O/1/I/L
-  code text;
-  i int;
-begin
-  for i in 1..5 loop
-    code := '';
-    for i in 1..6 loop
-      code := code || substr(alphabet, 1 + floor(random() * length(alphabet))::int, 1);
-    end loop;
-    if not exists (select 1 from public.profiles where referral_code = code) then
-      return code;
-    end if;
-  end loop;
-  -- Extremely unlikely fallback: add timestamp millis to guarantee uniqueness.
-  return code || to_char(extract(epoch from clock_timestamp()) * 1000, 'FM999999999999');
-end;
-$$;
-
--- Backfill referral codes for any existing profile without one.
-update public.profiles
-set referral_code = public.generate_referral_code()
-where referral_code is null;
-
--- Generate-on-insert trigger so every new signup gets a code automatically.
-create or replace function public.ensure_referral_code()
-returns trigger language plpgsql as $$
-begin
-  if new.referral_code is null then
-    new.referral_code := public.generate_referral_code();
-  end if;
-  return new;
-end;
-$$;
-
-drop trigger if exists profiles_ensure_referral_code on public.profiles;
-create trigger profiles_ensure_referral_code before insert on public.profiles
-  for each row execute procedure public.ensure_referral_code();
-
 -- ┌──────────────────────────────────────────────────────────────────────────┐
--- │ 13. REALTIME PUBLICATION                                                 │
+-- │ §9. REALTIME PUBLICATION                                                 │
 -- └──────────────────────────────────────────────────────────────────────────┘
 do $$ begin
   if not exists (select 1 from pg_publication_tables
                  where pubname = 'supabase_realtime' and tablename = 'daily_metrics') then
     alter publication supabase_realtime add table public.daily_metrics;
   end if;
-exception when others then null;
-end $$;
+exception when others then null; end $$;
 
 do $$ begin
   if not exists (select 1 from pg_publication_tables
                  where pubname = 'supabase_realtime' and tablename = 'compliance_logs') then
     alter publication supabase_realtime add table public.compliance_logs;
   end if;
-exception when others then null;
-end $$;
+exception when others then null; end $$;
 
 do $$ begin
   if not exists (select 1 from pg_publication_tables
                  where pubname = 'supabase_realtime' and tablename = 'protocols') then
     alter publication supabase_realtime add table public.protocols;
   end if;
-exception when others then null;
-end $$;
+exception when others then null; end $$;
 
 -- ┌──────────────────────────────────────────────────────────────────────────┐
--- │ 14. BACKFILL                                                             │
+-- │ §10. BACKFILL                                                            │
 -- └──────────────────────────────────────────────────────────────────────────┘
+-- Every existing auth user gets a profile row.
 insert into public.profiles (id)
 select u.id from auth.users u
 where not exists (select 1 from public.profiles p where p.id = u.id);
 
 -- ============================================================================
--- DONE. Verify:
---   select column_name from information_schema.columns where table_name = 'protocols';
---   select indexname from pg_indexes where schemaname = 'public' order by indexname;
---   select proname from pg_proc where pronamespace = 'public'::regnamespace;
---   select tablename from pg_publication_tables where pubname = 'supabase_realtime';
+-- DONE. Verify in SQL Editor:
+--   select tablename from pg_tables where schemaname='public';
+--     (expect 9: profiles, blood_tests, protocols, daily_metrics,
+--      share_links, compliance_logs, oauth_connections, chat_messages, meals)
+--   select relname, relforcerowsecurity from pg_class
+--     where relname in ('profiles','blood_tests','protocols','daily_metrics',
+--                       'share_links','compliance_logs','oauth_connections',
+--                       'chat_messages','meals');
+--     (all should be relforcerowsecurity=t)
+--   select proname from pg_proc where pronamespace='public'::regnamespace
+--     order by proname;
 -- ============================================================================

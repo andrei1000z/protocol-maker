@@ -142,7 +142,6 @@ export const BUCKET_GROUPS: Record<TimeBucket, GroupDef[]> = {
     ]},
     { title: '🥬 Watch-computed indices', fields: [
       { key: 'antioxidant_index', label: 'Antioxidant index', unit: '/100', min: 0, max: 100, type: 'integer', hint: 'Galaxy Watch skin carotenoid' },
-      { key: 'ages_index', label: 'AGEs index', unit: '', min: 0, max: 5, step: 0.01, hint: 'Advanced Glycation End products' },
     ]},
     { title: '🧠 End-of-day', fields: [
       { key: 'stress_level_avg', label: 'Stress (avg day)', unit: '/10', min: 1, max: 10, type: 'integer' },

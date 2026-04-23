@@ -46,7 +46,6 @@ export interface DailyMetrics {
   active_time_min?: number | null;
   activity_calories?: number | null;
   antioxidant_index?: number | null;
-  ages_index?: number | null;
 
   // ── MORNING FASTED measurements — do AFTER waking, BEFORE food/water ──
   // These are lowest-noise when fasted. Weight has zero food+water artifact;

@@ -16,7 +16,7 @@ AI longevity engine. Blood work in → personalized protocol out. Tracking + ret
 ## What it does
 
 1. **Onboarding** (5 steps, ~5 min) — collects 150+ optional fields stored in `profiles.onboarding_data` JSONB. Required: age, height, weight.
-2. **Protocol generation** — Claude Sonnet 4.5 (primary) → Groq Llama 3.3 (fallback) → deterministic engine (always works). Includes biomarker classification (40 markers), pattern detection, PhenoAge bio age, DunedinPACE-style velocity, lifestyle-aware longevity score, organ-system breakdown, Bryan Johnson comparison, full nutrition (3 options × 4 meal types + daily maximums), supplement stack with how-to + universal rules, daily schedule with school/work blocks, exercise plan personalized to gym access, sleep with full bedroom checklist + hygiene rules, pain points + flex strategies, doctor discussion in 4 categories, 12-week roadmap, shopping list with eMAG links.
+2. **Protocol generation** — Claude Sonnet 4.5 (primary) → Groq Llama 3.3 (fallback) → deterministic engine (always works). Includes biomarker classification (38 markers), pattern detection, PhenoAge bio age, DunedinPACE-style velocity, lifestyle-aware longevity score, organ-system breakdown, Bryan Johnson comparison, full nutrition (3 options × 4 meal types + daily maximums), supplement stack with how-to + universal rules, daily schedule with school/work blocks, exercise plan personalized to gym access, sleep with full bedroom checklist + hygiene rules, pain points + flex strategies, doctor discussion in 4 categories, 12-week roadmap, shopping list with eMAG links.
 3. **Daily tracking** — Smart Log time-aware bottom sheet (morning/midday/evening/night), 25+ metrics including all wearable-grade fields (sleep stages, HRV during sleep, blood O₂, BP morning/evening, antioxidant + AGEs indices). 14 daily habits across categories.
 4. **Statistics** — every metric trended; "your X improved by Y% from when you started the protocol".
 5. **Retest loop** — Settings → Upload new blood test → auto-regen v2 with diff vs v1 on history page.
@@ -47,8 +47,7 @@ AI longevity engine. Blood work in → personalized protocol out. Tracking + ret
 |---|---|
 | `npm run dev` | Local dev with Turbopack |
 | `npm run build` | Production build |
-| Supabase SQL Editor → `scripts/upgrade.sql` | Idempotent schema migration (safe to re-run) |
-| Supabase SQL Editor → `scripts/setup-db.sql` | Full schema for fresh install |
+| Supabase SQL Editor → `supabase/migrations/0001_init.sql` | Full schema — idempotent, covers fresh installs + upgrades |
 | Vercel Cron → `/api/cron/daily-regenerate` | 3 AM auto-regen |
 
 ## Env vars

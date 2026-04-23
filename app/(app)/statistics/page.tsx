@@ -83,7 +83,6 @@ const METRIC_CATALOG: MetricDef[] = [
 
   // Watch indices
   { key: 'antioxidant_index',      label: 'Antioxidant index',      unit: '/100', direction: 'up', category: 'watch' },
-  { key: 'ages_index',             label: 'AGEs index',                       direction: 'down', decimals: 2, category: 'watch' },
 ];
 
 const CATEGORIES: { key: MetricDef['category']; label: string; icon: React.ElementType; desc: string }[] = [

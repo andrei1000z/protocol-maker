@@ -867,6 +867,13 @@ export default function OnboardingPage() {
   // before the first protocol is written. Opens on the last-step CTA.
   const [showReview, setShowReview] = useState(false);
 
+  // `generationComplete` drives GeneratingScreen's fast-forward. Flipping it
+  // to true tells the loader the server confirmed the save, so it should
+  // cascade the remaining steps and fire onDone. Without this coupling the
+  // user would see "100% done" while the POST is still in flight (or "33%"
+  // long after it returned) depending on Claude's latency.
+  const [generationComplete, setGenerationComplete] = useState(false);
+
   const handleFinish = async () => {
     // Hard-stop check before anything else
     if (redFlagsAcute.length > 0 && !redFlagAck) {
@@ -874,6 +881,7 @@ export default function OnboardingPage() {
       return;
     }
     setLoading(true);
+    setGenerationComplete(false);
     setError('');
 
     const biomarkerValues = Object.entries(biomarkers)
@@ -902,10 +910,13 @@ export default function OnboardingPage() {
       // Clear the local draft so a subsequent visit to /onboarding starts fresh
       // rather than rehydrating completed-state answers.
       clearDraft();
-      window.location.href = '/dashboard';
+      // Tell GeneratingScreen to fast-forward; it will fire onDone once the
+      // final "ready" step has been held long enough to read.
+      setGenerationComplete(true);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Error. Try again.');
       setLoading(false);
+      setGenerationComplete(false);
     }
   };
 
@@ -913,7 +924,12 @@ export default function OnboardingPage() {
   const updateMed = (i: number, field: keyof Medication, val: string) => setMedications(prev => prev.map((m, idx) => idx === i ? { ...m, [field]: val } : m));
   const removeMed = (i: number) => setMedications(prev => prev.filter((_, idx) => idx !== i));
 
-  if (loading) return <GeneratingScreen />;
+  if (loading) return (
+    <GeneratingScreen
+      completed={generationComplete}
+      onDone={() => { window.location.href = '/dashboard'; }}
+    />
+  );
   if (!restored) return <div className="flex items-center justify-center min-h-dvh"><div className="w-8 h-8 border-2 border-accent border-t-transparent rounded-full animate-spin" /></div>;
 
   const markersToShowBig11 = BIOMARKER_DB.filter(b => BIG_11_CODES.includes(b.code));

@@ -1,7 +1,7 @@
 import { BiomarkerReference } from '../types';
 
 // ═══════════════════════════════════════════════════════════════
-// BIOMARKER REFERENCE DATABASE v2 — 40 markers
+// BIOMARKER REFERENCE DATABASE v2 — 38 markers
 // Sources: Bryan Johnson Blueprint, Peter Attia, Rhonda Patrick,
 // longevity literature, clinical guidelines with longevity-optimal
 // ranges (tighter than standard lab ranges)

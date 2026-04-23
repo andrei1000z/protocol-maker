@@ -2,7 +2,7 @@ import Link from 'next/link';
 import { BIOMARKER_DB } from '@/lib/engine/biomarkers';
 import { PATTERN_COUNT } from '@/lib/engine/patterns';
 import { DAILY_HABITS } from '@/lib/engine/daily-habits';
-import { MobileNavToggle } from '@/components/landing/MobileNavToggle';
+import { MobileNavToggle } from '@/components/ui/MobileNavToggle';
 
 // Single source of truth — derived at build time from the engine
 const BIOMARKER_COUNT = BIOMARKER_DB.length;
