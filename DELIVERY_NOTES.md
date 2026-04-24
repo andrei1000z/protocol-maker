@@ -4,6 +4,37 @@ Append-only log of shipped work. Newest entries at top.
 
 ---
 
+## Phase 8 — Performance · 2026-04-24
+
+### Shipped
+
+**F10.3 — Cron cooldown (48h-young + >80% adherence → skip)**
+- `app/api/cron/daily-regenerate/route.ts`: loads the user's latest protocol alongside the existing parallel queries. Adds a cooldown check before the heavy AI call:
+  - Latest protocol < 48 hours old
+  - AND last-7-day compliance adherence > 80% (minimum 5 rows to avoid spurious skips)
+  - → skip with reason `cooldown_under_48h_adherence_over_80`.
+- Rationale: a user who's tracking well on a fresh protocol has nothing for the AI to re-tune. The existing `inactive_7d` skip covers ghost users; this covers on-track-daily users. Expected skip rate at scale: 30-50% of nightly cron runs (depending on user mix).
+- No DB migration required — the cooldown reads `protocols.created_at` (already exists) and `compliance_logs` (already queried). The spec proposed a `last_cron_regen_at` column but that's redundant with `protocols.created_at`.
+
+### Not shipped this session
+
+**F10.1 — Dashboard CLS <0.05** — deferred. Cleanest when Phase 3.1 section extraction ships (skeletons for each section are the right abstraction).
+
+**F10.2 — React.memo + useCallback across onboarding** — deferred. Same dependency as Phase 2.1 reducer migration.
+
+### Verification
+
+```bash
+$ npx tsc --noEmit     # clean
+$ npm test             # 315/315
+```
+
+Runtime check (post-deploy):
+- Watch cron response summary JSON. Before fix: expect ~N users processed out of total. After fix: expect N − cooldown_skips (new reason in the stats).
+- Cost delta: at 100 active users with ~50% adherence >80% + protocol <48h old, this saves ~35-50% of cron AI cost per run (~€15-25/mo at current usage).
+
+---
+
 ## Phase 7 — Rage-proofing (F9.1 + F9.2) · 2026-04-24
 
 ### Shipped

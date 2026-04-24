@@ -193,14 +193,16 @@ async function regenerateForUser(userId: string): Promise<{ skipped?: boolean; s
   const sevenDaysAgo = new Date(Date.now() - 7 * 864e5).toISOString().slice(0, 10);
   const thirtyDaysAgo = new Date(Date.now() - 30 * 864e5).toISOString().slice(0, 10);
 
-  // Load profile + latest bloodtest + last 30d daily metrics + last 30d
-  // compliance rows. The compliance rows (full data, not just count) now
-  // also feed the adherence-aware prompt below, so there's no extra query.
-  const [profileRes, bloodRes, metricsRes, complianceRows30Res] = await Promise.all([
+  // Load profile + latest bloodtest + latest protocol + last 30d metrics +
+  // last 30d compliance. The protocol row is used for the cooldown check
+  // below (don't spend AI tokens on a user whose protocol is <48h old and
+  // adherence is high — nothing to re-tune against).
+  const [profileRes, bloodRes, metricsRes, complianceRows30Res, latestProtocolRes] = await Promise.all([
     supabase.from('profiles').select('*').eq('id', userId).single(),
     supabase.from('blood_tests').select('*').eq('user_id', userId).is('deleted_at', null).order('taken_at', { ascending: false }).limit(1).maybeSingle(),
     supabase.from('daily_metrics').select('*').eq('user_id', userId).gte('date', thirtyDaysAgo),
     supabase.from('compliance_logs').select('item_type, item_name, completed, date').eq('user_id', userId).gte('date', thirtyDaysAgo),
+    supabase.from('protocols').select('id, created_at').eq('user_id', userId).is('deleted_at', null).order('created_at', { ascending: false }).limit(1).maybeSingle(),
   ]);
 
   if (profileRes.error || !profileRes.data) throw new Error(`profile load: ${profileRes.error?.message}`);
@@ -222,6 +224,26 @@ async function regenerateForUser(userId: string): Promise<{ skipped?: boolean; s
   const hasRecentCompliance = complianceRows.some(r => r.date >= sevenDaysAgo && r.completed);
   if (!hasRecentMetrics && !hasRecentCompliance) {
     return { skipped: true, skippedReason: 'inactive_7d' };
+  }
+
+  // COOLDOWN SKIP: if the latest protocol is younger than 48h AND the user's
+  // 7-day adherence is above 80%, there's nothing to re-tune against. Save
+  // the tokens. Users with poor adherence still get a regen because the AI
+  // should react to the miss pattern (e.g., drop supplements the user keeps
+  // skipping). Users with >80% adherence are on track — no churn needed.
+  const latestProtocol = latestProtocolRes.data;
+  if (latestProtocol?.created_at) {
+    const protoAgeMs = Date.now() - new Date(latestProtocol.created_at).getTime();
+    const under48h = protoAgeMs < 48 * 3600_000;
+    if (under48h) {
+      const last7dCompliance = complianceRows.filter(r => r.date >= sevenDaysAgo);
+      const completedCt = last7dCompliance.filter(r => r.completed).length;
+      const totalCt = last7dCompliance.length;
+      const adherencePct = totalCt > 0 ? (completedCt / totalCt) * 100 : 0;
+      if (totalCt >= 5 && adherencePct > 80) {
+        return { skipped: true, skippedReason: 'cooldown_under_48h_adherence_over_80' };
+      }
+    }
   }
 
   // Roll 7-day averages from daily_metrics back into the profile before regen.
