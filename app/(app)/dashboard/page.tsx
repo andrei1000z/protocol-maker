@@ -42,18 +42,18 @@ const OrganRadar = dynamic(() => import('@/components/dashboard/OrganRadar'), {
 
 const TOC_ITEMS = [
   { id: 'diagnostic', label: 'Diagnostic', icon: '🎯' },
-  { id: 'organs', label: 'Organ Systems', icon: '🫀' },
+  { id: 'organs', label: 'Sisteme de organe', icon: '🫀' },
   { id: 'bryan', label: 'vs Bryan', icon: '🏆' },
-  { id: 'biomarkers', label: 'Biomarkers', icon: '🔬' },
-  { id: 'nutrition', label: 'Nutrition', icon: '🥗' },
-  { id: 'supplements', label: 'Supplements', icon: '💊' },
-  { id: 'schedule', label: 'Daily Schedule', icon: '⏰' },
-  { id: 'exercise', label: 'Exercise', icon: '🏋️' },
-  { id: 'sleep', label: 'Sleep', icon: '🌙' },
-  { id: 'tips', label: 'Universal Tips', icon: '💡' },
-  { id: 'tracking', label: 'What to Track', icon: '📊' },
-  { id: 'painpoints', label: 'Pain Points', icon: '🎯' },
-  { id: 'flex', label: 'Flex Rules', icon: '🧘' },
+  { id: 'biomarkers', label: 'Biomarkeri', icon: '🔬' },
+  { id: 'nutrition', label: 'Nutriție', icon: '🥗' },
+  { id: 'supplements', label: 'Suplimente', icon: '💊' },
+  { id: 'schedule', label: 'Program zilnic', icon: '⏰' },
+  { id: 'exercise', label: 'Exerciții', icon: '🏋️' },
+  { id: 'sleep', label: 'Somn', icon: '🌙' },
+  { id: 'tips', label: 'Principii', icon: '💡' },
+  { id: 'tracking', label: 'Tracking', icon: '📊' },
+  { id: 'painpoints', label: 'Puncte slabe', icon: '🎯' },
+  { id: 'flex', label: 'Strategii flex', icon: '🧘' },
 ];
 
 function Section({ id, title, icon, subtitle, action, children, className }: { id?: string; title: string; icon: string; subtitle?: string; action?: React.ReactNode; children: React.ReactNode; className?: string }) {
@@ -1049,7 +1049,7 @@ export default function DashboardPage() {
       <TodaysFocusBlock schedule={(p.dailySchedule || []) as ScheduleEntry[]} />
 
       {/* ═══════════════ ORGAN SYSTEMS ═══════════════ */}
-      <Section id="organs" title="Organ Systems" icon="🫀" subtitle="Eight body systems scored independently. Each score blends your lifestyle inputs with matching biomarkers, then the AI surfaces what's pulling each system up + down + the highest-ROI lever.">
+      <Section id="organs" title="Sisteme de organe" icon="🫀" subtitle="Opt sisteme scorate independent. Fiecare scor combină stilul de viață cu biomarkerii relevanți, apoi AI-ul identifică ce trage sistemul în sus/jos și pârghia cu cel mai mare impact.">
         {/* Radar overview */}
         {radarData.length > 0 && (
           <div
@@ -1159,7 +1159,7 @@ export default function DashboardPage() {
       </Section>
 
       {/* ═══════════════ YOU VS BRYAN ═══════════════ */}
-      <Section id="bryan" title="You vs Bryan Johnson" icon="🏆" subtitle="Bryan runs the most documented longevity protocol on earth. Side-by-side numbers: what % younger each of you is vs chronological, plus score and aging speed.">
+      <Section id="bryan" title="Tu vs Bryan Johnson" icon="🏆" subtitle="Bryan are cel mai documentat protocol de longevitate din lume. Comparație directă: cu cât sunteți mai tineri biologic față de cel cronologic, scor și ritm de îmbătrânire.">
         {/* Side-by-side comparison card */}
         {(() => {
           const BRYAN_CHRONO = BRYAN.chronoAge;
@@ -1334,7 +1334,7 @@ export default function DashboardPage() {
       </Section>
 
       {/* ═══════════════ BIOMARKERS ═══════════════ */}
-      <Section id="biomarkers" title="Biomarkers" icon="🔬" subtitle={
+      <Section id="biomarkers" title="Biomarkeri" icon="🔬" subtitle={
         p.biomarkerReadout && p.biomarkerReadout.length > 0
           ? 'Your measured values positioned against longevity-optimal ranges and Bryan\'s published numbers.'
           : 'No blood work yet — below are estimated ranges based on your lifestyle. Upload a lab PDF to replace these with real values.'
@@ -1483,7 +1483,7 @@ export default function DashboardPage() {
       </Section>
 
       {/* Nutrition */}
-      <Section id="nutrition" title="Nutrition" icon="🥗" subtitle="Your daily targets, 3 personalized options per meal type, and the maximums to stay under.">
+      <Section id="nutrition" title="Nutriție" icon="🥗" subtitle="Țintele tale zilnice, 3 opțiuni personalizate per tip de masă și maximumele sub care trebuie să rămâi.">
         {!p.nutrition ? <EmptyState message="Nutrition plan will generate after onboarding." allowRegenerate /> : (<>
           {/* Daily macro targets */}
           <div className="grid grid-cols-4 gap-2 sm:gap-3">
@@ -1621,7 +1621,7 @@ export default function DashboardPage() {
       </Section>
 
       {/* Supplements timeline */}
-      <Section id="supplements" title="Supplements" icon="💊" subtitle="Your stack with exact timing, how to take each one, and what's already in your routine kept intact.">
+      <Section id="supplements" title="Suplimente" icon="💊" subtitle="Stack-ul tău cu timing exact, cum să iei fiecare și ce ai deja în rutină păstrat intact.">
         {(!p.supplements || p.supplements.length === 0) ? <EmptyState message="Supplement stack will be generated based on your biomarkers." allowRegenerate /> : (<>
           {/* Header stats */}
           <div className="grid grid-cols-3 gap-2 sm:gap-3">
@@ -1794,7 +1794,7 @@ export default function DashboardPage() {
       </Section>
 
       {/* Daily Schedule — grouped by time-of-day phase for easy scanning */}
-      <Section id="schedule" title="Daily Schedule" icon="⏰" subtitle="Every action of your day at its exact time. Wake → supplements → meals → exercise → wind-down → bedtime. Each item links back to why.">
+      <Section id="schedule" title="Program zilnic" icon="⏰" subtitle="Fiecare acțiune la ora exactă. Trezire → suplimente → mese → exerciții → relaxare → culcare. Fiecare item e legat de motivul lui.">
         {(!p.dailySchedule || p.dailySchedule.length === 0) ? <EmptyState message="Daily timeline will appear once your protocol generates." allowRegenerate /> : (() => {
           // Split entries into phases so the user sees a cohesive day, not a flat list
           const PHASES = [
@@ -1914,7 +1914,7 @@ export default function DashboardPage() {
       </Section>
 
       {/* Exercise */}
-      <Section id="exercise" title="Exercise" icon="🏋️" subtitle={p.exercise?.gymAccess ? `Tailored for ${p.exercise.gymAccess === 'gym' ? 'gym access' : p.exercise.gymAccess === 'home' ? 'home / minimal equipment' : 'no equipment'} — adjust based on what you have today.` : 'Personalized weekly plan with exercise rules to follow.'}>
+      <Section id="exercise" title="Exerciții" icon="🏋️" subtitle={p.exercise?.gymAccess ? `Adaptat pentru ${p.exercise.gymAccess === 'gym' ? 'sală' : p.exercise.gymAccess === 'home' ? 'acasă / echipament minimal' : 'fără echipament'} — ajustează după ce ai disponibil azi.` : 'Plan săptămânal personalizat cu reguli de exerciții.'}>
         {!p.exercise ? <EmptyState message="Exercise plan will generate based on your activity level and goals." /> : (<>
           {/* Top stats */}
           <div className="grid grid-cols-3 gap-2 sm:gap-3">
@@ -2015,7 +2015,7 @@ export default function DashboardPage() {
       </Section>
 
       {/* Sleep */}
-      <Section id="sleep" title="Sleep" icon="🌙" subtitle="Your ideal bedtime + wake window, full bedroom checklist, and the rules that make sleep actually restorative.">
+      <Section id="sleep" title="Somn" icon="🌙" subtitle="Ora ideală de culcare și trezire, checklist complet dormitor și regulile care fac somnul cu adevărat restaurativ.">
         {!p.sleep ? <EmptyState message="Sleep protocol will be calibrated to your chronotype and schedule." /> : (<>
           {/* Big bedtime → wake window */}
           <div className="rounded-2xl bg-gradient-to-br from-blue-500/[0.06] via-accent/[0.03] to-transparent border border-card-border p-5">
@@ -2126,7 +2126,7 @@ export default function DashboardPage() {
       </Section>
 
       {/* Universal Tips */}
-      <Section id="tips" title="Universal Longevity Tips" icon="💡">
+      <Section id="tips" title="Principii universale de longevitate" icon="💡">
         {(!p.universalTips || p.universalTips.length === 0) ? <EmptyState message="Universal longevity tips are available after protocol generation." /> : (<>
           {p.universalTips.map((cat, i) => (
             <div key={i}>
@@ -2148,7 +2148,7 @@ export default function DashboardPage() {
       </Section>
 
       {/* Tracking */}
-      <Section id="tracking" title="What to Track" icon="📊">
+      <Section id="tracking" title="Ce să urmărești" icon="📊">
         {!p.tracking ? <EmptyState message="Tracking metrics will appear after protocol generation." /> : (<>
           {p.tracking.daily && <div><p className="text-xs text-accent font-medium mb-1">Daily</p>{p.tracking.daily.map((d, i) => <p key={i} className="text-xs text-muted-foreground">• {d}</p>)}</div>}
           {p.tracking.retestSchedule && p.tracking.retestSchedule.length > 0 && (
@@ -2231,7 +2231,7 @@ export default function DashboardPage() {
       </Section>
 
       {/* Flex Rules */}
-      <Section id="flex" title="Flex Strategies" icon="🧘" subtitle="Life strategies for your non-negotiables — so pizza night, morning coffee, and weekend drinks don't derail the protocol.">
+      <Section id="flex" title="Strategii flexibile" icon="🧘" subtitle="Strategii pentru lucrurile de care nu te negi — ca pizza de seara, cafeaua de dimineață sau băutura de weekend să nu strice protocolul.">
         {(!p.flexRules || p.flexRules.length === 0) ? <EmptyState message="Describe your non-negotiables in onboarding (pizza nights, morning coffee, etc.) and we'll build workarounds that keep the protocol intact." /> : (
           <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
             {p.flexRules.map((f, i) => (
