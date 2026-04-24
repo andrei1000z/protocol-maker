@@ -42,7 +42,7 @@ export function StatTile({ label, value, subtext, tone = 'default' }: {
     : 'text-foreground';
   return (
     <div className="metric-tile">
-      <p className="text-[10px] text-muted uppercase tracking-widest">{label}</p>
+      <p className="text-xs text-muted uppercase tracking-widest">{label}</p>
       <p className={clsx('text-2xl sm:text-3xl font-bold font-mono tabular-nums mt-2 leading-none', color)}>{value}</p>
       {subtext && <div className="mt-2 text-[11px]">{subtext}</div>}
     </div>

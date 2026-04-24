@@ -110,7 +110,7 @@ export function InstallPrompt() {
           </p>
           <div className="flex gap-2 items-center pt-0.5">
             {iosHint ? (
-              <span className="inline-flex items-center gap-1 text-[10px] text-accent">
+              <span className="inline-flex items-center gap-1 text-xs text-accent">
                 <Share className="w-3 h-3" /> Safari &gt; Share &gt; Add to Home Screen
               </span>
             ) : (

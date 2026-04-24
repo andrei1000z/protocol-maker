@@ -114,7 +114,7 @@ function WorkoutModal({ presets, existing, onClose, onPickPreset, onCustom }: Mo
       <div className="relative bg-surface-1 rounded-t-3xl sm:rounded-3xl w-full sm:max-w-lg max-h-[88dvh] overflow-y-auto border border-card-border animate-fade-in-up">
         <div className="sticky top-0 bg-surface-1/95 backdrop-blur-lg border-b border-card-border p-5 flex items-center justify-between">
           <div>
-            <p className="text-[10px] font-mono uppercase tracking-widest text-accent">Pick one</p>
+            <p className="text-xs font-mono uppercase tracking-widest text-accent">Pick one</p>
             <h2 className="text-lg font-semibold mt-0.5">Log your workout</h2>
           </div>
           <button onClick={onClose} aria-label="Close" className="p-1.5 rounded-lg text-muted-foreground hover:text-foreground hover:bg-surface-2 transition-colors">
@@ -141,12 +141,12 @@ function WorkoutModal({ presets, existing, onClose, onPickPreset, onCustom }: Mo
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-2">
                       <p className="text-sm font-semibold">{p.title}</p>
-                      <span className="text-[9px] font-mono uppercase tracking-widest px-1.5 py-0.5 rounded-full bg-surface-3 border border-card-border text-muted">
+                      <span className="text-[11px] font-medium font-mono uppercase tracking-widest px-1.5 py-0.5 rounded-full bg-surface-3 border border-card-border text-muted">
                         {p.durationMin}m
                       </span>
                     </div>
                     <p className="text-[11px] text-muted-foreground leading-relaxed mt-0.5">{p.description}</p>
-                    <p className="text-[10px] text-muted font-mono mt-1">{intensityRpe(p.intensity)}</p>
+                    <p className="text-xs text-muted font-mono mt-1">{intensityRpe(p.intensity)}</p>
                   </div>
                   {saving === p.id ? (
                     <span className="w-4 h-4 border-2 border-accent/40 border-t-accent rounded-full animate-spin shrink-0" />
@@ -168,7 +168,7 @@ function WorkoutModal({ presets, existing, onClose, onPickPreset, onCustom }: Mo
           {customOpen && (
             <div className="p-4 rounded-xl bg-surface-2 border border-card-border space-y-3">
               <div>
-                <p className="text-[10px] font-mono uppercase tracking-widest text-muted mb-1.5">Duration · {customMin} min</p>
+                <p className="text-xs font-mono uppercase tracking-widest text-muted mb-1.5">Duration · {customMin} min</p>
                 <input
                   type="range" min={5} max={180} step={5}
                   value={customMin}
@@ -177,7 +177,7 @@ function WorkoutModal({ presets, existing, onClose, onPickPreset, onCustom }: Mo
                 />
               </div>
               <div>
-                <p className="text-[10px] font-mono uppercase tracking-widest text-muted mb-1.5">Intensity</p>
+                <p className="text-xs font-mono uppercase tracking-widest text-muted mb-1.5">Intensity</p>
                 <div className="grid grid-cols-4 gap-1">
                   {(['light', 'moderate', 'hard', 'max'] as const).map(i => (
                     <button

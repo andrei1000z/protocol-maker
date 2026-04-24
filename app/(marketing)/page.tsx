@@ -26,12 +26,12 @@ function BiomarkerDemo() {
             className={`flex items-center justify-between p-4 rounded-xl bg-card border border-card-border hover:border-accent/30 transition-all group animate-fade-in-up stagger-${(i % 5) + 1}`}>
             <div>
               <p className="text-sm font-medium group-hover:text-accent transition-colors">{b.shortName}</p>
-              <p className="text-[10px] text-muted mt-0.5">Optimal: {b.longevityOptimalLow}-{b.longevityOptimalHigh} {b.unit}</p>
+              <p className="text-xs text-muted mt-0.5">Optimal: {b.longevityOptimalLow}-{b.longevityOptimalHigh} {b.unit}</p>
             </div>
             <div className="flex items-center gap-2">
               <span className="text-xl font-bold font-mono text-accent">{val}</span>
-              <span className="text-[10px] text-muted">{b.unit}</span>
-              <span className={`text-[10px] font-mono px-2 py-0.5 rounded-full ${isOptimal ? 'bg-accent/20 text-accent' : 'bg-amber-500/20 text-amber-400'}`}>
+              <span className="text-xs text-muted">{b.unit}</span>
+              <span className={`text-xs font-mono px-2 py-0.5 rounded-full ${isOptimal ? 'bg-accent/20 text-accent' : 'bg-amber-500/20 text-amber-400'}`}>
                 {isOptimal ? 'OPTIMAL' : 'SUBOPTIMAL'}
               </span>
             </div>
@@ -108,21 +108,21 @@ export default function LandingPage() {
               <Shield className="w-4 h-4 text-accent shrink-0 mt-0.5" />
               <div>
                 <p className="text-[11px] font-semibold text-foreground">Your data stays yours</p>
-                <p className="text-[10px] text-muted-foreground leading-snug mt-0.5">Only you can read your blood panel. Delete the account, everything goes.</p>
+                <p className="text-xs text-muted-foreground leading-snug mt-0.5">Only you can read your blood panel. Delete the account, everything goes.</p>
               </div>
             </div>
             <div className="rounded-xl bg-card/60 border border-card-border px-4 py-3 flex items-start gap-3 text-left">
               <Activity className="w-4 h-4 text-accent shrink-0 mt-0.5" />
               <div>
                 <p className="text-[11px] font-semibold text-foreground">Updates every night</p>
-                <p className="text-[10px] text-muted-foreground leading-snug mt-0.5">Your plan re-runs against your latest wearable and tracking data — no button to press.</p>
+                <p className="text-xs text-muted-foreground leading-snug mt-0.5">Your plan re-runs against your latest wearable and tracking data — no button to press.</p>
               </div>
             </div>
             <div className="rounded-xl bg-card/60 border border-card-border px-4 py-3 flex items-start gap-3 text-left">
               <Sparkles className="w-4 h-4 text-accent shrink-0 mt-0.5" />
               <div>
                 <p className="text-[11px] font-semibold text-foreground">Never broken</p>
-                <p className="text-[10px] text-muted-foreground leading-snug mt-0.5">Claude is primary. If it's down, Groq takes over. If both fail, a rule-based engine still gives you a plan.</p>
+                <p className="text-xs text-muted-foreground leading-snug mt-0.5">Claude is primary. If it's down, Groq takes over. If both fail, a rule-based engine still gives you a plan.</p>
               </div>
             </div>
           </div>
@@ -151,7 +151,7 @@ export default function LandingPage() {
           note for Samsung/Apple (no hidden surprises). */}
       <section className="border-b border-card-border bg-gradient-to-b from-card/10 to-transparent">
         <div className="max-w-6xl mx-auto px-6 py-10">
-          <p className="text-center text-[10px] uppercase tracking-widest text-muted mb-6">
+          <p className="text-center text-xs uppercase tracking-widest text-muted mb-6">
             Auto-syncs with your wearables
           </p>
           <div className="grid grid-cols-3 sm:grid-cols-5 gap-3 sm:gap-4 max-w-3xl mx-auto">
@@ -172,7 +172,7 @@ export default function LandingPage() {
               </div>
             ))}
           </div>
-          <p className="text-center text-[10px] text-muted mt-5">
+          <p className="text-center text-xs text-muted mt-5">
             Samsung Galaxy Watch + Apple Watch coming with the native mobile app.
           </p>
         </div>
@@ -230,15 +230,15 @@ export default function LandingPage() {
           <div className="grid grid-cols-3 gap-3 max-w-2xl mx-auto mb-8">
             <div className="metric-tile text-center">
               <p className="text-3xl font-bold font-mono text-accent">78</p>
-              <p className="text-[10px] text-muted uppercase tracking-widest mt-1">Longevity</p>
+              <p className="text-xs text-muted uppercase tracking-widest mt-1">Longevity</p>
             </div>
             <div className="metric-tile text-center">
               <p className="text-3xl font-bold font-mono text-accent">32y 5m</p>
-              <p className="text-[10px] text-muted uppercase tracking-widest mt-1">Bio age (vs 35)</p>
+              <p className="text-xs text-muted uppercase tracking-widest mt-1">Bio age (vs 35)</p>
             </div>
             <div className="metric-tile text-center">
               <p className="text-3xl font-bold font-mono text-accent">0.84×</p>
-              <p className="text-[10px] text-muted uppercase tracking-widest mt-1">Aging speed</p>
+              <p className="text-xs text-muted uppercase tracking-widest mt-1">Aging speed</p>
             </div>
           </div>
 
@@ -384,11 +384,11 @@ export default function LandingPage() {
               <h3 className="text-sm font-semibold mb-3">{r.title}</h3>
               <div className="space-y-2.5 text-xs">
                 <div className="flex gap-2">
-                  <span className="shrink-0 px-1.5 py-0.5 rounded bg-muted/20 text-muted-foreground text-[10px] font-mono">GPT</span>
+                  <span className="shrink-0 px-1.5 py-0.5 rounded bg-muted/20 text-muted-foreground text-xs font-mono">GPT</span>
                   <p className="text-muted-foreground leading-relaxed">{r.chatgpt}</p>
                 </div>
                 <div className="flex gap-2">
-                  <span className="shrink-0 px-1.5 py-0.5 rounded bg-accent/20 text-accent text-[10px] font-mono">PROTOCOL</span>
+                  <span className="shrink-0 px-1.5 py-0.5 rounded bg-accent/20 text-accent text-xs font-mono">PROTOCOL</span>
                   <p className="leading-relaxed">{r.protocol}</p>
                 </div>
               </div>
@@ -453,7 +453,7 @@ export default function LandingPage() {
         </div>
         <div className="border-t border-card-border py-6 text-center space-y-1">
           <p className="text-xs text-muted">Not medical advice. Consult your doctor before making changes.</p>
-          <p className="text-[10px] text-muted">Built with Groq AI · Next.js · Supabase · © {new Date().getFullYear()}</p>
+          <p className="text-xs text-muted">Built with Groq AI · Next.js · Supabase · © {new Date().getFullYear()}</p>
         </div>
       </footer>
     </div>

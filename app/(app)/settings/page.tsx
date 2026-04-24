@@ -88,7 +88,7 @@ function Stat({ label, value }: { label: string; value: React.ReactNode }) {
   return (
     <div className="metric-tile text-center">
       <p className="text-lg sm:text-xl font-bold font-mono tabular-nums">{value}</p>
-      <p className="text-[10px] text-muted uppercase tracking-widest mt-1">{label}</p>
+      <p className="text-xs text-muted uppercase tracking-widest mt-1">{label}</p>
     </div>
   );
 }
@@ -97,7 +97,7 @@ function Pair({ label, value }: { label: string; value: React.ReactNode }) {
   if (value === null || value === undefined || value === '' || value === '-') return null;
   return (
     <div className="p-3 rounded-xl bg-surface-2 border border-card-border">
-      <p className="text-[10px] text-muted uppercase tracking-wider">{label}</p>
+      <p className="text-xs text-muted uppercase tracking-wider">{label}</p>
       <p className="text-sm font-medium mt-0.5 break-words">{value}</p>
     </div>
   );
@@ -291,7 +291,7 @@ function WearableRow({ providerKey, name, tagline, emoji, accentBg, envVar, regi
             <p className="text-[11px] text-muted-foreground truncate">{tagline}</p>
           </div>
         </div>
-        <span className={clsx('text-[10px] font-mono px-2 py-0.5 rounded-full border shrink-0',
+        <span className={clsx('text-xs font-mono px-2 py-0.5 rounded-full border shrink-0',
           loading ? 'bg-surface-3 text-muted border-card-border'
           : !configured ? 'bg-surface-3 text-muted border-card-border'
           : connected ? 'bg-accent/10 text-accent border-accent/25'
@@ -311,7 +311,7 @@ function WearableRow({ providerKey, name, tagline, emoji, accentBg, envVar, regi
         </div>
       )}
       {configured && status?.lastSyncError && (
-        <p className="text-[10px] text-danger/80 bg-red-500/5 border border-red-500/15 rounded-lg px-2 py-1.5">
+        <p className="text-xs text-danger/80 bg-red-500/5 border border-red-500/15 rounded-lg px-2 py-1.5">
           {status.lastSyncError}
         </p>
       )}
@@ -389,7 +389,7 @@ function NativeOnlyRow({ name, emoji, accentBg, note }: { name: string; emoji: s
             <p className="text-[11px] text-muted-foreground truncate">{note}</p>
           </div>
         </div>
-        <span className="text-[10px] font-mono px-2 py-0.5 rounded-full border bg-surface-3 text-muted border-card-border shrink-0">
+        <span className="text-xs font-mono px-2 py-0.5 rounded-full border bg-surface-3 text-muted border-card-border shrink-0">
           Mobile only
         </span>
       </div>
@@ -487,7 +487,7 @@ function ReferralCard({ referralCode }: { referralCode?: string | null }) {
     <SettingsCard icon={Sparkles} title="Invite a friend" subtitle="Your referral code — share with anyone interested">
       <div className="rounded-xl p-4 bg-gradient-to-br from-accent/[0.06] via-accent/[0.02] to-transparent border border-accent/25 space-y-3">
         <div className="flex items-center gap-3 flex-wrap">
-          <span className="text-[10px] uppercase tracking-widest text-muted">Your code</span>
+          <span className="text-xs uppercase tracking-widest text-muted">Your code</span>
           <code className="text-lg font-mono font-bold tracking-widest text-accent bg-accent/10 px-3 py-1 rounded-lg border border-accent/25">
             {referralCode}
           </code>
@@ -936,13 +936,13 @@ export default function SettingsPage() {
                 { label: 'Time', value: timeBudget, set: setTimeBudget, unit: 'min/day' },
               ].map(f => (
                 <div key={f.label}>
-                  <label className="text-[10px] text-muted uppercase tracking-widest">{f.label}</label>
+                  <label className="text-xs text-muted uppercase tracking-widest">{f.label}</label>
                   <div className="relative mt-1">
                     <input
                       type="number" step={f.step} value={f.value} onChange={e => f.set(e.target.value)}
                       className="w-full rounded-xl bg-surface-2 border border-card-border px-3 py-2.5 text-sm font-mono outline-none focus:border-accent transition-colors pr-12"
                     />
-                    <span className="absolute right-3 top-1/2 -translate-y-1/2 text-[10px] text-muted">{f.unit}</span>
+                    <span className="absolute right-3 top-1/2 -translate-y-1/2 text-xs text-muted">{f.unit}</span>
                   </div>
                 </div>
               ))}
@@ -988,7 +988,7 @@ export default function SettingsPage() {
                 <div className="rounded-xl bg-surface-2 border border-card-border p-4 space-y-2">
                   <div className="flex items-center gap-2">
                     <Target className="w-3.5 h-3.5 text-accent" />
-                    <p className="text-[10px] text-muted uppercase tracking-widest">Goals</p>
+                    <p className="text-xs text-muted uppercase tracking-widest">Goals</p>
                   </div>
                   {primaryGoal && <p className="text-sm font-medium">🎯 {primaryGoal}</p>}
                   {secondaryGoals.length > 0 && (
@@ -1004,7 +1004,7 @@ export default function SettingsPage() {
                 <div className="rounded-xl bg-gradient-to-br from-accent/[0.04] to-transparent border border-accent/15 p-4">
                   <div className="flex items-center gap-2 mb-2">
                     <Sparkles className="w-3.5 h-3.5 text-accent" />
-                    <p className="text-[10px] text-accent uppercase tracking-widest">Why you're here</p>
+                    <p className="text-xs text-accent uppercase tracking-widest">Why you're here</p>
                   </div>
                   <p className="text-xs text-foreground/90 leading-relaxed italic">&ldquo;{motivation}&rdquo;</p>
                 </div>
@@ -1015,13 +1015,13 @@ export default function SettingsPage() {
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                   {painPoints && (
                     <div className="p-4 rounded-xl bg-surface-2 border border-card-border">
-                      <p className="text-[10px] text-amber-400 uppercase tracking-widest mb-1.5">Pain points</p>
+                      <p className="text-xs text-amber-400 uppercase tracking-widest mb-1.5">Pain points</p>
                       <p className="text-xs text-muted-foreground leading-relaxed">{painPoints}</p>
                     </div>
                   )}
                   {nonNegotiables && (
                     <div className="p-4 rounded-xl bg-surface-2 border border-card-border">
-                      <p className="text-[10px] text-accent uppercase tracking-widest mb-1.5">Non-negotiables</p>
+                      <p className="text-xs text-accent uppercase tracking-widest mb-1.5">Non-negotiables</p>
                       <p className="text-xs text-muted-foreground leading-relaxed">{nonNegotiables}</p>
                     </div>
                   )}
@@ -1037,13 +1037,13 @@ export default function SettingsPage() {
                 <div className="space-y-3">
                   {(profile.conditions?.length || 0) > 0 && (
                     <div>
-                      <p className="text-[10px] text-muted uppercase tracking-widest mb-1.5">Conditions</p>
+                      <p className="text-xs text-muted uppercase tracking-widest mb-1.5">Conditions</p>
                       <div className="flex flex-wrap gap-1.5">{profile.conditions!.map(c => <Chip key={c} tone="amber">{c}</Chip>)}</div>
                     </div>
                   )}
                   {(profile.medications?.filter(m => m.name)?.length || 0) > 0 && (
                     <div>
-                      <p className="text-[10px] text-muted uppercase tracking-widest mb-1.5">Medications</p>
+                      <p className="text-xs text-muted uppercase tracking-widest mb-1.5">Medications</p>
                       <div className="space-y-1">
                         {profile.medications!.filter(m => m.name).map((m, i) => (
                           <p key={i} className="text-xs text-muted-foreground">· <span className="text-foreground">{m.name}</span> {m.dose} ({m.frequency})</p>
@@ -1053,19 +1053,19 @@ export default function SettingsPage() {
                   )}
                   {(profile.current_supplements?.length || 0) > 0 && (
                     <div>
-                      <p className="text-[10px] text-muted uppercase tracking-widest mb-1.5">Current supplements</p>
+                      <p className="text-xs text-muted uppercase tracking-widest mb-1.5">Current supplements</p>
                       <div className="flex flex-wrap gap-1.5">{profile.current_supplements!.map(s => <Chip key={s}>{s}</Chip>)}</div>
                     </div>
                   )}
                   {(profile.allergies?.length || 0) > 0 && (
                     <div>
-                      <p className="text-[10px] text-muted uppercase tracking-widest mb-1.5">Allergies</p>
+                      <p className="text-xs text-muted uppercase tracking-widest mb-1.5">Allergies</p>
                       <div className="flex flex-wrap gap-1.5">{profile.allergies!.map(a => <Chip key={a} tone="danger">{a}</Chip>)}</div>
                     </div>
                   )}
                   {familyHx.length > 0 && (
                     <div>
-                      <p className="text-[10px] text-muted uppercase tracking-widest mb-1.5">Family history</p>
+                      <p className="text-xs text-muted uppercase tracking-widest mb-1.5">Family history</p>
                       <div className="flex flex-wrap gap-1.5">{familyHx.map(f => <Chip key={f} tone="amber">{f}</Chip>)}</div>
                     </div>
                   )}
@@ -1157,7 +1157,7 @@ export default function SettingsPage() {
             once the list has loaded AND the user actually has links. */}
         {shareLinksLoaded && shareLinks.length > 0 && (
           <div className="mt-5 pt-5 border-t border-card-border space-y-2">
-            <p className="text-[10px] uppercase tracking-widest text-muted font-mono mb-2">
+            <p className="text-xs uppercase tracking-widest text-muted font-mono mb-2">
               Your active links ({shareLinks.length})
             </p>
             {shareLinks.map(link => {
@@ -1171,12 +1171,12 @@ export default function SettingsPage() {
                     <span className="font-mono text-xs truncate flex-1 text-muted-foreground">
                       /share/{link.slug}
                     </span>
-                    <span className="text-[10px] font-mono text-muted shrink-0">
+                    <span className="text-xs font-mono text-muted shrink-0">
                       {link.view_count} {link.view_count === 1 ? 'view' : 'views'}
                     </span>
                   </div>
                   <div className="flex items-center gap-2 flex-wrap">
-                    <span className={clsx('inline-flex items-center gap-1 text-[10px] font-mono px-2 py-0.5 rounded-full border',
+                    <span className={clsx('inline-flex items-center gap-1 text-xs font-mono px-2 py-0.5 rounded-full border',
                       expired ? 'bg-red-500/10 text-danger border-red-500/25'
                       : expiresIn !== null ? 'bg-amber-500/10 text-amber-400 border-amber-500/25'
                       : 'bg-surface-3 text-muted border-card-border'
@@ -1188,7 +1188,7 @@ export default function SettingsPage() {
                     </span>
                     <button
                       onClick={() => handleCopyLinkSlug(link.slug)}
-                      className="text-[10px] px-2 py-1 rounded-lg bg-surface-3 hover:bg-accent/10 text-muted-foreground hover:text-accent transition-colors"
+                      className="text-xs px-2 py-1 rounded-lg bg-surface-3 hover:bg-accent/10 text-muted-foreground hover:text-accent transition-colors"
                     >
                       Copy URL
                     </button>
@@ -1201,7 +1201,7 @@ export default function SettingsPage() {
                         else handleSetExpiration(link.slug, parseInt(v, 10));
                         e.currentTarget.value = '';
                       }}
-                      className="text-[10px] px-2 py-1 rounded-lg bg-surface-3 border border-card-border text-muted-foreground"
+                      className="text-xs px-2 py-1 rounded-lg bg-surface-3 border border-card-border text-muted-foreground"
                     >
                       <option value="">Set expiry…</option>
                       <option value="7">7 days</option>
@@ -1211,7 +1211,7 @@ export default function SettingsPage() {
                     </select>
                     <button
                       onClick={() => handleRevokeLink(link.slug)}
-                      className="ml-auto inline-flex items-center gap-1 text-[10px] px-2 py-1 rounded-lg bg-red-500/10 text-danger border border-red-500/25 hover:bg-red-500/15 transition-colors"
+                      className="ml-auto inline-flex items-center gap-1 text-xs px-2 py-1 rounded-lg bg-red-500/10 text-danger border border-red-500/25 hover:bg-red-500/15 transition-colors"
                     >
                       <X className="w-3 h-3" /> Revoke
                     </button>
@@ -1269,7 +1269,7 @@ export default function SettingsPage() {
               <Download className="w-4 h-4 text-muted-foreground mt-0.5 shrink-0" />
               <div className="min-w-0 flex-1">
                 <p className="text-xs font-semibold">{x.label}</p>
-                <p className="text-[10px] text-muted-foreground leading-snug mt-0.5">{x.desc}</p>
+                <p className="text-xs text-muted-foreground leading-snug mt-0.5">{x.desc}</p>
               </div>
             </button>
           ))}

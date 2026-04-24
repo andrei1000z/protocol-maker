@@ -115,7 +115,7 @@ export function OAuthPermissionsModal({ open, provider, providerName, connectUrl
           </ul>
         </section>
 
-        <p className="text-[10px] text-muted leading-relaxed font-mono break-all">
+        <p className="text-xs text-muted leading-relaxed font-mono break-all">
           OAuth scope: {scopes.scope}
         </p>
 
@@ -134,7 +134,7 @@ export function OAuthPermissionsModal({ open, provider, providerName, connectUrl
           </a>
         </div>
 
-        <p className="text-[10px] text-muted text-center leading-relaxed">
+        <p className="text-xs text-muted text-center leading-relaxed">
           You&apos;ll complete the authorization on {providerName}&apos;s site, then return here automatically.
         </p>
       </div>

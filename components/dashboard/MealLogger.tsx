@@ -240,7 +240,7 @@ export function MealLogger() {
             <Sparkles className="w-4 h-4 text-accent shrink-0" />
             <div className="min-w-0">
               <p className="text-xs font-semibold">Refresh your protocol with this week&apos;s meals</p>
-              <p className="text-[10px] text-muted-foreground leading-relaxed">
+              <p className="text-xs text-muted-foreground leading-relaxed">
                 {recent.length} meals analyzed. Supplements + timing re-tune to what you actually eat.
               </p>
             </div>
@@ -343,16 +343,16 @@ function IntakeBar({
   return (
     <div className="rounded-xl bg-surface-2 border border-card-border p-2.5">
       <div className="flex items-center justify-between gap-1">
-        <p className={clsx('text-[9px] font-mono uppercase tracking-widest', labelColor)}>
+        <p className={clsx('text-[11px] font-medium font-mono uppercase tracking-widest', labelColor)}>
           {Icon && <Icon className="w-2.5 h-2.5 inline mr-1 -mt-0.5" />}
           {label}
         </p>
-        <p className="text-[9px] font-mono text-muted">{pct}%</p>
+        <p className="text-[11px] font-medium font-mono text-muted">{pct}%</p>
       </div>
       <p className="text-sm font-bold font-mono tabular-nums mt-0.5">
         {Math.round(value)}
-        <span className="text-[9px] text-muted ml-0.5">{unit}</span>
-        <span className="text-[9px] text-muted"> / {target}</span>
+        <span className="text-[11px] font-medium text-muted ml-0.5">{unit}</span>
+        <span className="text-[11px] font-medium text-muted"> / {target}</span>
       </p>
       <div className="mt-1.5 h-1 rounded-full bg-surface-3 overflow-hidden">
         <div className={clsx('h-full rounded-full transition-all', bar)} style={{ width: `${pct}%` }} />
@@ -391,17 +391,17 @@ function MealRow({ meal }: { meal: NonNullable<ReturnType<typeof useMeals>['data
         <div className="flex items-center gap-2 flex-wrap">
           <p className="text-[13px] font-medium truncate">{meal.title}</p>
           {meal.verdict && (
-            <span className={clsx('text-[9px] font-mono uppercase tracking-widest px-1.5 py-0.5 rounded-full border shrink-0', verdictColor)}>
+            <span className={clsx('text-[11px] font-medium font-mono uppercase tracking-widest px-1.5 py-0.5 rounded-full border shrink-0', verdictColor)}>
               {meal.verdict}
             </span>
           )}
           {impactColor && typeof lis === 'number' && (
-            <span className={clsx('text-[9px] font-mono font-semibold tabular-nums shrink-0', impactColor)}>
+            <span className={clsx('text-[11px] font-medium font-mono font-semibold tabular-nums shrink-0', impactColor)}>
               {lis > 0 ? `+${lis}` : lis} impact
             </span>
           )}
         </div>
-        <p className="text-[10px] text-muted-foreground font-mono mt-0.5 truncate">
+        <p className="text-xs text-muted-foreground font-mono mt-0.5 truncate">
           {fmtRelative(meal.eaten_at)} · {fmtTime(meal.eaten_at)}
           {meal.calories ? ` · ${meal.calories}kcal` : ''}
           {meal.protein_g ? ` · ${Math.round(meal.protein_g)}p` : ''}
@@ -553,7 +553,7 @@ function MealLoggerModal({ onClose }: { onClose: () => void }) {
         {/* Header — sticky so "Close" stays reachable while scrolling the preview */}
         <div className="sticky top-0 z-10 bg-surface-1/95 backdrop-blur-lg border-b border-card-border p-5 flex items-center justify-between">
           <div>
-            <p className="text-[10px] font-mono uppercase tracking-widest text-accent">
+            <p className="text-xs font-mono uppercase tracking-widest text-accent">
               {analysis ? 'Check this looks right' : 'Add a meal'}
             </p>
             <h2 id="meal-logger-title" className="text-lg font-semibold mt-0.5">
@@ -583,7 +583,7 @@ function MealLoggerModal({ onClose }: { onClose: () => void }) {
                     <X className="w-4 h-4" />
                   </button>
                   {file && (
-                    <span className="absolute bottom-2 left-2 text-[10px] font-mono px-2 py-0.5 rounded-full bg-black/60 text-white">
+                    <span className="absolute bottom-2 left-2 text-xs font-mono px-2 py-0.5 rounded-full bg-black/60 text-white">
                       {(file.size / 1024).toFixed(0)} KB
                     </span>
                   )}
@@ -679,7 +679,7 @@ function MealLoggerModal({ onClose }: { onClose: () => void }) {
                 </>
               )}
             </button>
-            <p className="text-[10px] text-center text-muted">
+            <p className="text-xs text-center text-muted">
               Your photo isn't saved — only the title, macros, and verdict.
             </p>
           </div>
@@ -722,7 +722,7 @@ function MealLoggerModal({ onClose }: { onClose: () => void }) {
 
             {analysis.analysis.ingredients.length > 0 && (
               <div>
-                <p className="text-[10px] font-mono uppercase tracking-widest text-muted mb-1.5">Ingredients</p>
+                <p className="text-xs font-mono uppercase tracking-widest text-muted mb-1.5">Ingredients</p>
                 <div className="flex flex-wrap gap-1">
                   {analysis.analysis.ingredients.map(ing => (
                     <span key={ing} className="text-[11px] px-2 py-0.5 rounded-full bg-surface-2 border border-card-border text-foreground/90">
@@ -733,7 +733,7 @@ function MealLoggerModal({ onClose }: { onClose: () => void }) {
               </div>
             )}
 
-            <div className="text-[10px] text-muted pt-2 border-t border-card-border">
+            <div className="text-xs text-muted pt-2 border-t border-card-border">
               Eaten at {fmtTime(analysis.eatenAt)}
             </div>
 
@@ -815,9 +815,9 @@ function MacrosRow({ analysis }: { analysis: MealAnalysis }) {
             {Icon && <Icon className="w-3 h-3 mx-auto text-accent mb-0.5" />}
             <p className="text-sm font-bold font-mono tabular-nums">
               {Math.round(it.value as number)}
-              {it.unit && <span className="text-[9px] text-muted ml-0.5">{it.unit}</span>}
+              {it.unit && <span className="text-[11px] font-medium text-muted ml-0.5">{it.unit}</span>}
             </p>
-            <p className="text-[9px] text-muted uppercase tracking-widest mt-0.5">{it.label}</p>
+            <p className="text-[11px] font-medium text-muted uppercase tracking-widest mt-0.5">{it.label}</p>
           </div>
         );
       })}
@@ -903,7 +903,7 @@ function ExtendedNutrition({ analysis }: { analysis: MealAnalysis }) {
           <Zap className="w-3.5 h-3.5 text-accent" />
           <span className="text-[11px] font-semibold uppercase tracking-widest">Full nutrition breakdown</span>
           {anyWatch && !open && (
-            <span className="text-[9px] text-amber-400 font-mono">· check sodium / sugar</span>
+            <span className="text-[11px] font-medium text-amber-400 font-mono">· check sodium / sugar</span>
           )}
         </span>
         {open ? <ChevronUp className="w-3.5 h-3.5 text-muted" /> : <ChevronDown className="w-3.5 h-3.5 text-muted" />}
@@ -919,7 +919,7 @@ function ExtendedNutrition({ analysis }: { analysis: MealAnalysis }) {
                     r.tone === 'watch' ? 'bg-amber-500/5 border-amber-500/25'
                     : 'bg-surface-1 border-card-border')}
                 >
-                  <p className="text-[9px] text-muted uppercase tracking-widest">{r.label}</p>
+                  <p className="text-[11px] font-medium text-muted uppercase tracking-widest">{r.label}</p>
                   <p className={clsx('text-xs font-bold font-mono tabular-nums',
                     r.tone === 'watch' ? 'text-amber-400' : 'text-foreground')}>
                     {Math.round(r.value as number)}
@@ -931,11 +931,11 @@ function ExtendedNutrition({ analysis }: { analysis: MealAnalysis }) {
           )}
           {microFilled.length > 0 && (
             <div>
-              <p className="text-[9px] text-muted uppercase tracking-widest mb-1">Micronutrients</p>
+              <p className="text-[11px] font-medium text-muted uppercase tracking-widest mb-1">Micronutrients</p>
               <div className="grid grid-cols-3 sm:grid-cols-4 gap-1.5">
                 {microFilled.map(r => (
                   <div key={r.label} className="rounded-lg p-1.5 bg-surface-1 border border-card-border">
-                    <p className="text-[9px] text-muted uppercase tracking-widest leading-none">{r.label}</p>
+                    <p className="text-[11px] font-medium text-muted uppercase tracking-widest leading-none">{r.label}</p>
                     <p className="text-[11px] font-bold font-mono tabular-nums mt-1">
                       {Math.round(r.value as number)}
                       <span className="text-[8px] text-muted ml-0.5">{r.unit}</span>
@@ -986,12 +986,12 @@ function QualityFlags({ flags }: { flags: string[] }) {
   if (!flags.length) return null;
   return (
     <div>
-      <p className="text-[10px] font-mono uppercase tracking-widest text-muted mb-1.5">What stood out</p>
+      <p className="text-xs font-mono uppercase tracking-widest text-muted mb-1.5">What stood out</p>
       <div className="flex flex-wrap gap-1">
         {flags.map(f => {
           const tone = FLAG_TONES[f] ?? { label: f.replace(/_/g, ' '), cls: 'bg-surface-2 text-muted-foreground border-card-border' };
           return (
-            <span key={f} className={clsx('text-[10px] px-2 py-0.5 rounded-full border', tone.cls)}>
+            <span key={f} className={clsx('text-xs px-2 py-0.5 rounded-full border', tone.cls)}>
               {tone.label}
             </span>
           );
@@ -1025,8 +1025,8 @@ function ClassificationChips({ nova, gi }: { nova: number | null; gi: number | n
 
   return (
     <div className="flex flex-wrap gap-1.5">
-      {novaMeta && <span className={clsx('text-[10px] px-2 py-0.5 rounded-full border', novaMeta.cls)}>{novaMeta.label}</span>}
-      {giMeta   && <span className={clsx('text-[10px] px-2 py-0.5 rounded-full border', giMeta.cls)}>{giMeta.label}</span>}
+      {novaMeta && <span className={clsx('text-xs px-2 py-0.5 rounded-full border', novaMeta.cls)}>{novaMeta.label}</span>}
+      {giMeta   && <span className={clsx('text-xs px-2 py-0.5 rounded-full border', giMeta.cls)}>{giMeta.label}</span>}
     </div>
   );
 }

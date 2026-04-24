@@ -90,13 +90,13 @@ function EmptyState({ message, allowRegenerate }: { message: string; allowRegene
       <p className="text-xs text-muted-foreground">{message}</p>
       {allowRegenerate ? (
         <div className="space-y-2">
-          <p className="text-[10px] text-muted">This looks like an incomplete generation — regenerate to fill it in.</p>
+          <p className="text-xs text-muted">This looks like an incomplete generation — regenerate to fill it in.</p>
           <button onClick={regen} className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-accent text-black text-xs font-semibold hover:bg-accent-bright transition-colors">
             ↻ Regenerate protocol
           </button>
         </div>
       ) : (
-        <p className="text-[10px] text-muted mt-1.5">Upload blood work or complete more onboarding for richer data.</p>
+        <p className="text-xs text-muted mt-1.5">Upload blood work or complete more onboarding for richer data.</p>
       )}
     </div>
   );
@@ -166,7 +166,7 @@ function LiveDriftChip({ label, direction, value, title }: {
     <span
       title={title}
       className={clsx(
-        'inline-flex items-center gap-1 mt-2 ml-2 text-[10px] font-mono px-2 py-0.5 rounded-full border',
+        'inline-flex items-center gap-1 mt-2 ml-2 text-xs font-mono px-2 py-0.5 rounded-full border',
         tone,
       )}
     >
@@ -272,7 +272,7 @@ function TodaysFocusBlock({ schedule }: { schedule: ScheduleEntry[] }) {
           <span className="text-base">🎯</span>
           Today&apos;s focus
         </h2>
-        <p className="text-[10px] text-muted font-mono">From your daily schedule</p>
+        <p className="text-xs text-muted font-mono">From your daily schedule</p>
       </div>
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
         {picks.map((p, i) => {
@@ -283,10 +283,10 @@ function TodaysFocusBlock({ schedule }: { schedule: ScheduleEntry[] }) {
               className={clsx('rounded-xl bg-gradient-to-br bg-surface-2 border p-3.5 space-y-1.5', s.bg)}
             >
               <div className="flex items-center justify-between gap-2">
-                <span className="text-[10px] font-mono tabular-nums text-muted-foreground">
+                <span className="text-xs font-mono tabular-nums text-muted-foreground">
                   {p.time} · {relative(p.minutesUntil)}
                 </span>
-                <span className={clsx('text-[9px] uppercase tracking-widest px-1.5 py-0.5 rounded', s.pill)}>
+                <span className={clsx('text-[11px] font-medium uppercase tracking-widest px-1.5 py-0.5 rounded', s.pill)}>
                   {s.label}
                 </span>
               </div>
@@ -344,7 +344,7 @@ function CronRegenBanner({ createdAt, protocolId }: { createdAt: string; protoco
 
 function Badge({ classification }: { classification: Classification }) {
   return (
-    <span className={clsx('text-[10px] font-mono px-2 py-0.5 rounded-full border', getClassificationBg(classification), getClassificationColor(classification))}>
+    <span className={clsx('text-xs font-mono px-2 py-0.5 rounded-full border', getClassificationBg(classification), getClassificationColor(classification))}>
       {classification.replace('_', ' ')}
     </span>
   );
@@ -698,7 +698,7 @@ export default function DashboardPage() {
         <div className="flex items-start justify-between gap-4 mb-8">
           <div>
             <div className="flex items-center gap-2 mb-2 flex-wrap">
-              <p className="text-[10px] uppercase tracking-[0.2em] text-muted">Your report</p>
+              <p className="text-xs uppercase tracking-[0.2em] text-muted">Your report</p>
               {/* Protocol version + freshness badge. Makes "which version am
                   I looking at" discoverable without opening /history, and
                   surfaces the "how old is this?" question the dashboard was
@@ -719,7 +719,7 @@ export default function DashboardPage() {
                                    : daysOld <= 14 ? 'text-muted-foreground bg-surface-3 border-card-border'
                                    : 'text-amber-400 bg-amber-500/10 border-amber-500/25';
                 return (
-                  <span className={clsx('inline-flex items-center gap-1 text-[10px] px-2 py-0.5 rounded-full border font-mono', freshnessTone)}
+                  <span className={clsx('inline-flex items-center gap-1 text-xs px-2 py-0.5 rounded-full border font-mono', freshnessTone)}
                         title={createdAt ? `Created ${new Date(createdAt).toLocaleString('ro-RO')}` : undefined}>
                     {version !== null && <span className="font-semibold">v{version}</span>}
                     {version !== null && daysOld !== null && <span className="text-muted">·</span>}
@@ -733,7 +733,7 @@ export default function DashboardPage() {
                   scores/bio-age/aging-pace below are lifestyle-optimization
                   targets, not clinical diagnoses. Legal footer lives at the
                   bottom; this is the version your users actually see. */}
-              <span className="inline-flex items-center gap-1 text-[10px] px-2 py-0.5 rounded-full bg-accent/10 border border-accent/25 text-accent font-medium">
+              <span className="inline-flex items-center gap-1 text-xs px-2 py-0.5 rounded-full bg-accent/10 border border-accent/25 text-accent font-medium">
                 Health-optimization view · not medical advice
               </span>
             </div>
@@ -757,7 +757,7 @@ export default function DashboardPage() {
                 </div>
               </div>
               <div>
-                <p className="text-[10px] uppercase tracking-widest text-muted">Longevity</p>
+                <p className="text-xs uppercase tracking-widest text-muted">Longevity</p>
                 <p className="text-sm font-medium text-foreground mt-0.5">Score</p>
                 <p className="text-[11px] text-muted-foreground mt-1.5 leading-tight">{longevityScore >= 85 ? 'Top tier' : longevityScore >= 70 ? 'Above average' : longevityScore >= 55 ? 'Room to improve' : 'Needs attention'}</p>
               </div>
@@ -774,7 +774,7 @@ export default function DashboardPage() {
 
           {/* Bio Age */}
           <div className="metric-tile">
-            <p className="text-[10px] uppercase tracking-widest text-muted">Biological Age</p>
+            <p className="text-xs uppercase tracking-widest text-muted">Biological Age</p>
             <div className={clsx('text-4xl font-bold font-mono tracking-tight mt-2', ageDelta !== null ? (ageDelta < -0.5 ? 'text-accent' : ageDelta > 0.5 ? 'text-danger' : 'text-foreground') : 'text-foreground')}>
               {bioAgeLabel}
             </div>
@@ -801,7 +801,7 @@ export default function DashboardPage() {
                                      : d >= 5  ? { label: 'Low confidence',    tone: 'text-muted-foreground bg-surface-3 border-card-border' }
                                      :           { label: 'Profile-only',      tone: 'text-muted bg-surface-3/70 border-card-border' };
               return (
-                <p className={clsx('mt-2 inline-flex items-center gap-1.5 text-[10px] font-mono px-2 py-0.5 rounded-full border', tone)}
+                <p className={clsx('mt-2 inline-flex items-center gap-1.5 text-xs font-mono px-2 py-0.5 rounded-full border', tone)}
                    title={d >= 5 ? `Refined using ${d} days of wearable/daily-log data` : 'No wearable data — score derived from profile + bloodwork only'}>
                   {label}{d > 0 ? ` · ${d}d` : ''}
                 </p>
@@ -815,7 +815,7 @@ export default function DashboardPage() {
                          : phenoConfidence.label === 'medium' ? 'text-amber-400 bg-amber-500/10 border-amber-500/25'
                          :                                       'text-muted-foreground bg-surface-3 border-card-border';
               return (
-                <p className={clsx('ml-1.5 mt-2 inline-flex items-center gap-1.5 text-[10px] font-mono px-2 py-0.5 rounded-full border', tone)}
+                <p className={clsx('ml-1.5 mt-2 inline-flex items-center gap-1.5 text-xs font-mono px-2 py-0.5 rounded-full border', tone)}
                    title={`PhenoAge uses 9 blood markers (Levine 2018). You have ${phenoConfidence.inputsPresent} — missing ones fall back to population averages.`}>
                   PhenoAge {phenoConfidence.inputsPresent}/9
                 </p>
@@ -833,7 +833,7 @@ export default function DashboardPage() {
 
           {/* Aging Speed */}
           <div className="metric-tile">
-            <p className="text-[10px] uppercase tracking-widest text-muted">Aging Speed</p>
+            <p className="text-xs uppercase tracking-widest text-muted">Aging Speed</p>
             <div className="flex items-baseline gap-2 mt-2">
               <AnimatedNumber value={velocity} duration={1500} decimals={2} className={clsx('text-4xl font-bold font-mono tracking-tight', velocity < 0.9 ? 'text-accent' : velocity > 1.1 ? 'text-danger' : 'text-foreground')} />
               <span className="text-xs text-muted-foreground">× clock</span>
@@ -889,25 +889,25 @@ export default function DashboardPage() {
           <div className="grid grid-cols-1 md:grid-cols-2 gap-3 mt-4">
             {diag.percentilePositioning.vsPeersOfSameAgeAndSex && (
               <div className="p-4 rounded-2xl bg-surface-2 border border-card-border">
-                <p className="text-[10px] uppercase tracking-widest text-muted mb-2">vs peers of your age</p>
+                <p className="text-xs uppercase tracking-widest text-muted mb-2">vs peers of your age</p>
                 <p className="text-sm leading-relaxed">{diag.percentilePositioning.vsPeersOfSameAgeAndSex}</p>
               </div>
             )}
             {diag.percentilePositioning.vsLongevityOptimalPopulation && (
               <div className="p-4 rounded-2xl bg-surface-2 border border-card-border">
-                <p className="text-[10px] uppercase tracking-widest text-muted mb-2">vs longevity-optimal cohort</p>
+                <p className="text-xs uppercase tracking-widest text-muted mb-2">vs longevity-optimal cohort</p>
                 <p className="text-sm leading-relaxed">{diag.percentilePositioning.vsLongevityOptimalPopulation}</p>
               </div>
             )}
             {diag.percentilePositioning.trajectoryIfNothingChanges && (
               <div className="p-4 rounded-2xl bg-red-500/[0.04] border border-red-500/15">
-                <p className="text-[10px] uppercase tracking-widest text-danger mb-2">If nothing changes (10y)</p>
+                <p className="text-xs uppercase tracking-widest text-danger mb-2">If nothing changes (10y)</p>
                 <p className="text-sm leading-relaxed text-foreground/90">{diag.percentilePositioning.trajectoryIfNothingChanges}</p>
               </div>
             )}
             {diag.percentilePositioning.trajectoryWithProtocol && (
               <div className="p-4 rounded-2xl bg-accent/[0.06] border border-accent/20">
-                <p className="text-[10px] uppercase tracking-widest text-accent mb-2">If you follow this protocol (12mo)</p>
+                <p className="text-xs uppercase tracking-widest text-accent mb-2">If you follow this protocol (12mo)</p>
                 <p className="text-sm leading-relaxed text-foreground/90">{diag.percentilePositioning.trajectoryWithProtocol}</p>
               </div>
             )}
@@ -930,16 +930,16 @@ export default function DashboardPage() {
           <Section id="life-journey" title="Your Life Journey" icon="🧬" subtitle="An honest reconstruction of how your biology got here — from birth, through the decades, to this lab result.">
             {lj.birthplaceContext && (
               <div className="p-4 rounded-2xl bg-surface-2 border border-card-border">
-                <p className="text-[10px] uppercase tracking-widest text-accent mb-2">Birthplace & upbringing</p>
+                <p className="text-xs uppercase tracking-widest text-accent mb-2">Birthplace & upbringing</p>
                 <p className="text-sm leading-relaxed text-foreground/90">{lj.birthplaceContext}</p>
               </div>
             )}
             {decades.length > 0 && (
               <div className="space-y-2">
-                <p className="text-[10px] uppercase tracking-widest text-muted">Decade by decade</p>
+                <p className="text-xs uppercase tracking-widest text-muted">Decade by decade</p>
                 {decades.map((d, i) => (
                   <div key={i} className="flex gap-3 p-3.5 rounded-xl bg-background border border-card-border">
-                    <span className="text-[10px] font-mono text-accent shrink-0 mt-0.5 w-14">{d.decade}</span>
+                    <span className="text-xs font-mono text-accent shrink-0 mt-0.5 w-14">{d.decade}</span>
                     <p className="text-[13px] leading-relaxed text-foreground/90">{d.estimate}</p>
                   </div>
                 ))}
@@ -947,7 +947,7 @@ export default function DashboardPage() {
             )}
             {bets.length > 0 && (
               <div>
-                <p className="text-[10px] uppercase tracking-widest text-muted mb-2">Formative lifestyle bets <span className="text-muted/70 normal-case">(hypotheses)</span></p>
+                <p className="text-xs uppercase tracking-widest text-muted mb-2">Formative lifestyle bets <span className="text-muted/70 normal-case">(hypotheses)</span></p>
                 <ul className="space-y-1.5">
                   {bets.map((b, i) => (
                     <li key={i} className="text-sm text-foreground/85 leading-relaxed flex gap-2">
@@ -960,7 +960,7 @@ export default function DashboardPage() {
             )}
             {exposures.length > 0 && (
               <div>
-                <p className="text-[10px] uppercase tracking-widest text-muted mb-2">What your body has accumulated</p>
+                <p className="text-xs uppercase tracking-widest text-muted mb-2">What your body has accumulated</p>
                 <ul className="space-y-1.5">
                   {exposures.map((e, i) => (
                     <li key={i} className="text-sm text-foreground/85 leading-relaxed flex gap-2">
@@ -975,7 +975,7 @@ export default function DashboardPage() {
               <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                 {headwinds.length > 0 && (
                   <div className="p-4 rounded-xl bg-red-500/[0.04] border border-red-500/15">
-                    <p className="text-[10px] uppercase tracking-widest text-danger mb-2">Genetic headwinds</p>
+                    <p className="text-xs uppercase tracking-widest text-danger mb-2">Genetic headwinds</p>
                     <ul className="space-y-1.5">
                       {headwinds.map((g, i) => (
                         <li key={i} className="text-[13px] leading-relaxed">{g}</li>
@@ -985,7 +985,7 @@ export default function DashboardPage() {
                 )}
                 {tailwinds.length > 0 && (
                   <div className="p-4 rounded-xl bg-accent/[0.04] border border-accent/15">
-                    <p className="text-[10px] uppercase tracking-widest text-accent mb-2">Genetic tailwinds</p>
+                    <p className="text-xs uppercase tracking-widest text-accent mb-2">Genetic tailwinds</p>
                     <ul className="space-y-1.5">
                       {tailwinds.map((g, i) => (
                         <li key={i} className="text-[13px] leading-relaxed">{g}</li>
@@ -997,7 +997,7 @@ export default function DashboardPage() {
             )}
             {citations.length > 0 && (
               <div className="pt-3 border-t border-card-border">
-                <p className="text-[10px] uppercase tracking-widest text-muted mb-2">Evidence anchors</p>
+                <p className="text-xs uppercase tracking-widest text-muted mb-2">Evidence anchors</p>
                 <ul className="space-y-1.5">
                   {citations.map((c, i) => (
                     <li key={i} className="text-[11px] leading-relaxed text-muted-foreground flex gap-2">
@@ -1052,7 +1052,7 @@ export default function DashboardPage() {
 
                   {(sys.drivers || []).length > 0 && (
                     <div>
-                      <p className="text-[10px] uppercase tracking-widest text-accent mb-1">Pulling it UP</p>
+                      <p className="text-xs uppercase tracking-widest text-accent mb-1">Pulling it UP</p>
                       <ul className="space-y-1">
                         {sys.drivers.slice(0, 3).map((d, i) => (
                           <li key={i} className="text-[11px] text-foreground/80 leading-snug flex gap-1.5">
@@ -1065,7 +1065,7 @@ export default function DashboardPage() {
 
                   {(sys.dragAnchors || []).length > 0 && (
                     <div>
-                      <p className="text-[10px] uppercase tracking-widest text-amber-400 mb-1">Dragging it DOWN</p>
+                      <p className="text-xs uppercase tracking-widest text-amber-400 mb-1">Dragging it DOWN</p>
                       <ul className="space-y-1">
                         {sys.dragAnchors.slice(0, 3).map((d, i) => (
                           <li key={i} className="text-[11px] text-foreground/80 leading-snug flex gap-1.5">
@@ -1078,7 +1078,7 @@ export default function DashboardPage() {
 
                   {sys.topLever && (
                     <div className="pt-2 border-t border-card-border">
-                      <p className="text-[10px] uppercase tracking-widest text-accent mb-1">Highest-ROI move (12wk)</p>
+                      <p className="text-xs uppercase tracking-widest text-accent mb-1">Highest-ROI move (12wk)</p>
                       <p className="text-[12px] text-foreground/95 leading-snug">{sys.topLever}</p>
                     </div>
                   )}
@@ -1096,7 +1096,7 @@ export default function DashboardPage() {
                   <div className="flex items-baseline justify-between gap-3 mb-1.5">
                     <div className="flex items-center gap-1.5">
                       <p className="text-sm font-semibold">{sys.label}</p>
-                      {sys.estimated && <span className="text-[10px] px-1.5 py-0.5 rounded bg-surface-3 text-muted uppercase tracking-wider">est.</span>}
+                      {sys.estimated && <span className="text-xs px-1.5 py-0.5 rounded bg-surface-3 text-muted uppercase tracking-wider">est.</span>}
                     </div>
                     <span className={clsx('text-2xl font-bold font-mono tabular-nums', scoreColor)}>{sys.score}</span>
                   </div>
@@ -1115,7 +1115,7 @@ export default function DashboardPage() {
                   )}
                   {sys.improvers.length > 0 && (
                     <div className="pt-2 border-t border-card-border">
-                      <p className="text-[10px] uppercase tracking-widest text-accent mb-1">Next move</p>
+                      <p className="text-xs uppercase tracking-widest text-accent mb-1">Next move</p>
                       <p className="text-[11px] text-foreground/90 leading-snug">{sys.improvers[0]}</p>
                     </div>
                   )}
@@ -1156,16 +1156,16 @@ export default function DashboardPage() {
                 highlight ? 'bg-accent/[0.04] border border-accent/15' : 'bg-surface-2 border border-card-border')}>
                 <div className="text-right">
                   <p className={clsx('text-xl sm:text-2xl font-bold font-mono tabular-nums tracking-tight', youColor)}>{you.value}</p>
-                  {you.caption && <p className="text-[10px] text-muted-foreground mt-0.5">{you.caption}</p>}
+                  {you.caption && <p className="text-xs text-muted-foreground mt-0.5">{you.caption}</p>}
                 </div>
                 <div className="flex flex-col items-center">
                   <div className="w-px h-4 bg-card-border" />
-                  <p className="text-[10px] text-muted uppercase tracking-widest py-1 shrink-0">{label}</p>
+                  <p className="text-xs text-muted uppercase tracking-widest py-1 shrink-0">{label}</p>
                   <div className="w-px h-4 bg-card-border" />
                 </div>
                 <div className="text-left">
                   <p className="text-xl sm:text-2xl font-bold font-mono tabular-nums tracking-tight text-amber-400">{bryan.value}</p>
-                  {bryan.caption && <p className="text-[10px] text-muted-foreground mt-0.5">{bryan.caption}</p>}
+                  {bryan.caption && <p className="text-xs text-muted-foreground mt-0.5">{bryan.caption}</p>}
                 </div>
               </div>
             );
@@ -1180,7 +1180,7 @@ export default function DashboardPage() {
                     <span className="w-2 h-2 rounded-full bg-accent" />
                     <p className="text-xs font-semibold text-accent uppercase tracking-wider">YOU</p>
                   </div>
-                  <p className="text-[10px] text-muted-foreground mt-0.5">Chronological: {chronoAge ?? '—'}y</p>
+                  <p className="text-xs text-muted-foreground mt-0.5">Chronological: {chronoAge ?? '—'}y</p>
                 </div>
                 <div />
                 <div className="text-left">
@@ -1188,7 +1188,7 @@ export default function DashboardPage() {
                     <span className="w-2 h-2 rounded-full bg-amber-400" />
                     <p className="text-xs font-semibold text-amber-400 uppercase tracking-wider">BRYAN</p>
                   </div>
-                  <p className="text-[10px] text-muted-foreground mt-0.5">Chronological: {BRYAN_CHRONO}y</p>
+                  <p className="text-xs text-muted-foreground mt-0.5">Chronological: {BRYAN_CHRONO}y</p>
                 </div>
               </div>
 
@@ -1251,7 +1251,7 @@ export default function DashboardPage() {
         {/* Per-biomarker gap list — richer cards with why-the-gap + close-the-gap action */}
         {p.bryanComparison && p.bryanComparison.length > 0 ? (
           <div className="space-y-2">
-            <p className="text-[10px] uppercase tracking-widest text-muted mb-2">Biomarker gaps</p>
+            <p className="text-xs uppercase tracking-widest text-muted mb-2">Biomarker gaps</p>
             {p.bryanComparison.map((c, i) => {
               const dir = c.gapDirection || (c.verdict.toLowerCase().includes('ahead') ? 'ahead' : 'behind');
               const isAhead = dir === 'ahead';
@@ -1266,13 +1266,13 @@ export default function DashboardPage() {
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center gap-2 flex-wrap">
                         <span className="text-sm font-semibold">{c.marker}</span>
-                        <span className={clsx('text-[10px] px-2 py-0.5 rounded-full font-medium', verdictTone)}>{c.verdict}</span>
+                        <span className={clsx('text-xs px-2 py-0.5 rounded-full font-medium', verdictTone)}>{c.verdict}</span>
                       </div>
                       <div className="flex items-center gap-2.5 mt-2 text-sm font-mono">
                         <span className="text-foreground">{c.yourValue}</span>
-                        <span className={clsx('text-[10px]', isAhead ? 'text-accent' : 'text-amber-400/80')}>{isAhead ? '◀' : '▶'}</span>
+                        <span className={clsx('text-xs', isAhead ? 'text-accent' : 'text-amber-400/80')}>{isAhead ? '◀' : '▶'}</span>
                         <span className="text-amber-400">{c.bryanValue}</span>
-                        <span className="text-[10px] text-muted ml-1">gap {Math.abs(c.gap).toFixed(1)}</span>
+                        <span className="text-xs text-muted ml-1">gap {Math.abs(c.gap).toFixed(1)}</span>
                       </div>
                     </div>
                   </div>
@@ -1280,13 +1280,13 @@ export default function DashboardPage() {
                     <div className="mt-3 pt-3 border-t border-card-border space-y-2">
                       {c.whyTheGapExistsForYou && (
                         <div>
-                          <p className="text-[10px] uppercase tracking-widest text-muted mb-1">Why this gap exists for YOU</p>
+                          <p className="text-xs uppercase tracking-widest text-muted mb-1">Why this gap exists for YOU</p>
                           <p className="text-[12px] text-foreground/85 leading-relaxed">{c.whyTheGapExistsForYou}</p>
                         </div>
                       )}
                       {c.closeTheGapAction && (
                         <div>
-                          <p className="text-[10px] uppercase tracking-widest text-accent mb-1">Close the gap</p>
+                          <p className="text-xs uppercase tracking-widest text-accent mb-1">Close the gap</p>
                           <p className="text-[12px] text-foreground/90 leading-relaxed">{c.closeTheGapAction}</p>
                         </div>
                       )}
@@ -1348,7 +1348,7 @@ export default function DashboardPage() {
                     <div className="flex items-baseline gap-1.5 shrink-0">
                       {trend && trend.direction !== 'steady' && (
                         <span
-                          className={clsx('inline-flex items-center gap-0.5 text-[10px] font-mono px-1.5 py-0.5 rounded-full border',
+                          className={clsx('inline-flex items-center gap-0.5 text-xs font-mono px-1.5 py-0.5 rounded-full border',
                             trend.improved === true ? 'text-accent bg-accent/10 border-accent/25'
                             : trend.improved === false ? 'text-danger bg-red-500/10 border-red-500/25'
                             : 'text-muted bg-surface-3 border-card-border')}
@@ -1359,16 +1359,16 @@ export default function DashboardPage() {
                         </span>
                       )}
                       {trend?.direction === 'steady' && (
-                        <span className="inline-flex items-center text-[10px] text-muted bg-surface-3 border border-card-border px-1.5 py-0.5 rounded-full" title="No meaningful change">
+                        <span className="inline-flex items-center text-xs text-muted bg-surface-3 border border-card-border px-1.5 py-0.5 rounded-full" title="No meaningful change">
                           <Minus className="w-3 h-3" />
                         </span>
                       )}
                       <span className={clsx('text-lg font-bold font-mono tabular-nums', getClassificationColor(b.classification))}>{b.value}</span>
-                      <span className="text-[10px] text-muted">{b.unit}</span>
+                      <span className="text-xs text-muted">{b.unit}</span>
                     </div>
                   </div>
                   <BiomarkerBar value={b.value} low={b.longevityOptimalRange[0]} high={b.longevityOptimalRange[1]} popLow={b.labRange[0]} popHigh={b.labRange[1]} bryanVal={b.bryanValue} unit={b.unit} />
-                  <div className="flex justify-between mt-2 text-[10px] text-muted">
+                  <div className="flex justify-between mt-2 text-xs text-muted">
                     <span>Optimal: <span className="text-accent/70 font-mono">{b.longevityOptimalRange[0]}–{b.longevityOptimalRange[1]}</span></span>
                     {b.bryanValue && <span>Bryan: <span className="text-amber-400 font-mono">{b.bryanValue}</span></span>}
                   </div>
@@ -1397,7 +1397,7 @@ export default function DashboardPage() {
                     <div className="flex items-center justify-between gap-3">
                       <div className="flex items-center gap-2.5 flex-1 min-w-0">
                         <p className="text-sm font-semibold truncate">{e.shortName}</p>
-                        <span className={clsx('text-[10px] font-medium px-2 py-0.5 rounded-full', pillClass)}>
+                        <span className={clsx('text-xs font-medium px-2 py-0.5 rounded-full', pillClass)}>
                           {e.expectedClassification.replace('likely_', '~ ').toUpperCase()}
                         </span>
                       </div>
@@ -1405,7 +1405,7 @@ export default function DashboardPage() {
                         <span className={clsx('text-lg font-bold font-mono tabular-nums', color)}>
                           ~{e.estimatedLow}–{e.estimatedHigh}
                         </span>
-                        <span className="text-[10px] text-muted">{e.unit}</span>
+                        <span className="text-xs text-muted">{e.unit}</span>
                       </div>
                     </div>
                     <p className="text-[11px] text-muted-foreground mt-2 leading-relaxed">
@@ -1459,19 +1459,19 @@ export default function DashboardPage() {
           <div className="grid grid-cols-4 gap-2 sm:gap-3">
             <div className="metric-tile text-center">
               <p className="text-xl sm:text-2xl font-bold font-mono tabular-nums">{p.nutrition.dailyCalories}</p>
-              <p className="text-[10px] text-muted uppercase tracking-widest mt-1">kcal/day</p>
+              <p className="text-xs text-muted uppercase tracking-widest mt-1">kcal/day</p>
             </div>
             <div className="metric-tile text-center">
               <p className="text-xl sm:text-2xl font-bold font-mono tabular-nums text-red-400">{p.nutrition.macros?.protein}<span className="text-xs text-muted">g</span></p>
-              <p className="text-[10px] text-muted uppercase tracking-widest mt-1">Protein</p>
+              <p className="text-xs text-muted uppercase tracking-widest mt-1">Protein</p>
             </div>
             <div className="metric-tile text-center">
               <p className="text-xl sm:text-2xl font-bold font-mono tabular-nums text-blue-400">{p.nutrition.macros?.carbs}<span className="text-xs text-muted">g</span></p>
-              <p className="text-[10px] text-muted uppercase tracking-widest mt-1">Carbs</p>
+              <p className="text-xs text-muted uppercase tracking-widest mt-1">Carbs</p>
             </div>
             <div className="metric-tile text-center">
               <p className="text-xl sm:text-2xl font-bold font-mono tabular-nums text-amber-400">{p.nutrition.macros?.fat}<span className="text-xs text-muted">g</span></p>
-              <p className="text-[10px] text-muted uppercase tracking-widest mt-1">Fats</p>
+              <p className="text-xs text-muted uppercase tracking-widest mt-1">Fats</p>
             </div>
           </div>
 
@@ -1485,7 +1485,7 @@ export default function DashboardPage() {
           {/* Daily MAX limits */}
           {p.nutrition.dailyMaximums && (
             <div>
-              <p className="text-[10px] uppercase tracking-widest text-muted mb-2">Daily maximums + minimums</p>
+              <p className="text-xs uppercase tracking-widest text-muted mb-2">Daily maximums + minimums</p>
               <div className="grid grid-cols-2 sm:grid-cols-5 gap-2">
                 {[
                   { label: 'Sugar MAX', val: p.nutrition.dailyMaximums.sugar_g, unit: 'g', tone: 'danger' as const },
@@ -1495,9 +1495,9 @@ export default function DashboardPage() {
                   { label: 'Water MIN', val: p.nutrition.dailyMaximums.water_ml_min, unit: 'ml', tone: 'accent' as const },
                 ].map(({ label, val, unit, tone }) => val !== undefined && (
                   <div key={label} className="rounded-xl bg-surface-2 border border-card-border p-3 text-center">
-                    <p className="text-[10px] uppercase tracking-widest text-muted">{label}</p>
+                    <p className="text-xs uppercase tracking-widest text-muted">{label}</p>
                     <p className={clsx('text-lg font-bold font-mono tabular-nums mt-1', tone === 'danger' ? 'text-danger' : tone === 'warning' ? 'text-warning' : 'text-accent')}>
-                      {val}<span className="text-[10px] text-muted ml-0.5">{unit}</span>
+                      {val}<span className="text-xs text-muted ml-0.5">{unit}</span>
                     </p>
                   </div>
                 ))}
@@ -1518,35 +1518,35 @@ export default function DashboardPage() {
                   <div key={group.key}>
                     <p className="text-xs font-semibold text-accent uppercase tracking-wider mb-2 flex items-center gap-2">
                       {group.label}
-                      <span className="text-[10px] text-muted normal-case font-normal tracking-normal">— pick one, swap freely</span>
+                      <span className="text-xs text-muted normal-case font-normal tracking-normal">— pick one, swap freely</span>
                     </p>
                     <div className="grid grid-cols-1 md:grid-cols-3 gap-2.5">
                       {group.items.map((opt, i) => (
                         <div key={i} className="p-3.5 rounded-xl bg-surface-2 border border-card-border hover:border-accent/30 transition-colors">
                           <div className="flex items-baseline justify-between gap-2 mb-1.5">
                             <p className="text-sm font-semibold leading-tight">{opt.name}</p>
-                            <span className="text-[10px] font-mono text-accent shrink-0">{opt.calories} kcal</span>
+                            <span className="text-xs font-mono text-accent shrink-0">{opt.calories} kcal</span>
                           </div>
                           <p className="text-[11px] text-muted-foreground leading-snug mb-2.5">{opt.description}</p>
                           {/* Macro chips */}
                           <div className="flex flex-wrap gap-1 mb-2">
-                            <span className="text-[10px] px-1.5 py-0.5 rounded bg-red-500/10 text-red-400 font-mono">P {opt.protein_g}g</span>
-                            <span className="text-[10px] px-1.5 py-0.5 rounded bg-blue-500/10 text-blue-400 font-mono">C {opt.carbs_g}g</span>
-                            <span className="text-[10px] px-1.5 py-0.5 rounded bg-amber-500/10 text-amber-400 font-mono">F {opt.fat_g}g</span>
-                            {opt.fiber_g !== undefined && <span className="text-[10px] px-1.5 py-0.5 rounded bg-accent/10 text-accent font-mono">Fiber {opt.fiber_g}g</span>}
-                            {opt.sugar_g !== undefined && <span className="text-[10px] px-1.5 py-0.5 rounded bg-surface-3 text-muted-foreground font-mono">Sugar {opt.sugar_g}g</span>}
-                            {opt.sodium_mg !== undefined && <span className="text-[10px] px-1.5 py-0.5 rounded bg-surface-3 text-muted-foreground font-mono">Na {opt.sodium_mg}mg</span>}
+                            <span className="text-xs px-1.5 py-0.5 rounded bg-red-500/10 text-red-400 font-mono">P {opt.protein_g}g</span>
+                            <span className="text-xs px-1.5 py-0.5 rounded bg-blue-500/10 text-blue-400 font-mono">C {opt.carbs_g}g</span>
+                            <span className="text-xs px-1.5 py-0.5 rounded bg-amber-500/10 text-amber-400 font-mono">F {opt.fat_g}g</span>
+                            {opt.fiber_g !== undefined && <span className="text-xs px-1.5 py-0.5 rounded bg-accent/10 text-accent font-mono">Fiber {opt.fiber_g}g</span>}
+                            {opt.sugar_g !== undefined && <span className="text-xs px-1.5 py-0.5 rounded bg-surface-3 text-muted-foreground font-mono">Sugar {opt.sugar_g}g</span>}
+                            {opt.sodium_mg !== undefined && <span className="text-xs px-1.5 py-0.5 rounded bg-surface-3 text-muted-foreground font-mono">Na {opt.sodium_mg}mg</span>}
                           </div>
                           {opt.ingredients && opt.ingredients.length > 0 && (
-                            <p className="text-[10px] text-muted-foreground leading-snug pt-2 border-t border-card-border">
+                            <p className="text-xs text-muted-foreground leading-snug pt-2 border-t border-card-border">
                               <span className="text-muted">Ingredients:</span> {opt.ingredients.join(' · ')}
                             </p>
                           )}
                           {opt.whyForYou && (
-                            <p className="text-[10px] text-accent/90 mt-1.5 leading-snug">→ {opt.whyForYou}</p>
+                            <p className="text-xs text-accent/90 mt-1.5 leading-snug">→ {opt.whyForYou}</p>
                           )}
                           {opt.prepMinutes !== undefined && (
-                            <p className="text-[10px] text-muted mt-1">⏱️ {opt.prepMinutes} min prep</p>
+                            <p className="text-xs text-muted mt-1">⏱️ {opt.prepMinutes} min prep</p>
                           )}
                         </div>
                       ))}
@@ -1597,15 +1597,15 @@ export default function DashboardPage() {
           <div className="grid grid-cols-3 gap-2 sm:gap-3">
             <div className="metric-tile text-center">
               <p className="text-xl font-bold font-mono tabular-nums">{p.supplements.length}</p>
-              <p className="text-[10px] text-muted uppercase tracking-widest mt-1">In stack</p>
+              <p className="text-xs text-muted uppercase tracking-widest mt-1">In stack</p>
             </div>
             <div className="metric-tile text-center">
               <p className="text-xl font-bold font-mono tabular-nums text-accent">{p.supplements.filter(s => s.alreadyTaking).length}</p>
-              <p className="text-[10px] text-muted uppercase tracking-widest mt-1">You take</p>
+              <p className="text-xs text-muted uppercase tracking-widest mt-1">You take</p>
             </div>
             <div className="metric-tile text-center">
               <p className="text-xl font-bold font-mono tabular-nums text-accent">{totalSupCost}<span className="text-xs text-muted ml-1">RON/mo</span></p>
-              <p className="text-[10px] text-muted uppercase tracking-widest mt-1">Est. cost</p>
+              <p className="text-xs text-muted uppercase tracking-widest mt-1">Est. cost</p>
             </div>
           </div>
 
@@ -1661,7 +1661,7 @@ export default function DashboardPage() {
                 <div key={bk}>
                   <div className="flex items-baseline justify-between gap-2 mb-2">
                     <p className="text-[11px] font-semibold text-accent uppercase tracking-widest">{meta.title}</p>
-                    <span className="text-[10px] text-muted font-mono">{items.length} item{items.length === 1 ? '' : 's'}</span>
+                    <span className="text-xs text-muted font-mono">{items.length} item{items.length === 1 ? '' : 's'}</span>
                   </div>
                   <p className="text-[11px] text-muted-foreground mb-2 leading-snug">{meta.sub}</p>
                   <div className="space-y-2">
@@ -1675,7 +1675,7 @@ export default function DashboardPage() {
                             <div className="flex items-center gap-2 flex-wrap">
                               <p className="text-sm font-semibold leading-tight">{s.name}</p>
                               {s.alreadyTaking && (
-                                <span className="text-[10px] uppercase tracking-wider px-2 py-0.5 rounded-full bg-accent/15 text-accent border border-accent/30 font-medium">
+                                <span className="text-xs uppercase tracking-wider px-2 py-0.5 rounded-full bg-accent/15 text-accent border border-accent/30 font-medium">
                                   ✓ in your stack
                                 </span>
                               )}
@@ -1688,7 +1688,7 @@ export default function DashboardPage() {
                               {s.anchorMeal === 'none (empty stomach)' && <> · <span className="text-amber-400/80">empty stomach</span></>}
                             </p>
                           </div>
-                          <span className={clsx('text-[10px] font-mono px-2 py-0.5 rounded-full shrink-0',
+                          <span className={clsx('text-xs font-mono px-2 py-0.5 rounded-full shrink-0',
                             s.priority === 'MUST' ? 'pill-optimal' :
                             s.priority === 'STRONG' ? 'bg-blue-500/15 text-blue-400 border border-blue-500/25' :
                             'bg-surface-3 text-muted border border-card-border')}>
@@ -1698,14 +1698,14 @@ export default function DashboardPage() {
 
                         {s.howToTake && (
                           <div className="mt-2 p-2.5 rounded-lg bg-surface-3 border border-card-border">
-                            <p className="text-[10px] uppercase tracking-widest text-muted mb-1">How to take</p>
+                            <p className="text-xs uppercase tracking-widest text-muted mb-1">How to take</p>
                             <p className="text-xs text-foreground/95 leading-relaxed">{s.howToTake}</p>
                           </div>
                         )}
 
                         {s.whyThisTime && (
                           <div className="mt-2 flex gap-2 items-start">
-                            <span className="text-[10px] text-accent/80 shrink-0 mt-0.5">⏱</span>
+                            <span className="text-xs text-accent/80 shrink-0 mt-0.5">⏱</span>
                             <p className="text-[11px] text-foreground/85 leading-relaxed italic">{s.whyThisTime}</p>
                           </div>
                         )}
@@ -1713,18 +1713,18 @@ export default function DashboardPage() {
                         <p className="text-[11px] text-muted-foreground mt-2 leading-relaxed">{s.justification}</p>
 
                         {s.stackWithOthers && s.stackWithOthers.length > 0 && (
-                          <p className="text-[10px] text-accent/80 mt-1.5">⊕ Take together with: {s.stackWithOthers.join(', ')}</p>
+                          <p className="text-xs text-accent/80 mt-1.5">⊕ Take together with: {s.stackWithOthers.join(', ')}</p>
                         )}
 
                         {s.interactions && s.interactions.length > 0 && (
-                          <p className="text-[10px] text-warning mt-1.5">⚠️ {s.interactions.join(' · ')}</p>
+                          <p className="text-xs text-warning mt-1.5">⚠️ {s.interactions.join(' · ')}</p>
                         )}
                         {s.warnings && (
-                          <p className="text-[10px] text-danger mt-1">⚠️ {s.warnings}</p>
+                          <p className="text-xs text-danger mt-1">⚠️ {s.warnings}</p>
                         )}
 
                         {s.startWeek && s.startWeek > 1 && (
-                          <p className="text-[10px] text-amber-400 mt-1.5">Start in week {s.startWeek}</p>
+                          <p className="text-xs text-amber-400 mt-1.5">Start in week {s.startWeek}</p>
                         )}
 
                         <div className="flex items-center justify-between mt-2 pt-2 border-t border-card-border">
@@ -1736,7 +1736,7 @@ export default function DashboardPage() {
                             🛒 Find on eMAG
                           </a>
                           {s.monthlyCostRon > 0 && (
-                            <span className="text-[10px] text-muted font-mono">~{s.monthlyCostRon} RON/mo</span>
+                            <span className="text-xs text-muted font-mono">~{s.monthlyCostRon} RON/mo</span>
                           )}
                         </div>
                       </div>
@@ -1870,7 +1870,7 @@ export default function DashboardPage() {
                             </p>
                           )}
                           {item.anchorRef && (
-                            <a href="#supplements" className="inline-block mt-1 ml-6 text-[10px] text-accent hover:underline">→ {item.anchorRef} card</a>
+                            <a href="#supplements" className="inline-block mt-1 ml-6 text-xs text-accent hover:underline">→ {item.anchorRef} card</a>
                           )}
                         </div>
                       </div>
@@ -1890,15 +1890,15 @@ export default function DashboardPage() {
           <div className="grid grid-cols-3 gap-2 sm:gap-3">
             <div className="metric-tile text-center">
               <p className="text-xl font-bold font-mono tabular-nums text-accent">{p.exercise.zone2Target}<span className="text-xs text-muted ml-1">min</span></p>
-              <p className="text-[10px] text-muted uppercase tracking-widest mt-1">Zone 2 / week</p>
+              <p className="text-xs text-muted uppercase tracking-widest mt-1">Zone 2 / week</p>
             </div>
             <div className="metric-tile text-center">
               <p className="text-xl font-bold font-mono tabular-nums text-accent">{p.exercise.strengthSessions}<span className="text-xs text-muted ml-1">×</span></p>
-              <p className="text-[10px] text-muted uppercase tracking-widest mt-1">Strength / week</p>
+              <p className="text-xs text-muted uppercase tracking-widest mt-1">Strength / week</p>
             </div>
             <div className="metric-tile text-center">
               <p className="text-xl font-bold font-mono tabular-nums text-accent">{p.exercise.dailyStepsTarget?.toLocaleString() ?? '8,000'}</p>
-              <p className="text-[10px] text-muted uppercase tracking-widest mt-1">Steps / day</p>
+              <p className="text-xs text-muted uppercase tracking-widest mt-1">Steps / day</p>
             </div>
           </div>
 
@@ -1913,7 +1913,7 @@ export default function DashboardPage() {
                     <div key={i} className={clsx('p-3.5 rounded-xl border', isRest ? 'bg-surface-2 border-card-border' : 'bg-accent/[0.04] border-accent/20')}>
                       <div className="flex items-baseline justify-between gap-3 mb-1">
                         <p className="text-sm font-semibold">{d.day} <span className="text-muted-foreground font-normal text-xs">· {d.activity}</span></p>
-                        <div className="flex items-center gap-2 text-[10px] font-mono shrink-0">
+                        <div className="flex items-center gap-2 text-xs font-mono shrink-0">
                           <span className={clsx('px-2 py-0.5 rounded-full',
                             isRest ? 'bg-surface-3 text-muted' :
                             d.intensity?.toLowerCase().includes('high') || d.intensity?.toLowerCase().includes('hiit') ? 'bg-red-500/15 text-red-400' :
@@ -1931,7 +1931,7 @@ export default function DashboardPage() {
                           ))}
                         </ul>
                       )}
-                      {d.notes && <p className="text-[10px] text-muted-foreground mt-1.5 italic">{d.notes}</p>}
+                      {d.notes && <p className="text-xs text-muted-foreground mt-1.5 italic">{d.notes}</p>}
                     </div>
                   );
                 })}
@@ -1963,7 +1963,7 @@ export default function DashboardPage() {
 
           {p.exercise.progressionNotes && (
             <div className="rounded-xl bg-surface-2 border border-card-border p-3">
-              <p className="text-[10px] uppercase tracking-widest text-muted mb-1">12-week progression</p>
+              <p className="text-xs uppercase tracking-widest text-muted mb-1">12-week progression</p>
               <p className="text-xs text-foreground/90 leading-relaxed">{p.exercise.progressionNotes}</p>
             </div>
           )}
@@ -1991,10 +1991,10 @@ export default function DashboardPage() {
           <div className="rounded-2xl bg-gradient-to-br from-blue-500/[0.06] via-accent/[0.03] to-transparent border border-card-border p-5">
             <div className="grid grid-cols-3 items-center gap-3">
               <div className="text-center">
-                <p className="text-[10px] uppercase tracking-widest text-muted mb-1">Bedtime</p>
+                <p className="text-xs uppercase tracking-widest text-muted mb-1">Bedtime</p>
                 <p className="text-3xl font-bold font-mono tabular-nums text-blue-400">{p.sleep.targetBedtime}</p>
                 {p.sleep.idealBedtime && p.sleep.idealBedtime !== p.sleep.targetBedtime && (
-                  <p className="text-[10px] text-muted mt-1">you said: {p.sleep.idealBedtime}</p>
+                  <p className="text-xs text-muted mt-1">you said: {p.sleep.idealBedtime}</p>
                 )}
               </div>
               <div className="flex flex-col items-center text-center">
@@ -2002,10 +2002,10 @@ export default function DashboardPage() {
                 {p.sleep.targetDuration && <p className="text-xs text-accent font-mono mt-1">{p.sleep.targetDuration}</p>}
               </div>
               <div className="text-center">
-                <p className="text-[10px] uppercase tracking-widest text-muted mb-1">Wake</p>
+                <p className="text-xs uppercase tracking-widest text-muted mb-1">Wake</p>
                 <p className="text-3xl font-bold font-mono tabular-nums text-amber-400">{p.sleep.targetWakeTime || '—'}</p>
                 {p.sleep.idealWakeTime && p.sleep.idealWakeTime !== p.sleep.targetWakeTime && (
-                  <p className="text-[10px] text-muted mt-1">you said: {p.sleep.idealWakeTime}</p>
+                  <p className="text-xs text-muted mt-1">you said: {p.sleep.idealWakeTime}</p>
                 )}
               </div>
             </div>
@@ -2086,7 +2086,7 @@ export default function DashboardPage() {
           {/* Sleep supplements (if recommended) */}
           {p.sleep.supplementsForSleep && p.sleep.supplementsForSleep.length > 0 && (
             <div className="rounded-xl bg-surface-2 border border-card-border p-3">
-              <p className="text-[10px] uppercase tracking-widest text-muted mb-1.5">Sleep-specific supplements</p>
+              <p className="text-xs uppercase tracking-widest text-muted mb-1.5">Sleep-specific supplements</p>
               <ul className="space-y-0.5">
                 {p.sleep.supplementsForSleep.map((s, i) => <li key={i} className="text-xs text-foreground/90">· {s}</li>)}
               </ul>
@@ -2103,12 +2103,12 @@ export default function DashboardPage() {
               <p className="text-xs text-accent font-medium mb-1">{cat.category}</p>
               {cat.tips.map((t, j) => (
                 <div key={j} className="flex items-start gap-2 mb-1.5">
-                  <span className={clsx('text-[10px] px-1.5 py-0.5 rounded shrink-0 mt-0.5',
+                  <span className={clsx('text-xs px-1.5 py-0.5 rounded shrink-0 mt-0.5',
                     t.difficulty === 'easy' ? 'bg-accent/20 text-accent' : t.difficulty === 'medium' ? 'bg-amber-500/20 text-amber-400' : 'bg-red-500/20 text-red-400'
                   )}>{t.difficulty}</span>
                   <div>
                     <p className="text-xs">{t.tip}</p>
-                    <p className="text-[10px] text-muted">{t.why}</p>
+                    <p className="text-xs text-muted">{t.why}</p>
                   </div>
                 </div>
               ))}
@@ -2141,7 +2141,7 @@ export default function DashboardPage() {
                     <span className="text-accent text-sm">⚡</span>
                   </div>
                   <div className="flex-1 min-w-0">
-                    <p className="text-[10px] uppercase tracking-widest text-accent">Problem</p>
+                    <p className="text-xs uppercase tracking-widest text-accent">Problem</p>
                     <p className="text-sm font-semibold text-foreground leading-snug mt-0.5">{pp.problem}</p>
                   </div>
                 </div>
@@ -2151,7 +2151,7 @@ export default function DashboardPage() {
                   <div className="p-3 rounded-xl bg-amber-500/[0.04] border border-amber-500/15">
                     <div className="flex items-center gap-2 mb-1">
                       <span className="w-1.5 h-1.5 rounded-full bg-amber-400" />
-                      <p className="text-[10px] uppercase tracking-widest text-amber-400 font-semibold">Likely cause</p>
+                      <p className="text-xs uppercase tracking-widest text-amber-400 font-semibold">Likely cause</p>
                     </div>
                     <p className="text-xs text-foreground/90 leading-relaxed">{pp.likelyCause}</p>
                   </div>
@@ -2159,7 +2159,7 @@ export default function DashboardPage() {
                   <div className="p-3 rounded-xl bg-accent/[0.04] border border-accent/20">
                     <div className="flex items-center gap-2 mb-1">
                       <span className="w-1.5 h-1.5 rounded-full bg-accent" />
-                      <p className="text-[10px] uppercase tracking-widest text-accent font-semibold">The fix</p>
+                      <p className="text-xs uppercase tracking-widest text-accent font-semibold">The fix</p>
                     </div>
                     <p className="text-xs text-foreground/90 leading-relaxed">{pp.solution}</p>
                   </div>
@@ -2167,16 +2167,16 @@ export default function DashboardPage() {
                   <div className="flex items-center gap-3 px-3 py-2 rounded-xl bg-surface-2 border border-card-border">
                     <span className="text-sm shrink-0">⏱</span>
                     <div className="flex-1 min-w-0">
-                      <p className="text-[10px] uppercase tracking-widest text-muted">Expected timeline</p>
+                      <p className="text-xs uppercase tracking-widest text-muted">Expected timeline</p>
                       <p className="text-xs text-foreground/90 mt-0.5">{pp.expectedTimeline}</p>
                     </div>
                   </div>
 
                   {pp.supportingBiomarkers && pp.supportingBiomarkers.length > 0 && (
                     <div className="flex flex-wrap gap-1.5 pt-1">
-                      <span className="text-[10px] text-muted">Track via:</span>
+                      <span className="text-xs text-muted">Track via:</span>
                       {pp.supportingBiomarkers.map(bm => (
-                        <span key={bm} className="text-[10px] font-mono px-2 py-0.5 rounded-full bg-surface-3 text-muted-foreground border border-card-border">
+                        <span key={bm} className="text-xs font-mono px-2 py-0.5 rounded-full bg-surface-3 text-muted-foreground border border-card-border">
                           {bm}
                         </span>
                       ))}
@@ -2185,7 +2185,7 @@ export default function DashboardPage() {
 
                   {pp.checkpoints && pp.checkpoints.length > 0 && (
                     <div className="pt-2 border-t border-card-border">
-                      <p className="text-[10px] uppercase tracking-widest text-muted mb-1.5">Weekly check-ins</p>
+                      <p className="text-xs uppercase tracking-widest text-muted mb-1.5">Weekly check-ins</p>
                       <ul className="space-y-0.5">
                         {pp.checkpoints.map((c, j) => (
                           <li key={j} className="text-[11px] text-muted-foreground flex gap-1.5"><span className="text-muted">·</span>{c}</li>
@@ -2211,12 +2211,12 @@ export default function DashboardPage() {
                     <span className="text-sm">🧘</span>
                   </div>
                   <div className="flex-1 min-w-0">
-                    <p className="text-[10px] uppercase tracking-widest text-accent font-semibold mb-1">Scenario</p>
+                    <p className="text-xs uppercase tracking-widest text-accent font-semibold mb-1">Scenario</p>
                     <p className="text-sm font-semibold text-foreground leading-snug">{f.scenario}</p>
                   </div>
                 </div>
                 <div className="mt-3 pl-0 pt-3 border-t border-card-border">
-                  <p className="text-[10px] uppercase tracking-widest text-muted mb-1.5">Strategy</p>
+                  <p className="text-xs uppercase tracking-widest text-muted mb-1.5">Strategy</p>
                   <p className="text-xs text-foreground/90 leading-relaxed">{f.strategy}</p>
                 </div>
               </div>
@@ -2256,7 +2256,7 @@ export default function DashboardPage() {
                   </div>
                   <div>
                     <p className="text-xs font-bold text-danger uppercase tracking-wider">Red flags · See a doctor</p>
-                    <p className="text-[10px] text-muted-foreground">Don't wait on these</p>
+                    <p className="text-xs text-muted-foreground">Don't wait on these</p>
                   </div>
                 </div>
                 <ul className="space-y-1.5 pl-1">
@@ -2279,7 +2279,7 @@ export default function DashboardPage() {
                   </div>
                   <div>
                     <p className="text-xs font-bold text-blue-400 uppercase tracking-wider">Specialists to see</p>
-                    <p className="text-[10px] text-muted-foreground">Worth an appointment based on your data</p>
+                    <p className="text-xs text-muted-foreground">Worth an appointment based on your data</p>
                   </div>
                 </div>
                 <ul className="space-y-1.5 pl-1">
@@ -2302,7 +2302,7 @@ export default function DashboardPage() {
                   </div>
                   <div>
                     <p className="text-xs font-bold text-purple-400 uppercase tracking-wider">Rx to discuss</p>
-                    <p className="text-[10px] text-muted-foreground">Prescription-level — doctor's call</p>
+                    <p className="text-xs text-muted-foreground">Prescription-level — doctor's call</p>
                   </div>
                 </div>
                 <ul className="space-y-1.5 pl-1">
@@ -2325,7 +2325,7 @@ export default function DashboardPage() {
                   </div>
                   <div>
                     <p className="text-xs font-bold text-accent uppercase tracking-wider">Tests to request</p>
-                    <p className="text-[10px] text-muted-foreground">Order these at your next lab visit</p>
+                    <p className="text-xs text-muted-foreground">Order these at your next lab visit</p>
                   </div>
                 </div>
                 <ul className="space-y-1.5 pl-1">
@@ -2345,7 +2345,7 @@ export default function DashboardPage() {
       {/* Footer */}
       <div className="text-center py-6 space-y-2">
         <p className="text-xs text-muted">Generated by <span className="text-accent">Protocol AI Engine</span></p>
-        <p className="text-[10px] text-muted">This is not medical advice. Consult a doctor before making changes.</p>
+        <p className="text-xs text-muted">This is not medical advice. Consult a doctor before making changes.</p>
         <button onClick={async () => { await fetch('/api/reset-onboarding', { method: 'POST' }); window.location.href = '/onboarding'; }} className="text-xs text-accent hover:underline">Regenerate protocol</button>
       </div>
       </div>

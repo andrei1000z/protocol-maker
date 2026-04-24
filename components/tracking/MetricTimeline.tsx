@@ -210,7 +210,7 @@ function MetricRow({
         <div className="flex-1 min-w-0">
           <p className="text-[13px] text-muted-foreground truncate">{spec.label}</p>
         </div>
-        <span className="text-[10px] font-mono text-muted shrink-0">
+        <span className="text-xs font-mono text-muted shrink-0">
           {unlockAt ? `at ${unlockAt}` : 'later'}
         </span>
       </div>
@@ -241,7 +241,7 @@ function MetricRow({
           <div className="flex items-center gap-1.5 flex-wrap">
             <p className="text-[13px] font-medium truncate">{spec.label}</p>
             {deviceSource && !isManual && (
-              <span className="inline-flex text-[10px] px-1.5 py-0.5 rounded bg-accent/10 border border-accent/20 text-accent font-medium uppercase tracking-wider">
+              <span className="inline-flex text-xs px-1.5 py-0.5 rounded bg-accent/10 border border-accent/20 text-accent font-medium uppercase tracking-wider">
                 ⌚ {deviceSource}
               </span>
             )}
@@ -249,7 +249,7 @@ function MetricRow({
         </div>
         <span className="text-sm font-mono tabular-nums text-accent shrink-0">
           {displayValue}
-          {spec.unit && !isDuration && !isPreset && <span className="text-[10px] text-muted ml-0.5">{spec.unit}</span>}
+          {spec.unit && !isDuration && !isPreset && <span className="text-xs text-muted ml-0.5">{spec.unit}</span>}
         </span>
         <button
           onClick={() => {
@@ -285,15 +285,15 @@ function MetricRow({
         <div className="flex items-center gap-1.5 flex-wrap">
           <p className="text-[13px] font-medium truncate">{spec.label}</p>
           {deviceSource && !isManual && (
-            <span className="inline-flex text-[10px] px-1.5 py-0.5 rounded bg-accent/10 border border-accent/20 text-accent font-medium uppercase tracking-wider">
+            <span className="inline-flex text-xs px-1.5 py-0.5 rounded bg-accent/10 border border-accent/20 text-accent font-medium uppercase tracking-wider">
               ⌚ {deviceSource}
             </span>
           )}
           {isManual && (
-            <span className="inline-flex text-[10px] px-1.5 py-0.5 rounded bg-surface-3 text-muted uppercase tracking-wider">manual</span>
+            <span className="inline-flex text-xs px-1.5 py-0.5 rounded bg-surface-3 text-muted uppercase tracking-wider">manual</span>
           )}
         </div>
-        {spec.hint && <p className="text-[10px] text-muted mt-0.5 leading-snug">{spec.hint}</p>}
+        {spec.hint && <p className="text-xs text-muted mt-0.5 leading-snug">{spec.hint}</p>}
       </div>
 
       {/* Preset buttons — stress_level. Tap saves immediately, no Log button
@@ -368,7 +368,7 @@ function MetricRow({
             />
           </div>
           {spec.unit && (
-            <span className="text-[10px] text-muted pointer-events-none font-mono">{spec.unit}</span>
+            <span className="text-xs text-muted pointer-events-none font-mono">{spec.unit}</span>
           )}
         </div>
       ) : isDuration ? (
@@ -393,7 +393,7 @@ function MetricRow({
               step={1}
               className="w-full rounded-lg bg-background border border-card-border px-2 py-1.5 text-sm font-mono tabular-nums outline-none focus:border-accent transition-colors text-right pr-5"
             />
-            <span className="absolute right-1.5 top-1/2 -translate-y-1/2 text-[10px] text-muted pointer-events-none font-mono">h</span>
+            <span className="absolute right-1.5 top-1/2 -translate-y-1/2 text-xs text-muted pointer-events-none font-mono">h</span>
           </div>
           <div className="relative w-14">
             <input
@@ -414,7 +414,7 @@ function MetricRow({
               step={1}
               className="w-full rounded-lg bg-background border border-card-border px-2 py-1.5 text-sm font-mono tabular-nums outline-none focus:border-accent transition-colors text-right pr-6"
             />
-            <span className="absolute right-1.5 top-1/2 -translate-y-1/2 text-[10px] text-muted pointer-events-none font-mono">m</span>
+            <span className="absolute right-1.5 top-1/2 -translate-y-1/2 text-xs text-muted pointer-events-none font-mono">m</span>
           </div>
         </div>
       ) : (
@@ -434,7 +434,7 @@ function MetricRow({
             className="w-full rounded-lg bg-background border border-card-border px-2.5 py-1.5 text-sm font-mono tabular-nums outline-none focus:border-accent transition-colors text-right"
           />
           {spec.unit && (
-            <span className="absolute right-2 top-1/2 -translate-y-1/2 text-[10px] text-muted pointer-events-none font-mono">{spec.unit}</span>
+            <span className="absolute right-2 top-1/2 -translate-y-1/2 text-xs text-muted pointer-events-none font-mono">{spec.unit}</span>
           )}
         </div>
       )}
@@ -546,12 +546,12 @@ export function MetricTimeline({
                   <span className="text-base">{w.emoji}</span>
                   <div>
                     <p className="text-sm font-semibold tracking-tight">{w.label}</p>
-                    <p className="text-[10px] text-muted font-mono">{w.range}</p>
+                    <p className="text-xs text-muted font-mono">{w.range}</p>
                   </div>
                 </div>
                 <div className="text-right">
                   {locked ? (
-                    <span className="text-[10px] font-mono text-muted">available at {unlockAt}</span>
+                    <span className="text-xs font-mono text-muted">available at {unlockAt}</span>
                   ) : (
                     <span className="text-xs font-mono tabular-nums text-muted-foreground">
                       <span className={loggedCount === winTotal ? 'text-accent font-semibold' : ''}>{loggedCount}</span>
@@ -564,7 +564,7 @@ export function MetricTimeline({
               {/* Groups within the window */}
               {groups.map(group => (
                 <div key={group.title} className="space-y-1.5">
-                  <p className="text-[10px] uppercase tracking-widest text-accent/80 font-mono px-0.5">{group.title}</p>
+                  <p className="text-xs uppercase tracking-widest text-accent/80 font-mono px-0.5">{group.title}</p>
                   <div className="space-y-1">
                     {group.fields.map(spec => {
                       const value = metrics[spec.key] as number | null | undefined;

@@ -135,7 +135,7 @@ function ActionChip({ action, onApply, onSkip }: {
     <div className="rounded-xl bg-accent/[0.04] border border-accent/20 p-3 space-y-2">
       <div className="flex items-center gap-2">
         <Icon className={clsx('w-3.5 h-3.5 shrink-0', meta.color)} />
-        <span className={clsx('text-[10px] font-semibold uppercase tracking-widest', meta.color)}>{meta.label}</span>
+        <span className={clsx('text-xs font-semibold uppercase tracking-widest', meta.color)}>{meta.label}</span>
       </div>
       <p className="text-[12px] text-foreground/90 leading-snug font-mono break-all">{preview}</p>
       <div className="flex gap-2">
@@ -468,7 +468,7 @@ export default function ChatPage() {
                 {contextChips.map(c => (
                   <span
                     key={c.label}
-                    className={clsx('text-[10px] font-medium px-2 py-0.5 rounded-full border',
+                    className={clsx('text-xs font-medium px-2 py-0.5 rounded-full border',
                       c.tone === 'accent' ? 'bg-accent/10 text-accent border-accent/25' : 'bg-surface-2 text-muted-foreground border-card-border'
                     )}
                   >
@@ -506,7 +506,7 @@ export default function ChatPage() {
             </div>
 
             <div>
-              <p className="text-[10px] text-muted uppercase tracking-widest mb-2.5 px-1">Try asking</p>
+              <p className="text-xs text-muted uppercase tracking-widest mb-2.5 px-1">Try asking</p>
               <div className="space-y-1.5">
                 {suggestions.map((s) => (
                   <button
@@ -555,7 +555,7 @@ export default function ChatPage() {
                     <div className="w-5 h-5 rounded-md bg-accent/10 border border-accent/20 flex items-center justify-center">
                       <Brain className="w-3 h-3 text-accent" />
                     </div>
-                    <span className="text-[10px] text-muted font-medium uppercase tracking-widest">Protocol AI</span>
+                    <span className="text-xs text-muted font-medium uppercase tracking-widest">Protocol AI</span>
                   </div>
                   {isErrorReply ? (
                     <div className="glass-card rounded-2xl rounded-tl-md px-4 py-3 bg-red-500/[0.04] border border-red-500/20">
@@ -591,7 +591,7 @@ export default function ChatPage() {
                   {/* Action chips — appear AFTER streaming finishes for this message */}
                   {!streaming && derivedActions.length > 0 && (
                     <div className="space-y-1.5 pl-1">
-                      <p className="text-[10px] text-muted uppercase tracking-widest">Tap to apply</p>
+                      <p className="text-xs text-muted uppercase tracking-widest">Tap to apply</p>
                       {derivedActions.map(a => (
                         <ActionChip
                           key={a.id}
@@ -639,7 +639,7 @@ export default function ChatPage() {
         </button>
       </form>
 
-      <p className="text-[10px] text-center text-muted pt-2 shrink-0">
+      <p className="text-xs text-center text-muted pt-2 shrink-0">
         Shift + Enter for a new line · Not medical advice
       </p>
     </div>

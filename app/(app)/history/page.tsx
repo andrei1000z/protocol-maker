@@ -177,7 +177,7 @@ export default function HistoryPage() {
       <div className="hidden print:block">
         <h1 className="text-2xl font-bold">Protocol — Patient History Report</h1>
         <p className="text-xs mt-1">Generated {new Date().toLocaleDateString('ro-RO', { year: 'numeric', month: 'long', day: 'numeric' })} · Protocol-tawny.vercel.app</p>
-        <p className="text-[10px] mt-2 text-gray-600">
+        <p className="text-xs mt-2 text-gray-600">
           This report is generated from user-entered data and AI-derived analysis.
           It is <strong>not a medical diagnosis</strong>. Reference ranges follow longevity-optimal bands
           (Levine 2018 PhenoAge + Bryan Johnson Blueprint), which are stricter than population-average lab normals.
@@ -250,7 +250,7 @@ export default function HistoryPage() {
           {/* Bio age timeline — compact */}
           {protocolChartData.some(p => p.bioAge !== null) && (
             <div className="rounded-xl bg-surface-2 border border-card-border p-4 -mx-1">
-              <p className="text-[10px] uppercase tracking-widest text-muted mb-2">Biological age</p>
+              <p className="text-xs uppercase tracking-widest text-muted mb-2">Biological age</p>
               <MetricLineChart
                 data={protocolChartData.map(p => ({ date: p.date, dateLabel: p.date, value: p.bioAge }))}
                 height={140}
@@ -274,7 +274,7 @@ export default function HistoryPage() {
                     : <TrendingDown className="w-4 h-4 text-danger shrink-0" />}
                   <div className="min-w-0 flex-1">
                     <p className="text-sm font-medium truncate">{c.name}</p>
-                    <p className="text-[10px] text-muted font-mono">
+                    <p className="text-xs text-muted font-mono">
                       {c.from.toFixed(1)} <span className="text-muted/60">→</span> {c.to.toFixed(1)} {c.unit}
                     </p>
                   </div>
@@ -309,7 +309,7 @@ export default function HistoryPage() {
                 d.score.delta > 0 ? 'bg-accent/[0.04] border-accent/25' :
                 d.score.delta < 0 ? 'bg-red-500/[0.04] border-red-500/20' :
                 'bg-surface-2 border-card-border')}>
-                <p className="text-[10px] uppercase tracking-widest text-muted">Longevity score</p>
+                <p className="text-xs uppercase tracking-widest text-muted">Longevity score</p>
                 <div className="flex items-baseline gap-2 mt-2">
                   <span className="text-2xl font-bold font-mono tabular-nums text-muted">{d.score.prev ?? '—'}</span>
                   <span className="text-muted">→</span>
@@ -326,7 +326,7 @@ export default function HistoryPage() {
                 d.bioAge.delta < 0 ? 'bg-accent/[0.04] border-accent/25' :
                 d.bioAge.delta > 0 ? 'bg-red-500/[0.04] border-red-500/20' :
                 'bg-surface-2 border-card-border')}>
-                <p className="text-[10px] uppercase tracking-widest text-muted">Biological age</p>
+                <p className="text-xs uppercase tracking-widest text-muted">Biological age</p>
                 <div className="flex items-baseline gap-2 mt-2">
                   <span className="text-2xl font-bold font-mono tabular-nums text-muted">{d.bioAge.prev?.toFixed(1) ?? '—'}</span>
                   <span className="text-muted">→</span>
@@ -343,7 +343,7 @@ export default function HistoryPage() {
                 d.agingPace.delta < 0 ? 'bg-accent/[0.04] border-accent/25' :
                 d.agingPace.delta > 0 ? 'bg-red-500/[0.04] border-red-500/20' :
                 'bg-surface-2 border-card-border')}>
-                <p className="text-[10px] uppercase tracking-widest text-muted">Aging pace</p>
+                <p className="text-xs uppercase tracking-widest text-muted">Aging pace</p>
                 <div className="flex items-baseline gap-2 mt-2">
                   <span className="text-2xl font-bold font-mono tabular-nums text-muted">{d.agingPace.prev?.toFixed(2) ?? '—'}×</span>
                   <span className="text-muted">→</span>
@@ -360,7 +360,7 @@ export default function HistoryPage() {
             {/* Supplement diff */}
             <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
               <div className="p-4 rounded-xl bg-accent/[0.04] border border-accent/20">
-                <p className="text-[10px] uppercase tracking-widest text-accent font-semibold">+ Added ({d.supplements.addedCount})</p>
+                <p className="text-xs uppercase tracking-widest text-accent font-semibold">+ Added ({d.supplements.addedCount})</p>
                 {d.supplements.added.length > 0 ? (
                   <ul className="mt-2 space-y-1">
                     {d.supplements.added.map(s => (
@@ -371,7 +371,7 @@ export default function HistoryPage() {
               </div>
 
               <div className="p-4 rounded-xl bg-surface-2 border border-card-border">
-                <p className="text-[10px] uppercase tracking-widest text-muted-foreground font-semibold">− Removed ({d.supplements.removedCount})</p>
+                <p className="text-xs uppercase tracking-widest text-muted-foreground font-semibold">− Removed ({d.supplements.removedCount})</p>
                 {d.supplements.removed.length > 0 ? (
                   <ul className="mt-2 space-y-1">
                     {d.supplements.removed.map(s => (
@@ -382,7 +382,7 @@ export default function HistoryPage() {
               </div>
 
               <div className="p-4 rounded-xl bg-surface-2 border border-card-border">
-                <p className="text-[10px] uppercase tracking-widest text-muted-foreground font-semibold">= Kept ({d.supplements.keptCount})</p>
+                <p className="text-xs uppercase tracking-widest text-muted-foreground font-semibold">= Kept ({d.supplements.keptCount})</p>
                 {d.supplements.kept.length > 0 ? (
                   <p className="text-xs text-muted-foreground mt-2 leading-relaxed">{d.supplements.kept.slice(0, 6).join(', ')}{d.supplements.kept.length > 6 ? ` + ${d.supplements.kept.length - 6} more` : ''}</p>
                 ) : <p className="text-xs text-muted-foreground mt-1.5 italic">Stack rebuilt from scratch</p>}
@@ -448,7 +448,7 @@ export default function HistoryPage() {
                     <p className="text-[11px] text-muted-foreground">{test.biomarkers.length} biomarkers</p>
                   </div>
                   {role && (
-                    <span className={clsx('text-[10px] font-semibold uppercase tracking-wider px-2.5 py-1 rounded-full shrink-0',
+                    <span className={clsx('text-xs font-semibold uppercase tracking-wider px-2.5 py-1 rounded-full shrink-0',
                       role === 'older' ? 'pill-suboptimal' : 'pill-optimal')}>
                       {role}
                     </span>
@@ -486,7 +486,7 @@ export default function HistoryPage() {
 
             <div className="space-y-1 mt-3">
               {/* Column headers */}
-              <div className="grid grid-cols-12 gap-3 px-3 pb-2 text-[10px] text-muted uppercase tracking-widest border-b border-card-border">
+              <div className="grid grid-cols-12 gap-3 px-3 pb-2 text-xs text-muted uppercase tracking-widest border-b border-card-border">
                 <span className="col-span-4">Marker</span>
                 <span className="col-span-3 text-right">Older</span>
                 <span className="col-span-3 text-right">Newer</span>
@@ -529,7 +529,7 @@ export default function HistoryPage() {
               return (
                 <div key={p.id} className="flex items-center gap-3 p-3 rounded-xl bg-surface-2 border border-card-border">
                   <div className="w-10 h-10 rounded-lg bg-surface-3 flex items-center justify-center shrink-0">
-                    <span className="text-[10px] font-mono uppercase tracking-wider text-muted-foreground">{p.generation_source?.slice(0, 4) || 'prot'}</span>
+                    <span className="text-xs font-mono uppercase tracking-wider text-muted-foreground">{p.generation_source?.slice(0, 4) || 'prot'}</span>
                   </div>
                   <div className="flex-1 min-w-0">
                     <p className="text-sm font-medium truncate">

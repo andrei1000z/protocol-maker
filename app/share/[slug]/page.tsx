@@ -78,15 +78,15 @@ export default async function SharePage({ params }: { params: Promise<{ slug: st
         <div className="grid grid-cols-3 gap-3 text-center">
           <div className="p-4 rounded-xl bg-background border border-card-border">
             <p className="text-3xl font-bold font-mono text-accent">{score}</p>
-            <p className="text-[10px] text-muted mt-1">LONGEVITY SCORE</p>
+            <p className="text-xs text-muted mt-1">LONGEVITY SCORE</p>
           </div>
           <div className="p-4 rounded-xl bg-background border border-card-border">
             <p className="text-3xl font-bold font-mono">{bioAge}</p>
-            <p className="text-[10px] text-muted mt-1">BIO AGE</p>
+            <p className="text-xs text-muted mt-1">BIO AGE</p>
           </div>
           <div className="p-4 rounded-xl bg-background border border-card-border">
             <p className="text-3xl font-bold font-mono">{diag?.chronologicalAge}</p>
-            <p className="text-[10px] text-muted mt-1">CHRONO AGE</p>
+            <p className="text-xs text-muted mt-1">CHRONO AGE</p>
           </div>
         </div>
         {diag?.summary && <p className="text-sm text-muted-foreground mt-4 text-center">{diag.summary}</p>}
@@ -102,8 +102,8 @@ export default async function SharePage({ params }: { params: Promise<{ slug: st
                 <span className="text-sm font-medium">{b.shortName as string || b.name as string}</span>
                 <div className="flex items-center gap-2">
                   <span className="text-base font-bold font-mono">{b.value as number}</span>
-                  <span className="text-[10px] text-muted">{b.unit as string}</span>
-                  <span className="text-[10px] font-mono px-2 py-0.5 rounded-full bg-accent/10 text-accent">{b.classification as string}</span>
+                  <span className="text-xs text-muted">{b.unit as string}</span>
+                  <span className="text-xs font-mono px-2 py-0.5 rounded-full bg-accent/10 text-accent">{b.classification as string}</span>
                 </div>
               </div>
             ))}
@@ -120,9 +120,9 @@ export default async function SharePage({ params }: { params: Promise<{ slug: st
               <div key={i} className="p-3 rounded-xl bg-background border border-card-border">
                 <div className="flex items-center justify-between">
                   <span className="text-sm font-semibold">{s.name as string}</span>
-                  <span className="text-[10px] font-mono px-2 py-0.5 rounded-full bg-accent/10 text-accent">{s.priority as string}</span>
+                  <span className="text-xs font-mono px-2 py-0.5 rounded-full bg-accent/10 text-accent">{s.priority as string}</span>
                 </div>
-                <p className="text-[10px] text-muted-foreground mt-1">{s.dose as string} • {s.timing as string}</p>
+                <p className="text-xs text-muted-foreground mt-1">{s.dose as string} • {s.timing as string}</p>
               </div>
             ))}
           </div>
@@ -149,7 +149,7 @@ export default async function SharePage({ params }: { params: Promise<{ slug: st
       <div className="text-center py-8 space-y-4">
         <p className="text-lg font-bold">Want your own personalized protocol?</p>
         <Link href="/" className="inline-block px-8 py-3 bg-accent text-black rounded-xl font-semibold text-sm">Get Your Protocol — Free</Link>
-        <p className="text-[10px] text-muted">Disclaimer: This is not medical advice. Consult your doctor before making changes.</p>
+        <p className="text-xs text-muted">Disclaimer: This is not medical advice. Consult your doctor before making changes.</p>
       </div>
     </div>
   );

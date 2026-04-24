@@ -54,7 +54,7 @@ export function RouteError({
           <h1 className="text-2xl sm:text-3xl font-semibold tracking-tight">{title}</h1>
           <p className="text-sm text-muted-foreground mt-3 leading-relaxed">{body}</p>
           {error?.digest && (
-            <p className="text-[10px] text-muted mt-3 font-mono">error id: {error.digest}</p>
+            <p className="text-xs text-muted mt-3 font-mono">error id: {error.digest}</p>
           )}
         </div>
         <div className="flex items-center justify-center gap-2 flex-wrap">

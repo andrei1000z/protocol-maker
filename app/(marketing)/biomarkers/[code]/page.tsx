@@ -92,7 +92,7 @@ export default async function BiomarkerPage({ params }: { params: Promise<{ code
 
         {/* Hero */}
         <div className="space-y-4">
-          <span className="inline-block text-[10px] font-mono uppercase tracking-widest text-accent bg-accent/10 border border-accent/25 rounded-full px-3 py-1">
+          <span className="inline-block text-xs font-mono uppercase tracking-widest text-accent bg-accent/10 border border-accent/25 rounded-full px-3 py-1">
             {categoryLabel}
           </span>
           <h1 className="text-3xl sm:text-4xl font-semibold tracking-tight">
@@ -111,8 +111,8 @@ export default async function BiomarkerPage({ params }: { params: Promise<{ code
         {hasBryan && b.bryanJohnsonValue !== undefined && (
           <section className="glass-card rounded-2xl p-5 space-y-3">
             <div className="flex items-baseline justify-between gap-2">
-              <p className="text-[10px] font-mono uppercase tracking-widest text-muted">Where people fall vs Bryan</p>
-              <p className="text-[10px] text-muted">
+              <p className="text-xs font-mono uppercase tracking-widest text-muted">Where people fall vs Bryan</p>
+              <p className="text-xs text-muted">
                 <span className="inline-block w-2 h-2 rounded-full bg-accent align-middle" /> optimal band
                 <span className="mx-2">·</span>
                 <span className="inline-block w-2 h-2 rotate-45 bg-amber-400 align-middle" /> Bryan
@@ -140,7 +140,7 @@ export default async function BiomarkerPage({ params }: { params: Promise<{ code
           <div className="glass-card rounded-2xl p-5 space-y-2">
             <div className="flex items-center gap-2 text-accent">
               <Target className="w-4 h-4" />
-              <span className="text-[10px] font-mono uppercase tracking-widest">Longevity-optimal</span>
+              <span className="text-xs font-mono uppercase tracking-widest">Longevity-optimal</span>
             </div>
             <p className="text-2xl font-semibold font-mono tabular-nums">
               {b.longevityOptimalLow}<span className="text-muted text-lg">–</span>{b.longevityOptimalHigh}
@@ -153,7 +153,7 @@ export default async function BiomarkerPage({ params }: { params: Promise<{ code
           <div className="glass-card rounded-2xl p-5 space-y-2">
             <div className="flex items-center gap-2 text-muted-foreground">
               <Activity className="w-4 h-4" />
-              <span className="text-[10px] font-mono uppercase tracking-widest">Lab reference</span>
+              <span className="text-xs font-mono uppercase tracking-widest">Lab reference</span>
             </div>
             <p className="text-2xl font-semibold font-mono tabular-nums text-muted-foreground">
               {b.populationAvgLow}<span className="text-muted text-lg">–</span>{b.populationAvgHigh}
@@ -167,7 +167,7 @@ export default async function BiomarkerPage({ params }: { params: Promise<{ code
             <div className="glass-card rounded-2xl p-5 space-y-2 border-accent/30">
               <div className="flex items-center gap-2 text-accent">
                 <span className="text-sm">🎯</span>
-                <span className="text-[10px] font-mono uppercase tracking-widest">Bryan Johnson</span>
+                <span className="text-xs font-mono uppercase tracking-widest">Bryan Johnson</span>
               </div>
               <p className="text-2xl font-semibold font-mono tabular-nums text-accent">
                 {b.bryanJohnsonValue}
@@ -208,7 +208,7 @@ export default async function BiomarkerPage({ params }: { params: Promise<{ code
                   {b.interventionsIfHigh.supplements.map((s, i) => (
                     <li key={i} className="flex gap-2">
                       <span className="text-accent">•</span>
-                      <span><strong className="text-foreground">{s.name}</strong> — {s.dose} <span className="text-[10px] uppercase tracking-wider text-muted ml-1">[{s.priority}]</span></span>
+                      <span><strong className="text-foreground">{s.name}</strong> — {s.dose} <span className="text-xs uppercase tracking-wider text-muted ml-1">[{s.priority}]</span></span>
                     </li>
                   ))}
                 </ul>
@@ -272,7 +272,7 @@ export default async function BiomarkerPage({ params }: { params: Promise<{ code
                   {b.interventionsIfLow.supplements.map((s, i) => (
                     <li key={i} className="flex gap-2">
                       <span className="text-accent">•</span>
-                      <span><strong className="text-foreground">{s.name}</strong> — {s.dose} <span className="text-[10px] uppercase tracking-wider text-muted ml-1">[{s.priority}]</span></span>
+                      <span><strong className="text-foreground">{s.name}</strong> — {s.dose} <span className="text-xs uppercase tracking-wider text-muted ml-1">[{s.priority}]</span></span>
                     </li>
                   ))}
                 </ul>
@@ -350,7 +350,7 @@ export default async function BiomarkerPage({ params }: { params: Promise<{ code
         </section>
 
         {/* Disclaimer */}
-        <p className="text-[10px] text-muted text-center leading-relaxed">
+        <p className="text-xs text-muted text-center leading-relaxed">
           Educational content · not medical advice · always discuss changes with your doctor
         </p>
       </article>

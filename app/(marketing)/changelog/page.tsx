@@ -134,7 +134,7 @@ export default function ChangelogPage() {
           {RELEASES.map(rel => (
             <li key={rel.date} className="relative pl-6 border-l border-card-border">
               <span className="absolute -left-[5px] top-1 w-2.5 h-2.5 rounded-full bg-accent ring-4 ring-background" />
-              <p className="text-[10px] uppercase tracking-widest text-muted font-mono mb-1">
+              <p className="text-xs uppercase tracking-widest text-muted font-mono mb-1">
                 {new Date(rel.date + 'T00:00:00Z').toLocaleDateString('ro-RO', { year: 'numeric', month: 'long', day: 'numeric' })}
               </p>
               <h2 className="text-xl font-semibold tracking-tight mb-4">{rel.title}</h2>
@@ -144,7 +144,7 @@ export default function ChangelogPage() {
                   return (
                     <li key={i} className="glass-card rounded-xl p-4 space-y-2">
                       <div className="flex items-center gap-2 flex-wrap">
-                        <span className={`text-[10px] font-mono uppercase tracking-widest px-2 py-0.5 rounded-full border ${style.bg}`}>
+                        <span className={`text-xs font-mono uppercase tracking-widest px-2 py-0.5 rounded-full border ${style.bg}`}>
                           {style.label}
                         </span>
                         <span className="text-sm font-medium">{item.label}</span>

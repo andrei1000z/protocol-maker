@@ -169,7 +169,7 @@ export function CommandPalette() {
             className="flex-1 bg-transparent text-sm outline-none placeholder:text-muted-foreground/50"
             aria-label="Command search"
           />
-          <kbd className="text-[10px] font-mono text-muted px-1.5 py-0.5 rounded border border-card-border shrink-0">ESC</kbd>
+          <kbd className="text-xs font-mono text-muted px-1.5 py-0.5 rounded border border-card-border shrink-0">ESC</kbd>
         </div>
 
         <div ref={listRef} className="max-h-[60vh] overflow-y-auto">
@@ -181,7 +181,7 @@ export function CommandPalette() {
               if (!items || items.length === 0) return null;
               return (
                 <div key={g} className="py-1.5">
-                  <p className="px-4 py-1 text-[10px] font-mono uppercase tracking-widest text-muted">{g}</p>
+                  <p className="px-4 py-1 text-xs font-mono uppercase tracking-widest text-muted">{g}</p>
                   {items.map(c => {
                     const Icon = c.icon;
                     const idx = runningIdx++;
@@ -197,7 +197,7 @@ export function CommandPalette() {
                       >
                         {Icon && <Icon className={clsx('w-4 h-4 shrink-0', active ? 'text-accent' : 'text-muted-foreground')} />}
                         <span className="flex-1 text-sm truncate">{c.label}</span>
-                        {c.hint && <span className="text-[10px] font-mono text-muted shrink-0">{c.hint}</span>}
+                        {c.hint && <span className="text-xs font-mono text-muted shrink-0">{c.hint}</span>}
                       </button>
                     );
                   })}
@@ -207,7 +207,7 @@ export function CommandPalette() {
           )}
         </div>
 
-        <div className="flex items-center justify-between px-4 py-2 border-t border-card-border bg-surface-2/50 text-[10px] text-muted font-mono">
+        <div className="flex items-center justify-between px-4 py-2 border-t border-card-border bg-surface-2/50 text-xs text-muted font-mono">
           <span className="inline-flex items-center gap-1.5">
             <kbd className="px-1 py-0.5 rounded border border-card-border">↑↓</kbd> navigate ·
             <kbd className="px-1 py-0.5 rounded border border-card-border ml-1">↵</kbd> open

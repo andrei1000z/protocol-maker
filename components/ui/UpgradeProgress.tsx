@@ -168,7 +168,7 @@ export function UpgradeProgress({ open, done, stages = DEFAULT_STAGES, onClose }
               style={{ width: `${Math.min(100, ((celebrate ? stages.length : stageIdx + 1) / stages.length) * 100)}%` }}
             />
           </div>
-          <p className="text-[10px] text-muted mt-2 font-mono text-center">
+          <p className="text-xs text-muted mt-2 font-mono text-center">
             Step {Math.min(stageIdx + 1, stages.length)} of {stages.length}
           </p>
         </div>

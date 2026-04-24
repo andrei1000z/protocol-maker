@@ -39,7 +39,7 @@ function sourceBadge(source: string | null | undefined) {
   if (!source) return null;
   const label = source === 'cron' ? 'Auto' : source === 'claude' ? 'AI' : source === 'groq' ? 'Groq' : source === 'fallback' ? 'Engine' : source;
   return (
-    <span className="ml-1.5 text-[9px] font-mono uppercase tracking-widest px-1.5 py-0.5 rounded-full bg-surface-3 border border-card-border text-muted">
+    <span className="ml-1.5 text-[11px] font-medium font-mono uppercase tracking-widest px-1.5 py-0.5 rounded-full bg-surface-3 border border-card-border text-muted">
       {label}
     </span>
   );
@@ -59,7 +59,7 @@ function DeltaTile({
   if (a === null || b === null) {
     return (
       <div className="p-4 rounded-xl bg-surface-2 border border-card-border">
-        <p className="text-[10px] uppercase tracking-widest text-muted">{label}</p>
+        <p className="text-xs uppercase tracking-widest text-muted">{label}</p>
         <p className="text-sm text-muted-foreground mt-2">Missing data</p>
       </div>
     );
@@ -75,7 +75,7 @@ function DeltaTile({
 
   return (
     <div className={clsx('p-4 rounded-xl border', tone)}>
-      <p className="text-[10px] uppercase tracking-widest text-muted">{label}</p>
+      <p className="text-xs uppercase tracking-widest text-muted">{label}</p>
       <div className="flex items-baseline gap-2 mt-2">
         <span className="text-xl font-bold font-mono tabular-nums text-muted-foreground">{a.toFixed(decimals)}{unit}</span>
         <ArrowLeftRight className="w-3.5 h-3.5 text-muted shrink-0" />

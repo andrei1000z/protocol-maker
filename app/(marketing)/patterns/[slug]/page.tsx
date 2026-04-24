@@ -68,7 +68,7 @@ export default async function PatternPage({ params }: { params: Promise<{ slug: 
         </nav>
 
         <div className="space-y-4">
-          <span className="inline-block text-[10px] font-mono uppercase tracking-widest text-accent bg-accent/10 border border-accent/25 rounded-full px-3 py-1">
+          <span className="inline-block text-xs font-mono uppercase tracking-widest text-accent bg-accent/10 border border-accent/25 rounded-full px-3 py-1">
             Clinical pattern
           </span>
           <h1 className="text-3xl sm:text-4xl font-semibold tracking-tight">{p.name}</h1>
@@ -85,7 +85,7 @@ export default async function PatternPage({ params }: { params: Promise<{ slug: 
           <ul className="space-y-2.5">
             {p.recommendations.map((r, i) => (
               <li key={i} className="flex gap-3 items-start p-3.5 rounded-xl bg-surface-2 border border-card-border">
-                <span className="w-6 h-6 rounded-full bg-accent/10 border border-accent/25 flex items-center justify-center text-[10px] font-semibold text-accent shrink-0">
+                <span className="w-6 h-6 rounded-full bg-accent/10 border border-accent/25 flex items-center justify-center text-xs font-semibold text-accent shrink-0">
                   {i + 1}
                 </span>
                 <span className="text-sm text-foreground/90 leading-relaxed">{r}</span>
@@ -111,7 +111,7 @@ export default async function PatternPage({ params }: { params: Promise<{ slug: 
                     className="group rounded-xl p-3 bg-surface-2 border border-card-border hover:border-accent/40 transition-colors"
                   >
                     <p className="text-xs font-semibold text-foreground group-hover:text-accent transition-colors">{ref.shortName || ref.name}</p>
-                    <p className="text-[10px] text-muted mt-0.5 uppercase tracking-widest">{code}</p>
+                    <p className="text-xs text-muted mt-0.5 uppercase tracking-widest">{code}</p>
                   </Link>
                 );
               })}
@@ -134,7 +134,7 @@ export default async function PatternPage({ params }: { params: Promise<{ slug: 
           </Link>
         </section>
 
-        <p className="text-[10px] text-muted text-center leading-relaxed">
+        <p className="text-xs text-muted text-center leading-relaxed">
           Educational content · not medical advice · always discuss changes with your doctor
         </p>
       </article>

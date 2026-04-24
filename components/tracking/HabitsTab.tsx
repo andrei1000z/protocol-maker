@@ -15,7 +15,7 @@ export function HabitsTab({ completed, onToggle }: { completed: string[]; onTogg
       {/* Progress header */}
       <div className="flex items-center justify-between px-1">
         <div>
-          <p className="text-[10px] text-muted uppercase tracking-widest">Today's habits</p>
+          <p className="text-xs text-muted uppercase tracking-widest">Today's habits</p>
           <p className="text-lg font-mono font-bold tabular-nums mt-0.5">
             <span className="text-accent">{totalDone}</span><span className="text-muted">/{totalAvailable}</span>
             <span className="text-xs text-muted-foreground ml-2">· {pct}%</span>
@@ -32,8 +32,8 @@ export function HabitsTab({ completed, onToggle }: { completed: string[]; onTogg
         return (
           <div key={category} className="rounded-xl bg-surface-2 border border-card-border p-4 space-y-1">
             <div className="flex items-center justify-between mb-2 px-1">
-              <p className="text-[10px] text-accent uppercase tracking-widest font-semibold">{category}</p>
-              <span className="text-[10px] font-mono text-muted tabular-nums">{doneInCategory}/{habits.length}</span>
+              <p className="text-xs text-accent uppercase tracking-widest font-semibold">{category}</p>
+              <span className="text-xs font-mono text-muted tabular-nums">{doneInCategory}/{habits.length}</span>
             </div>
             {habits.map(h => {
               const done = completed.includes(h.id);

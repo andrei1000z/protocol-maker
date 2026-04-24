@@ -162,12 +162,12 @@ export function BiomarkerFinder({ items }: { items: BiomarkerCard[] }) {
                 <p className="text-sm font-semibold tracking-tight">{b.shortName}</p>
                 <ArrowRight className="w-3.5 h-3.5 text-muted group-hover:text-accent transition-colors shrink-0" />
               </div>
-              <p className="text-[10px] text-muted mt-0.5 font-mono uppercase tracking-wider">{b.code}</p>
+              <p className="text-xs text-muted mt-0.5 font-mono uppercase tracking-wider">{b.code}</p>
               <p className="text-xs text-muted-foreground mt-2 leading-snug line-clamp-2">
                 Optimal {b.longevityOptimalLow}–{b.longevityOptimalHigh} {b.unit}
                 {b.bryanJohnsonValue !== undefined && <span className="text-accent"> · Bryan {b.bryanJohnsonValue}</span>}
               </p>
-              <p className="text-[10px] text-muted mt-1.5">{b.categoryLabel}</p>
+              <p className="text-xs text-muted mt-1.5">{b.categoryLabel}</p>
             </Link>
           ))}
         </div>

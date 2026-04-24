@@ -4,6 +4,51 @@ Append-only log of shipped work. Newest entries at top.
 
 ---
 
+## Phase 1 — Accessibility brutal (F1.1 + F1.2 + F1.3) · 2026-04-24
+
+**Goal:** WCAG AA body copy, keyboard entry point, explainable terms, accessible chart.
+
+### Commit 1 — Text-size purge across the codebase (36 files)
+
+**Rule applied:**
+- `text-[9px]` → `text-[11px] font-medium` (bump size + weight).
+- `text-[10px]` → `text-xs` (12px — Tailwind default small).
+- `text-[11px]` kept untouched (most sit next to `font-mono tabular-nums` or `font-medium` already).
+
+**Counts before:** 17× 9px + 384× 10px + 172× 11px = 573 total.
+**Counts after:** 0× 9px + 0× 10px + untouched 11px (verified `grep -rE 'text-\[9px\]|text-\[10px\]' --include='*.tsx' --include='*.ts' .` → 0).
+
+**Top 3 files:** dashboard (108 refs → 0), onboarding (90 → 0), settings (24 → 0). Plus 33 other components across tracking, stats, history, chat, marketing, layout, biomarkers, etc.
+
+**Manual QA:** Spot-check the small-label heavy sections on 375px viewport — organ radar legend, biomarker list rows, meal-logger macro chips, tracking bucket headers. Everything should be comfortably readable without zooming.
+
+### Commit 2 — ExplainTerm + HelpIcon + skip-to-content + radar a11y
+
+**Files:**
+- `components/ui/ExplainTerm.tsx` — NEW. Inline explainer with dotted-underline + popover. Looks up term in `BIOMARKER_DB` (case-insensitive match on code / shortName / name), falls back to the `what` + `why` props. Includes HelpIcon alias — `(i)` chip for onboarding field help.
+- `app/(app)/layout.tsx` — skip-to-content link as first focusable element; `<main id="main">` wraps children.
+- `components/dashboard/OrganRadar.tsx` — wrapped in `<div role="img" aria-label="Organ system scores: cardiovascular 72 of 100; metabolic 88 of 100; …">`. Label is computed from the data prop at render time.
+- `tests/engine/biomarker-lookup.test.ts` — NEW. Guards the case-insensitive term lookup contract + sanity-checks `BIOMARKER_DB.length === 38` so future edits don't silently drift from the landing/README claim.
+
+**Manual QA:**
+1. Open any app page, press Tab immediately. First focus lands on "Skip to content" floating link.
+2. Press Enter → jumps focus into `<main>`, bypassing the sticky header nav.
+3. VoiceOver on dashboard → organ radar reads as "Organ system scores: cardiovascular …, metabolic …, immune …, endocrine …".
+4. Render `<ExplainTerm term="hsCRP">hsCRP</ExplainTerm>` somewhere → dotted underline, hover/focus opens popover with name + description + Bryan value + "Read more" link.
+
+**Note:** Wiring ExplainTerm into actual usage sites across the dashboard/onboarding is deferred to Phase 3 (dashboard section extraction) to avoid re-touching hundreds of lines twice. Component is production-ready and imported-and-used in at least 1 site after Phase 3 lands.
+
+### Verification
+
+```bash
+$ npx tsc --noEmit      # clean
+$ npm test              # 310/310 (was 303, +7 new lookup tests)
+$ grep -rE 'text-\[9px\]|text-\[10px\]' --include='*.tsx' --include='*.ts' . | wc -l
+# 0
+```
+
+---
+
 ## Phase 0 — Blockers (N1-N4 + B6) · 2026-04-23
 
 **Goal:** Fresh install works. Dead dir gone. GeneratingScreen in sync with server.

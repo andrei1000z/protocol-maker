@@ -84,12 +84,12 @@ function WeeklyBar({ data }: { data: { day: string; pct: number }[] }) {
                 title={`${d.day}: ${d.pct}%`}
               />
               {d.pct >= 30 && (
-                <span className="absolute bottom-1 left-0 right-0 text-center text-[10px] font-mono text-black/80 font-semibold">
+                <span className="absolute bottom-1 left-0 right-0 text-center text-xs font-mono text-black/80 font-semibold">
                   {d.pct}
                 </span>
               )}
             </div>
-            <span className="text-[10px] text-muted">{d.day.slice(0, 1)}</span>
+            <span className="text-xs text-muted">{d.day.slice(0, 1)}</span>
           </div>
         );
       })}
@@ -201,16 +201,16 @@ function DeviceRow({ icon, label, caption, columns, metrics, onOpenLog, tone = '
           </div>
         </div>
         <div className="text-right shrink-0">
-          <p className="text-[10px] text-muted uppercase tracking-widest">logged</p>
+          <p className="text-xs text-muted uppercase tracking-widest">logged</p>
           <p className="text-base font-bold font-mono tabular-nums text-accent">{filled}<span className="text-xs text-muted">/{columns.length}</span></p>
         </div>
       </div>
       <div className="flex flex-wrap gap-1">
         {shown.map(s => (
-          <span key={s} className="text-[10px] px-1.5 py-0.5 rounded bg-surface-3 text-muted-foreground">{s}</span>
+          <span key={s} className="text-xs px-1.5 py-0.5 rounded bg-surface-3 text-muted-foreground">{s}</span>
         ))}
         {columns.length > 6 && (
-          <span className="text-[10px] px-1.5 py-0.5 rounded bg-surface-3 text-muted-foreground">+{columns.length - 6} more</span>
+          <span className="text-xs px-1.5 py-0.5 rounded bg-surface-3 text-muted-foreground">+{columns.length - 6} more</span>
         )}
       </div>
     </button>
@@ -302,17 +302,17 @@ function QuickLogBar({ metrics, onChange }: { metrics: DailyMetrics; onChange: (
     <div className="grid grid-cols-3 gap-2">
       {/* Mood 1-10 quickpick */}
       <div className="rounded-xl bg-surface-2 border border-card-border p-3 space-y-2">
-        <p className="text-[10px] text-muted uppercase tracking-widest flex items-center gap-1">😊 Mood</p>
+        <p className="text-xs text-muted uppercase tracking-widest flex items-center gap-1">😊 Mood</p>
         <div className="flex items-baseline gap-1.5">
           <span className="text-2xl font-bold font-mono tabular-nums text-accent">{metrics.mood ?? '—'}</span>
-          {metrics.mood !== null && metrics.mood !== undefined && <span className="text-[10px] text-muted">/10</span>}
+          {metrics.mood !== null && metrics.mood !== undefined && <span className="text-xs text-muted">/10</span>}
         </div>
         <div className="grid grid-cols-5 gap-0.5">
           {[1,2,3,4,5,6,7,8,9,10].map(n => (
             <button
               key={n}
               onClick={() => onChange({ mood: n === metrics.mood ? null : n })}
-              className={clsx('h-6 rounded text-[10px] font-mono transition-all',
+              className={clsx('h-6 rounded text-xs font-mono transition-all',
                 metrics.mood === n ? 'bg-accent text-black font-bold'
                   : (metrics.mood ?? 0) >= n ? 'bg-accent/30 text-accent'
                   : 'bg-surface-3 text-muted hover:text-foreground')}
@@ -323,17 +323,17 @@ function QuickLogBar({ metrics, onChange }: { metrics: DailyMetrics; onChange: (
 
       {/* Sleep hours quickpick */}
       <div className="rounded-xl bg-surface-2 border border-card-border p-3 space-y-2">
-        <p className="text-[10px] text-muted uppercase tracking-widest">😴 Sleep</p>
+        <p className="text-xs text-muted uppercase tracking-widest">😴 Sleep</p>
         <div className="flex items-baseline gap-1.5">
           <span className="text-2xl font-bold font-mono tabular-nums text-accent">{metrics.sleep_hours?.toFixed(1) ?? '—'}</span>
-          {metrics.sleep_hours !== null && metrics.sleep_hours !== undefined && <span className="text-[10px] text-muted">h</span>}
+          {metrics.sleep_hours !== null && metrics.sleep_hours !== undefined && <span className="text-xs text-muted">h</span>}
         </div>
         <div className="grid grid-cols-4 gap-0.5">
           {[5, 6, 7, 8, 9].map(h => (
             <button
               key={h}
               onClick={() => onChange({ sleep_hours: h === metrics.sleep_hours ? null : h })}
-              className={clsx('h-6 rounded text-[10px] font-mono transition-all',
+              className={clsx('h-6 rounded text-xs font-mono transition-all',
                 metrics.sleep_hours === h ? 'bg-accent text-black font-bold'
                   : 'bg-surface-3 text-muted hover:text-foreground')}
             >{h}h</button>
@@ -344,14 +344,14 @@ function QuickLogBar({ metrics, onChange }: { metrics: DailyMetrics; onChange: (
             value={metrics.sleep_hours && ![5, 6, 7, 8, 9].includes(metrics.sleep_hours) ? metrics.sleep_hours : ''}
             onChange={e => onChange({ sleep_hours: e.target.value ? parseFloat(e.target.value) : null })}
             placeholder="…"
-            className="h-6 w-full rounded bg-surface-3 text-[10px] font-mono text-center outline-none focus:bg-accent/20 focus:text-accent placeholder:text-muted/60"
+            className="h-6 w-full rounded bg-surface-3 text-xs font-mono text-center outline-none focus:bg-accent/20 focus:text-accent placeholder:text-muted/60"
           />
         </div>
       </div>
 
       {/* Weight inline input */}
       <div className="rounded-xl bg-surface-2 border border-card-border p-3 space-y-2">
-        <p className="text-[10px] text-muted uppercase tracking-widest">⚖️ Weight</p>
+        <p className="text-xs text-muted uppercase tracking-widest">⚖️ Weight</p>
         <div className="flex items-baseline gap-1.5">
           <input
             type="number"
@@ -363,9 +363,9 @@ function QuickLogBar({ metrics, onChange }: { metrics: DailyMetrics; onChange: (
             placeholder="—"
             className="text-2xl font-bold font-mono tabular-nums text-accent bg-transparent outline-none w-20 tracking-tight"
           />
-          <span className="text-[10px] text-muted">kg</span>
+          <span className="text-xs text-muted">kg</span>
         </div>
-        <p className="text-[10px] text-muted-foreground">Morning, no clothes</p>
+        <p className="text-xs text-muted-foreground">Morning, no clothes</p>
       </div>
     </div>
   );
@@ -731,7 +731,7 @@ export default function TrackingPage() {
               <span className="text-muted-foreground"> since your protocol was generated. Refreshing will re-run the full analysis: longevity score, biological age, aging speed (using your real HRV / RHR / sleep trend), organ systems, nutrition targets and supplement timing.</span>
             </p>
             {refreshing && (
-              <p className="text-[10px] text-accent font-mono animate-pulse">
+              <p className="text-xs text-accent font-mono animate-pulse">
                 Re-analyzing last 30 days of data + regenerating protocol…
               </p>
             )}
@@ -800,7 +800,7 @@ export default function TrackingPage() {
           {/* 30-day heatmap */}
           <Section icon={ClipboardCheck} title="Last 30 days" subtitle={`Averaged ${monthlyAvg}% completion`}>
             <Heatmap30 data={monthData} />
-            <div className="flex items-center justify-end gap-2 mt-3 text-[10px] text-muted">
+            <div className="flex items-center justify-end gap-2 mt-3 text-xs text-muted">
               Less
               <div className="flex gap-0.5">
                 <div className="w-2.5 h-2.5 rounded-[2px] bg-surface-3" />
@@ -853,7 +853,7 @@ export default function TrackingPage() {
                             {item.name}
                           </span>
                           {pillTone && !item.completed && (
-                            <span className={clsx('text-[10px] font-semibold uppercase tracking-wider px-2 py-0.5 rounded-full border shrink-0', pillTone)}>
+                            <span className={clsx('text-xs font-semibold uppercase tracking-wider px-2 py-0.5 rounded-full border shrink-0', pillTone)}>
                               {prio}
                             </span>
                           )}
@@ -923,8 +923,8 @@ export default function TrackingPage() {
                         'bg-surface-2 border-card-border')}
                     >
                       <span className="text-2xl">{a.icon}</span>
-                      <span className="text-[10px] text-center leading-tight text-foreground/90 font-medium">{a.name}</span>
-                      <span className="absolute top-1 right-1 text-[10px] text-muted opacity-0 group-hover:opacity-100 transition-opacity">share</span>
+                      <span className="text-xs text-center leading-tight text-foreground/90 font-medium">{a.name}</span>
+                      <span className="absolute top-1 right-1 text-xs text-muted opacity-0 group-hover:opacity-100 transition-opacity">share</span>
                     </button>
                   ))}
                 </div>
@@ -940,7 +940,7 @@ export default function TrackingPage() {
                     className="aspect-square rounded-xl border border-card-border bg-surface-2/50 flex flex-col items-center justify-center gap-1 p-2 opacity-40 hover:opacity-70 transition-opacity"
                   >
                     <span className="text-2xl grayscale">{a.icon}</span>
-                    <span className="text-[10px] text-center leading-tight text-muted font-medium">{a.name}</span>
+                    <span className="text-xs text-center leading-tight text-muted font-medium">{a.name}</span>
                   </div>
                 ))}
               </div>

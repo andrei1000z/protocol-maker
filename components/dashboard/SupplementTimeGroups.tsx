@@ -84,9 +84,9 @@ export function SupplementTimeGroups({ supplements }: Props) {
               <div className="flex-1 min-w-0">
                 <p className={clsx('text-sm font-semibold', isNow && 'text-accent')}>
                   {meta.title}
-                  {isNow && <span className="ml-2 text-[10px] font-mono uppercase tracking-wider bg-accent/15 text-accent px-1.5 py-0.5 rounded-full border border-accent/25">Take now</span>}
+                  {isNow && <span className="ml-2 text-xs font-mono uppercase tracking-wider bg-accent/15 text-accent px-1.5 py-0.5 rounded-full border border-accent/25">Take now</span>}
                 </p>
-                <p className="text-[10px] text-muted-foreground">{meta.hint} · {items.length} item{items.length === 1 ? '' : 's'}</p>
+                <p className="text-xs text-muted-foreground">{meta.hint} · {items.length} item{items.length === 1 ? '' : 's'}</p>
               </div>
               <ChevronDown className={clsx('w-4 h-4 text-muted-foreground transition-transform shrink-0', isOpen && 'rotate-180')} />
             </button>
@@ -99,7 +99,7 @@ export function SupplementTimeGroups({ supplements }: Props) {
                       <p className="text-[13px] font-medium truncate">
                         {s.name}
                         {s.priority && (
-                          <span className={clsx('ml-2 text-[9px] font-mono uppercase tracking-widest px-1.5 py-0.5 rounded-full border align-middle',
+                          <span className={clsx('ml-2 text-[11px] font-medium font-mono uppercase tracking-widest px-1.5 py-0.5 rounded-full border align-middle',
                             /MUST|CRITICAL|HIGH/i.test(s.priority) ? 'text-danger bg-red-500/10 border-red-500/25'
                             : /STRONG/i.test(s.priority) ? 'text-accent bg-accent/10 border-accent/25'
                             : 'text-muted-foreground bg-surface-3 border-card-border')}>

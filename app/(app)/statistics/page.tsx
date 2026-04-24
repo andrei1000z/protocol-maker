@@ -212,7 +212,7 @@ function MetricChart({ def, series, protocolMarkers }: { def: MetricDef; series:
       <div className="flex items-baseline justify-between gap-3">
         <div className="min-w-0 flex-1">
           <p className="text-sm font-semibold truncate">{def.label}</p>
-          <p className="text-[10px] text-muted uppercase tracking-widest mt-0.5">
+          <p className="text-xs text-muted uppercase tracking-widest mt-0.5">
             {series.length} reading{series.length === 1 ? '' : 's'}
           </p>
         </div>
@@ -424,24 +424,24 @@ export default function StatisticsPage() {
       {metricsWithData.length > 0 && (
         <div className="grid grid-cols-2 md:grid-cols-4 gap-3 animate-fade-in-up">
           <div className="metric-tile">
-            <p className="text-[10px] text-muted uppercase tracking-widest">Metrics tracked</p>
+            <p className="text-xs text-muted uppercase tracking-widest">Metrics tracked</p>
             <p className="text-2xl sm:text-3xl font-bold font-mono tabular-nums mt-2 leading-none">{metricsWithData.length}</p>
             <p className="text-[11px] text-muted-foreground mt-2">of {METRIC_CATALOG.length} available</p>
           </div>
           <div className="metric-tile">
-            <p className="text-[10px] text-muted uppercase tracking-widest">Improving</p>
+            <p className="text-xs text-muted uppercase tracking-widest">Improving</p>
             <p className="text-2xl sm:text-3xl font-bold font-mono tabular-nums mt-2 leading-none text-accent">{totalImproved}</p>
             <p className="text-[11px] text-muted-foreground mt-2">{totalWithTrend > 0 ? `of ${totalWithTrend} with trend` : 'need ≥2 readings'}</p>
           </div>
           <div className="metric-tile">
-            <p className="text-[10px] text-muted uppercase tracking-widest">Declining</p>
+            <p className="text-xs text-muted uppercase tracking-widest">Declining</p>
             <p className={clsx('text-2xl sm:text-3xl font-bold font-mono tabular-nums mt-2 leading-none', totalDeclined > 0 ? 'text-danger' : 'text-foreground')}>
               {totalDeclined}
             </p>
             <p className="text-[11px] text-muted-foreground mt-2">worth attention</p>
           </div>
           <div className="metric-tile">
-            <p className="text-[10px] text-muted uppercase tracking-widest">Readings</p>
+            <p className="text-xs text-muted uppercase tracking-widest">Readings</p>
             <p className="text-2xl sm:text-3xl font-bold font-mono tabular-nums mt-2 leading-none">{totalReadings}</p>
             <p className="text-[11px] text-muted-foreground mt-2">
               {daysTracked > 0 ? `${daysTracked} days tracked` : ''}
@@ -457,7 +457,7 @@ export default function StatisticsPage() {
         <section className="space-y-3 animate-fade-in-up">
           <div className="flex items-baseline justify-between gap-3 px-1">
             <p className="text-xs uppercase tracking-widest text-accent font-mono">Biggest movers</p>
-            <p className="text-[10px] text-muted">vs the earlier half of your data</p>
+            <p className="text-xs text-muted">vs the earlier half of your data</p>
           </div>
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
             {biggestMovers.map(m => {
@@ -495,7 +495,7 @@ export default function StatisticsPage() {
                   <p className="text-xs text-muted mt-2 font-mono tabular-nums">
                     {fmt(m.priorAvg)}{unit} → <span className="text-foreground">{fmt(m.recentAvg)}{unit}</span>
                   </p>
-                  <p className="text-[10px] text-muted mt-1 group-hover:text-accent transition-colors">
+                  <p className="text-xs text-muted mt-1 group-hover:text-accent transition-colors">
                     See chart →
                   </p>
                 </button>

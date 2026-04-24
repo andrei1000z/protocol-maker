@@ -96,12 +96,12 @@ function DevicePicker({
                   model === m.name ? 'bg-accent/15 text-accent border border-accent/30' : 'bg-background border border-card-border text-foreground/80 hover:border-accent/30')}
               >
                 {m.name}
-                {model === m.name && <span className="ml-2 text-[10px] text-accent">✓ selected</span>}
+                {model === m.name && <span className="ml-2 text-xs text-accent">✓ selected</span>}
               </button>
             ))}
           </div>
           {model && (
-            <p className="text-[10px] text-accent">
+            <p className="text-xs text-accent">
               ✓ {currentBrand.name} {model} — AI will use its capabilities in your tracking setup.
             </p>
           )}
@@ -119,7 +119,7 @@ function DevicePicker({
             placeholder="e.g. Coros Pace 3 · Suunto Ocean · custom build"
             className="w-full rounded-xl bg-background border border-card-border px-3 py-2 text-sm outline-none focus:border-accent"
           />
-          <p className="text-[10px] text-muted-foreground">The AI will infer what it measures from the model name.</p>
+          <p className="text-xs text-muted-foreground">The AI will infer what it measures from the model name.</p>
         </div>
       )}
     </div>
@@ -142,7 +142,7 @@ function EquipmentRow({
         <span className="text-lg shrink-0 mt-0.5">{item.icon}</span>
         <div className="flex-1 min-w-0">
           <p className="text-sm font-medium">{item.label}</p>
-          <p className="text-[10px] text-muted-foreground leading-snug mt-0.5">{item.whyItMatters}</p>
+          <p className="text-xs text-muted-foreground leading-snug mt-0.5">{item.whyItMatters}</p>
         </div>
       </div>
       <div className="grid grid-cols-3 gap-1.5">
@@ -942,7 +942,7 @@ export default function OnboardingPage() {
           {STEPS.map((s, i) => (
             <div key={s} className="flex-1 flex flex-col items-center gap-1">
               <div className={clsx('h-1 w-full rounded-full transition-all', i <= step ? 'bg-accent' : 'bg-card-border')} />
-              <span className={clsx('text-[10px]', i <= step ? 'text-accent' : 'text-muted')}>{s}</span>
+              <span className={clsx('text-xs', i <= step ? 'text-accent' : 'text-muted')}>{s}</span>
             </div>
           ))}
         </div>
@@ -966,7 +966,7 @@ export default function OnboardingPage() {
               <div>
                 <label className="text-xs text-muted-foreground">Age <span className="text-accent">*</span></label>
                 <input type="number" value={age} onChange={e => setAge(e.target.value)} placeholder="25" className="w-full mt-1 rounded-xl bg-card border border-card-border px-3 py-2.5 text-sm outline-none focus:border-accent font-mono" />
-                <p className="text-[10px] text-muted mt-1">Or choose birth date below for precision</p>
+                <p className="text-xs text-muted mt-1">Or choose birth date below for precision</p>
               </div>
               <div className="col-span-2">
                 <label className="text-xs text-muted-foreground">Birth date (optional — more precise than age alone)</label>
@@ -975,26 +975,26 @@ export default function OnboardingPage() {
               <div>
                 <label className="text-xs text-muted-foreground">Height (cm) <span className="text-accent">*</span></label>
                 <input type="number" value={heightCm} onChange={e => setHeightCm(e.target.value)} placeholder="180" className="w-full mt-1 rounded-xl bg-card border border-card-border px-3 py-2.5 text-sm outline-none focus:border-accent font-mono" />
-                <p className="text-[10px] text-muted mt-1">Recommended: measure now for accuracy</p>
+                <p className="text-xs text-muted mt-1">Recommended: measure now for accuracy</p>
               </div>
               <div>
                 <label className="text-xs text-muted-foreground">Weight (kg) <span className="text-accent">*</span></label>
                 <input type="number" step="0.1" value={weightKg} onChange={e => setWeightKg(e.target.value)} placeholder="80" className="w-full mt-1 rounded-xl bg-card border border-card-border px-3 py-2.5 text-sm outline-none focus:border-accent font-mono" />
-                <p className="text-[10px] text-muted mt-1">Recommended: weigh now, morning, no clothes</p>
+                <p className="text-xs text-muted mt-1">Recommended: weigh now, morning, no clothes</p>
               </div>
             </div>
 
             <div>
               <label className="text-xs text-muted-foreground mb-2 block">Activity Level: <span className="text-accent font-medium">{activityLabels[activityLevel]}</span></label>
               <input type="range" min={0} max={4} value={activityLevel} onChange={e => setActivityLevel(parseInt(e.target.value))} className="w-full h-2 bg-card-border rounded-lg appearance-none cursor-pointer accent-[#34d399]" />
-              <div className="flex justify-between text-[10px] text-muted mt-1">{activityLabels.map(l => <span key={l}>{l}</span>)}</div>
+              <div className="flex justify-between text-xs text-muted mt-1">{activityLabels.map(l => <span key={l}>{l}</span>)}</div>
             </div>
 
             {/* ═══════════ WEARABLES — separate smartwatch + smart ring questions ═══════════ */}
             <div className="space-y-3">
               <div className="flex items-center gap-2">
                 <h3 className="text-sm font-semibold">⌚ Wearables</h3>
-                <p className="text-[10px] text-muted-foreground">The AI uses device capabilities to know what metrics you can track daily.</p>
+                <p className="text-xs text-muted-foreground">The AI uses device capabilities to know what metrics you can track daily.</p>
               </div>
               <DevicePicker
                 label="Smartwatch"
@@ -1024,7 +1024,7 @@ export default function OnboardingPage() {
             <div className="space-y-3">
               <div className="flex items-center gap-2">
                 <h3 className="text-sm font-semibold">🏠 Home equipment</h3>
-                <p className="text-[10px] text-muted-foreground">What can you measure at home? Drives tracking suggestions.</p>
+                <p className="text-xs text-muted-foreground">What can you measure at home? Drives tracking suggestions.</p>
               </div>
               <div className="space-y-2">
                 {HOME_EQUIPMENT.map(item => (
@@ -1058,7 +1058,7 @@ export default function OnboardingPage() {
               <div>
                 <label className="text-xs text-muted-foreground">Top reasons + what triggered you NOW?</label>
                 <textarea value={motivation} onChange={e => setMotivation(e.target.value)} rows={3} placeholder="e.g. Dad had heart attack at 67 — I want to avoid that. I turned 35 and energy dropped. I want to be present for my kids long-term." className="w-full mt-1 rounded-xl bg-card border border-card-border px-3 py-2.5 text-sm outline-none focus:border-accent resize-none" />
-                <p className="text-[10px] text-muted-foreground mt-1">The AI uses this to calibrate coaching tone + prioritize the right interventions for you.</p>
+                <p className="text-xs text-muted-foreground mt-1">The AI uses this to calibrate coaching tone + prioritize the right interventions for you.</p>
               </div>
               <div>
                 <label className="text-xs text-muted-foreground mb-2 block">How disciplined are you with habits? <span className="text-accent">{discipline}/10</span></label>
@@ -1186,40 +1186,40 @@ export default function OnboardingPage() {
 
             {/* Body measurements (deep optional) */}
             <CollapseSection title="📏 Body Measurements & Fitness Tests (all optional)" expanded={basicsExpanded.measurements} onToggle={() => setBasicsExpanded(p => ({ ...p, measurements: !p.measurements }))}>
-              <p className="text-[10px] text-muted-foreground">The more you fill in, the more precise your protocol. Skip anything you don&apos;t have.</p>
-              <p className="text-[10px] text-accent uppercase tracking-wider mt-2">Circumference (cm)</p>
+              <p className="text-xs text-muted-foreground">The more you fill in, the more precise your protocol. Skip anything you don&apos;t have.</p>
+              <p className="text-xs text-accent uppercase tracking-wider mt-2">Circumference (cm)</p>
               <div className="grid grid-cols-2 gap-2">
-                <div><label className="text-[10px] text-muted">Waist</label><input type="number" value={waistCm} onChange={e => setWaistCm(e.target.value)} placeholder="85" className="w-full mt-1 rounded-xl bg-card border border-card-border px-3 py-2 text-xs outline-none focus:border-accent font-mono" /></div>
-                <div><label className="text-[10px] text-muted">Hip</label><input type="number" value={hipCm} onChange={e => setHipCm(e.target.value)} placeholder="95" className="w-full mt-1 rounded-xl bg-card border border-card-border px-3 py-2 text-xs outline-none focus:border-accent font-mono" /></div>
-                <div><label className="text-[10px] text-muted">Arm</label><input type="number" value={armCm} onChange={e => setArmCm(e.target.value)} placeholder="32" className="w-full mt-1 rounded-xl bg-card border border-card-border px-3 py-2 text-xs outline-none focus:border-accent font-mono" /></div>
-                <div><label className="text-[10px] text-muted">Thigh</label><input type="number" value={thighCm} onChange={e => setThighCm(e.target.value)} placeholder="55" className="w-full mt-1 rounded-xl bg-card border border-card-border px-3 py-2 text-xs outline-none focus:border-accent font-mono" /></div>
+                <div><label className="text-xs text-muted">Waist</label><input type="number" value={waistCm} onChange={e => setWaistCm(e.target.value)} placeholder="85" className="w-full mt-1 rounded-xl bg-card border border-card-border px-3 py-2 text-xs outline-none focus:border-accent font-mono" /></div>
+                <div><label className="text-xs text-muted">Hip</label><input type="number" value={hipCm} onChange={e => setHipCm(e.target.value)} placeholder="95" className="w-full mt-1 rounded-xl bg-card border border-card-border px-3 py-2 text-xs outline-none focus:border-accent font-mono" /></div>
+                <div><label className="text-xs text-muted">Arm</label><input type="number" value={armCm} onChange={e => setArmCm(e.target.value)} placeholder="32" className="w-full mt-1 rounded-xl bg-card border border-card-border px-3 py-2 text-xs outline-none focus:border-accent font-mono" /></div>
+                <div><label className="text-xs text-muted">Thigh</label><input type="number" value={thighCm} onChange={e => setThighCm(e.target.value)} placeholder="55" className="w-full mt-1 rounded-xl bg-card border border-card-border px-3 py-2 text-xs outline-none focus:border-accent font-mono" /></div>
               </div>
-              <p className="text-[10px] text-accent uppercase tracking-wider mt-2">Body composition</p>
+              <p className="text-xs text-accent uppercase tracking-wider mt-2">Body composition</p>
               <div className="grid grid-cols-2 gap-2">
-                <div><label className="text-[10px] text-muted">Body fat %</label><input type="number" step="0.1" value={bodyFatPct} onChange={e => setBodyFatPct(e.target.value)} placeholder="18" className="w-full mt-1 rounded-xl bg-card border border-card-border px-3 py-2 text-xs outline-none focus:border-accent font-mono" /></div>
-                <div><label className="text-[10px] text-muted">VO2 Max (ml/kg)</label><input type="number" step="0.1" value={vo2Max} onChange={e => setVo2Max(e.target.value)} placeholder="42" className="w-full mt-1 rounded-xl bg-card border border-card-border px-3 py-2 text-xs outline-none focus:border-accent font-mono" /></div>
+                <div><label className="text-xs text-muted">Body fat %</label><input type="number" step="0.1" value={bodyFatPct} onChange={e => setBodyFatPct(e.target.value)} placeholder="18" className="w-full mt-1 rounded-xl bg-card border border-card-border px-3 py-2 text-xs outline-none focus:border-accent font-mono" /></div>
+                <div><label className="text-xs text-muted">VO2 Max (ml/kg)</label><input type="number" step="0.1" value={vo2Max} onChange={e => setVo2Max(e.target.value)} placeholder="42" className="w-full mt-1 rounded-xl bg-card border border-card-border px-3 py-2 text-xs outline-none focus:border-accent font-mono" /></div>
               </div>
-              <p className="text-[10px] text-accent uppercase tracking-wider mt-2">Cardiovascular</p>
+              <p className="text-xs text-accent uppercase tracking-wider mt-2">Cardiovascular</p>
               <div className="grid grid-cols-3 gap-2">
-                <div><label className="text-[10px] text-muted">BP Sys</label><input type="number" value={bloodPressureSys} onChange={e => setBloodPressureSys(e.target.value)} placeholder="120" className="w-full mt-1 rounded-xl bg-card border border-card-border px-3 py-2 text-xs outline-none focus:border-accent font-mono" /></div>
-                <div><label className="text-[10px] text-muted">BP Dia</label><input type="number" value={bloodPressureDia} onChange={e => setBloodPressureDia(e.target.value)} placeholder="80" className="w-full mt-1 rounded-xl bg-card border border-card-border px-3 py-2 text-xs outline-none focus:border-accent font-mono" /></div>
-                <div><label className="text-[10px] text-muted">HRV (ms)</label><input type="number" value={hrv} onChange={e => setHrv(e.target.value)} placeholder="55" className="w-full mt-1 rounded-xl bg-card border border-card-border px-3 py-2 text-xs outline-none focus:border-accent font-mono" /></div>
+                <div><label className="text-xs text-muted">BP Sys</label><input type="number" value={bloodPressureSys} onChange={e => setBloodPressureSys(e.target.value)} placeholder="120" className="w-full mt-1 rounded-xl bg-card border border-card-border px-3 py-2 text-xs outline-none focus:border-accent font-mono" /></div>
+                <div><label className="text-xs text-muted">BP Dia</label><input type="number" value={bloodPressureDia} onChange={e => setBloodPressureDia(e.target.value)} placeholder="80" className="w-full mt-1 rounded-xl bg-card border border-card-border px-3 py-2 text-xs outline-none focus:border-accent font-mono" /></div>
+                <div><label className="text-xs text-muted">HRV (ms)</label><input type="number" value={hrv} onChange={e => setHrv(e.target.value)} placeholder="55" className="w-full mt-1 rounded-xl bg-card border border-card-border px-3 py-2 text-xs outline-none focus:border-accent font-mono" /></div>
               </div>
-              <p className="text-[10px] text-accent uppercase tracking-wider mt-2">Fitness tests</p>
+              <p className="text-xs text-accent uppercase tracking-wider mt-2">Fitness tests</p>
               <div className="grid grid-cols-2 gap-2">
-                <div><label className="text-[10px] text-muted">Grip strength (kg)</label><input type="number" step="0.5" value={gripStrength} onChange={e => setGripStrength(e.target.value)} placeholder="40" className="w-full mt-1 rounded-xl bg-card border border-card-border px-3 py-2 text-xs outline-none focus:border-accent font-mono" /></div>
-                <div><label className="text-[10px] text-muted">Cooper test (m in 12 min)</label><input type="number" value={cooperTest} onChange={e => setCooperTest(e.target.value)} placeholder="2400" className="w-full mt-1 rounded-xl bg-card border border-card-border px-3 py-2 text-xs outline-none focus:border-accent font-mono" /></div>
-                <div><label className="text-[10px] text-muted">Max push-ups / 1 min</label><input type="number" value={maxPushups} onChange={e => setMaxPushups(e.target.value)} placeholder="30" className="w-full mt-1 rounded-xl bg-card border border-card-border px-3 py-2 text-xs outline-none focus:border-accent font-mono" /></div>
-                <div><label className="text-[10px] text-muted">Max plank (sec)</label><input type="number" value={plankSec} onChange={e => setPlankSec(e.target.value)} placeholder="90" className="w-full mt-1 rounded-xl bg-card border border-card-border px-3 py-2 text-xs outline-none focus:border-accent font-mono" /></div>
-                <div><label className="text-[10px] text-muted">Max squats / 1 min</label><input type="number" value={maxSquats} onChange={e => setMaxSquats(e.target.value)} placeholder="40" className="w-full mt-1 rounded-xl bg-card border border-card-border px-3 py-2 text-xs outline-none focus:border-accent font-mono" /></div>
-                <div><label className="text-[10px] text-muted">Sit-and-reach (cm)</label><input type="number" value={sitReachCm} onChange={e => setSitReachCm(e.target.value)} placeholder="5" className="w-full mt-1 rounded-xl bg-card border border-card-border px-3 py-2 text-xs outline-none focus:border-accent font-mono" /></div>
-                <div className="col-span-2"><label className="text-[10px] text-muted">Balance — one-leg stand, eyes closed (sec, &gt;30 = good)</label><input type="number" value={balanceSec} onChange={e => setBalanceSec(e.target.value)} placeholder="45" className="w-full mt-1 rounded-xl bg-card border border-card-border px-3 py-2 text-xs outline-none focus:border-accent font-mono" /></div>
+                <div><label className="text-xs text-muted">Grip strength (kg)</label><input type="number" step="0.5" value={gripStrength} onChange={e => setGripStrength(e.target.value)} placeholder="40" className="w-full mt-1 rounded-xl bg-card border border-card-border px-3 py-2 text-xs outline-none focus:border-accent font-mono" /></div>
+                <div><label className="text-xs text-muted">Cooper test (m in 12 min)</label><input type="number" value={cooperTest} onChange={e => setCooperTest(e.target.value)} placeholder="2400" className="w-full mt-1 rounded-xl bg-card border border-card-border px-3 py-2 text-xs outline-none focus:border-accent font-mono" /></div>
+                <div><label className="text-xs text-muted">Max push-ups / 1 min</label><input type="number" value={maxPushups} onChange={e => setMaxPushups(e.target.value)} placeholder="30" className="w-full mt-1 rounded-xl bg-card border border-card-border px-3 py-2 text-xs outline-none focus:border-accent font-mono" /></div>
+                <div><label className="text-xs text-muted">Max plank (sec)</label><input type="number" value={plankSec} onChange={e => setPlankSec(e.target.value)} placeholder="90" className="w-full mt-1 rounded-xl bg-card border border-card-border px-3 py-2 text-xs outline-none focus:border-accent font-mono" /></div>
+                <div><label className="text-xs text-muted">Max squats / 1 min</label><input type="number" value={maxSquats} onChange={e => setMaxSquats(e.target.value)} placeholder="40" className="w-full mt-1 rounded-xl bg-card border border-card-border px-3 py-2 text-xs outline-none focus:border-accent font-mono" /></div>
+                <div><label className="text-xs text-muted">Sit-and-reach (cm)</label><input type="number" value={sitReachCm} onChange={e => setSitReachCm(e.target.value)} placeholder="5" className="w-full mt-1 rounded-xl bg-card border border-card-border px-3 py-2 text-xs outline-none focus:border-accent font-mono" /></div>
+                <div className="col-span-2"><label className="text-xs text-muted">Balance — one-leg stand, eyes closed (sec, &gt;30 = good)</label><input type="number" value={balanceSec} onChange={e => setBalanceSec(e.target.value)} placeholder="45" className="w-full mt-1 rounded-xl bg-card border border-card-border px-3 py-2 text-xs outline-none focus:border-accent font-mono" /></div>
               </div>
-              <p className="text-[10px] text-accent uppercase tracking-wider mt-2">Weight history</p>
+              <p className="text-xs text-accent uppercase tracking-wider mt-2">Weight history</p>
               <div className="grid grid-cols-3 gap-2">
-                <div><label className="text-[10px] text-muted">1 year ago (kg)</label><input type="number" step="0.1" value={weightOneYearAgo} onChange={e => setWeightOneYearAgo(e.target.value)} className="w-full mt-1 rounded-xl bg-card border border-card-border px-3 py-2 text-xs outline-none focus:border-accent font-mono" /></div>
-                <div><label className="text-[10px] text-muted">Min as adult</label><input type="number" step="0.1" value={weightMinAdult} onChange={e => setWeightMinAdult(e.target.value)} className="w-full mt-1 rounded-xl bg-card border border-card-border px-3 py-2 text-xs outline-none focus:border-accent font-mono" /></div>
-                <div><label className="text-[10px] text-muted">Max as adult</label><input type="number" step="0.1" value={weightMaxAdult} onChange={e => setWeightMaxAdult(e.target.value)} className="w-full mt-1 rounded-xl bg-card border border-card-border px-3 py-2 text-xs outline-none focus:border-accent font-mono" /></div>
+                <div><label className="text-xs text-muted">1 year ago (kg)</label><input type="number" step="0.1" value={weightOneYearAgo} onChange={e => setWeightOneYearAgo(e.target.value)} className="w-full mt-1 rounded-xl bg-card border border-card-border px-3 py-2 text-xs outline-none focus:border-accent font-mono" /></div>
+                <div><label className="text-xs text-muted">Min as adult</label><input type="number" step="0.1" value={weightMinAdult} onChange={e => setWeightMinAdult(e.target.value)} className="w-full mt-1 rounded-xl bg-card border border-card-border px-3 py-2 text-xs outline-none focus:border-accent font-mono" /></div>
+                <div><label className="text-xs text-muted">Max as adult</label><input type="number" step="0.1" value={weightMaxAdult} onChange={e => setWeightMaxAdult(e.target.value)} className="w-full mt-1 rounded-xl bg-card border border-card-border px-3 py-2 text-xs outline-none focus:border-accent font-mono" /></div>
               </div>
             </CollapseSection>
 
@@ -1240,7 +1240,7 @@ export default function OnboardingPage() {
                   { val: familyMental, set: setFamilyMental, label: '💭 Mental illness' },
                 ].map(({ val, set, label }) => (
                   <button key={label} onClick={() => set(!val)} className={clsx('flex items-center gap-2 px-3 py-2 rounded-xl text-xs text-left transition-all', val ? 'bg-amber-500/20 text-amber-400 border border-amber-500/50' : 'bg-card border border-card-border text-muted-foreground')}>
-                    <div className={clsx('w-4 h-4 rounded border-2 flex items-center justify-center text-[10px]', val ? 'bg-amber-500 border-amber-500 text-black' : 'border-card-border')}>{val ? '✓' : ''}</div>
+                    <div className={clsx('w-4 h-4 rounded border-2 flex items-center justify-center text-xs', val ? 'bg-amber-500 border-amber-500 text-black' : 'border-card-border')}>{val ? '✓' : ''}</div>
                     {label}
                   </button>
                 ))}
@@ -1274,7 +1274,7 @@ export default function OnboardingPage() {
                 : pdfParsed ? <div className="space-y-2"><FileText className="w-10 h-10 text-accent mx-auto" /><p className="text-sm text-accent font-medium">{filledCount} biomarkers detected</p></div>
                 : <div className="space-y-3"><Upload className="w-10 h-10 text-muted-foreground mx-auto" /><p className="text-sm font-medium">Drop lab report PDF</p><p className="text-xs text-muted-foreground">Synevo, Regina Maria, MedLife, LabCorp, Quest</p></div>}
             </div>
-            <p className="text-[10px] text-accent uppercase tracking-wider">Core markers (Big 11)</p>
+            <p className="text-xs text-accent uppercase tracking-wider">Core markers (Big 11)</p>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
               {markersToShowBig11.map(b => {
                 const cls = getLiveClassification(b.code, biomarkers[b.code] || '');
@@ -1282,10 +1282,10 @@ export default function OnboardingPage() {
                   <div key={b.code} className="flex items-center gap-2 rounded-xl border border-card-border p-2.5">
                     <div className="flex-1 min-w-0">
                       <p className="text-xs font-medium truncate">{b.shortName}</p>
-                      <p className="text-[10px] text-muted">Optimal: {b.longevityOptimalLow}-{b.longevityOptimalHigh}</p>
+                      <p className="text-xs text-muted">Optimal: {b.longevityOptimalLow}-{b.longevityOptimalHigh}</p>
                     </div>
                     <input type="number" value={biomarkers[b.code] || ''} onChange={e => updateBiomarker(b.code, e.target.value)} placeholder={b.bryanJohnsonValue ? String(b.bryanJohnsonValue) : ''} step="0.1" className="w-20 rounded-lg bg-background border border-card-border px-2 py-1.5 text-sm text-right outline-none focus:border-accent font-mono" />
-                    <span className="text-[10px] text-muted w-14">{b.unit}</span>
+                    <span className="text-xs text-muted w-14">{b.unit}</span>
                     {cls && <span className={clsx('w-2 h-2 rounded-full', cls === 'OPTIMAL' ? 'bg-accent' : cls.includes('SUBOPTIMAL') ? 'bg-amber-400' : 'bg-red-400')} />}
                   </div>
                 );
@@ -1299,15 +1299,15 @@ export default function OnboardingPage() {
               if (catMarkers.length === 0) return null;
               return (
                 <div key={cat} className="space-y-2">
-                  <p className="text-[10px] text-accent uppercase tracking-wider">{CATEGORY_LABELS[cat] || cat}</p>
+                  <p className="text-xs text-accent uppercase tracking-wider">{CATEGORY_LABELS[cat] || cat}</p>
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
                     {catMarkers.map(b => {
                       const cls = getLiveClassification(b.code, biomarkers[b.code] || '');
                       return (
                         <div key={b.code} className="flex items-center gap-2 bg-card rounded-xl border border-card-border p-2.5">
-                          <div className="flex-1 min-w-0"><p className="text-xs font-medium truncate">{b.shortName}</p><p className="text-[10px] text-muted">{b.longevityOptimalLow}-{b.longevityOptimalHigh} {b.unit}</p></div>
+                          <div className="flex-1 min-w-0"><p className="text-xs font-medium truncate">{b.shortName}</p><p className="text-xs text-muted">{b.longevityOptimalLow}-{b.longevityOptimalHigh} {b.unit}</p></div>
                           <input type="number" value={biomarkers[b.code] || ''} onChange={e => updateBiomarker(b.code, e.target.value)} step="0.1" className="w-20 rounded-lg bg-background border border-card-border px-2 py-1.5 text-sm text-right outline-none focus:border-accent font-mono" />
-                          <span className="text-[10px] text-muted w-12">{b.unit}</span>
+                          <span className="text-xs text-muted w-12">{b.unit}</span>
                           {cls && <span className={clsx('w-2 h-2 rounded-full', cls === 'OPTIMAL' ? 'bg-accent' : cls.includes('SUBOPTIMAL') ? 'bg-amber-400' : 'bg-red-400')} />}
                         </div>
                       );
@@ -1344,7 +1344,7 @@ export default function OnboardingPage() {
 
               {wearable && wearable !== 'none' && (
                 <div>
-                  <p className="text-[10px] text-accent uppercase tracking-wider mt-2">Last 3 nights (from your {wearable})</p>
+                  <p className="text-xs text-accent uppercase tracking-wider mt-2">Last 3 nights (from your {wearable})</p>
                   <div className="grid grid-cols-3 gap-2 mt-2">
                     {[
                       { label: 'Last night', h: lastNight1Hours, sH: setLastNight1Hours, sc: lastNight1Score, sSc: setLastNight1Score },
@@ -1352,7 +1352,7 @@ export default function OnboardingPage() {
                       { label: '3 nights ago', h: lastNight3Hours, sH: setLastNight3Hours, sc: lastNight3Score, sSc: setLastNight3Score },
                     ].map(n => (
                       <div key={n.label} className="space-y-1">
-                        <p className="text-[10px] text-muted">{n.label}</p>
+                        <p className="text-xs text-muted">{n.label}</p>
                         <input type="number" step="0.1" value={n.h} onChange={e => n.sH(e.target.value)} placeholder="hrs" className="w-full rounded-lg bg-card border border-card-border px-2 py-1.5 text-xs outline-none focus:border-accent font-mono" />
                         <input type="number" value={n.sc} onChange={e => n.sSc(e.target.value)} placeholder="score 0-100" className="w-full rounded-lg bg-card border border-card-border px-2 py-1.5 text-xs outline-none focus:border-accent font-mono" />
                       </div>
@@ -1435,14 +1435,14 @@ export default function OnboardingPage() {
                 <input type="range" min={0} max={100} step={5} value={cooksAtHome} onChange={e => setCooksAtHome(parseInt(e.target.value))} className="w-full h-2 bg-card-border rounded-lg appearance-none cursor-pointer accent-[#34d399]" />
               </div>
 
-              <p className="text-[10px] text-accent uppercase tracking-wider mt-2">Food frequencies</p>
+              <p className="text-xs text-accent uppercase tracking-wider mt-2">Food frequencies</p>
               <div className="grid grid-cols-2 gap-2">
-                <div><label className="text-[10px] text-muted">Fruits / day</label><input type="number" value={fruitsPerDay} onChange={e => setFruitsPerDay(e.target.value)} placeholder="2" className="w-full mt-1 rounded-xl bg-card border border-card-border px-3 py-2 text-xs outline-none focus:border-accent font-mono" /></div>
-                <div><label className="text-[10px] text-muted">Veggies / day (servings)</label><input type="number" value={veggiesPerDay} onChange={e => setVeggiesPerDay(e.target.value)} placeholder="3" className="w-full mt-1 rounded-xl bg-card border border-card-border px-3 py-2 text-xs outline-none focus:border-accent font-mono" /></div>
-                <div><label className="text-[10px] text-muted">Fish / week</label><input type="number" value={fishPerWeek} onChange={e => setFishPerWeek(e.target.value)} placeholder="2" className="w-full mt-1 rounded-xl bg-card border border-card-border px-3 py-2 text-xs outline-none focus:border-accent font-mono" /></div>
-                <div><label className="text-[10px] text-muted">Red meat / week</label><input type="number" value={redMeatPerWeek} onChange={e => setRedMeatPerWeek(e.target.value)} placeholder="3" className="w-full mt-1 rounded-xl bg-card border border-card-border px-3 py-2 text-xs outline-none focus:border-accent font-mono" /></div>
-                <div><label className="text-[10px] text-muted">Ultra-processed / week</label><input type="number" value={ultraProcessedPerWeek} onChange={e => setUltraProcessedPerWeek(e.target.value)} placeholder="5" className="w-full mt-1 rounded-xl bg-card border border-card-border px-3 py-2 text-xs outline-none focus:border-accent font-mono" /></div>
-                <div><label className="text-[10px] text-muted">Fast food / week</label><input type="number" value={fastFoodPerWeek} onChange={e => setFastFoodPerWeek(e.target.value)} placeholder="1" className="w-full mt-1 rounded-xl bg-card border border-card-border px-3 py-2 text-xs outline-none focus:border-accent font-mono" /></div>
+                <div><label className="text-xs text-muted">Fruits / day</label><input type="number" value={fruitsPerDay} onChange={e => setFruitsPerDay(e.target.value)} placeholder="2" className="w-full mt-1 rounded-xl bg-card border border-card-border px-3 py-2 text-xs outline-none focus:border-accent font-mono" /></div>
+                <div><label className="text-xs text-muted">Veggies / day (servings)</label><input type="number" value={veggiesPerDay} onChange={e => setVeggiesPerDay(e.target.value)} placeholder="3" className="w-full mt-1 rounded-xl bg-card border border-card-border px-3 py-2 text-xs outline-none focus:border-accent font-mono" /></div>
+                <div><label className="text-xs text-muted">Fish / week</label><input type="number" value={fishPerWeek} onChange={e => setFishPerWeek(e.target.value)} placeholder="2" className="w-full mt-1 rounded-xl bg-card border border-card-border px-3 py-2 text-xs outline-none focus:border-accent font-mono" /></div>
+                <div><label className="text-xs text-muted">Red meat / week</label><input type="number" value={redMeatPerWeek} onChange={e => setRedMeatPerWeek(e.target.value)} placeholder="3" className="w-full mt-1 rounded-xl bg-card border border-card-border px-3 py-2 text-xs outline-none focus:border-accent font-mono" /></div>
+                <div><label className="text-xs text-muted">Ultra-processed / week</label><input type="number" value={ultraProcessedPerWeek} onChange={e => setUltraProcessedPerWeek(e.target.value)} placeholder="5" className="w-full mt-1 rounded-xl bg-card border border-card-border px-3 py-2 text-xs outline-none focus:border-accent font-mono" /></div>
+                <div><label className="text-xs text-muted">Fast food / week</label><input type="number" value={fastFoodPerWeek} onChange={e => setFastFoodPerWeek(e.target.value)} placeholder="1" className="w-full mt-1 rounded-xl bg-card border border-card-border px-3 py-2 text-xs outline-none focus:border-accent font-mono" /></div>
               </div>
 
               <div><label className="text-xs text-muted-foreground mb-2 block">Food allergies/intolerances</label>
@@ -1457,7 +1457,7 @@ export default function OnboardingPage() {
                 <input type="text" value={foodAllergiesCustom} onChange={e => setFoodAllergiesCustom(e.target.value)} placeholder="e.g. nightshades, FODMAPs, histamine..." className="w-full mt-1 rounded-xl bg-card border border-card-border px-3 py-2.5 text-sm outline-none focus:border-accent" />
               </div>
 
-              <p className="text-[10px] text-accent uppercase tracking-wider mt-2">Caffeine, alcohol, intermittent fasting</p>
+              <p className="text-xs text-accent uppercase tracking-wider mt-2">Caffeine, alcohol, intermittent fasting</p>
               <div className="grid grid-cols-2 gap-3">
                 <div><label className="text-xs text-muted-foreground">Alcohol (drinks/week)</label><input type="number" value={alcoholPerWeek} onChange={e => setAlcoholPerWeek(parseInt(e.target.value) || 0)} min={0} max={50} className="w-full mt-1 rounded-xl bg-card border border-card-border px-3 py-2.5 text-sm outline-none focus:border-accent font-mono" /></div>
                 <div><label className="text-xs text-muted-foreground">Caffeine (servings/day)</label><input type="number" value={caffeineServings} onChange={e => setCaffeineServings(parseInt(e.target.value) || 0)} min={0} max={10} className="w-full mt-1 rounded-xl bg-card border border-card-border px-3 py-2.5 text-sm outline-none focus:border-accent font-mono" /></div>
@@ -1479,7 +1479,7 @@ export default function OnboardingPage() {
                 </div>
               )}
 
-              <p className="text-[10px] text-accent uppercase tracking-wider mt-2">Smoking / vaping / substances</p>
+              <p className="text-xs text-accent uppercase tracking-wider mt-2">Smoking / vaping / substances</p>
               <div className="flex items-center gap-3"><button onClick={() => setSmoker(!smoker)} className={clsx('w-6 h-6 rounded-lg border-2 flex items-center justify-center shrink-0', smoker ? 'bg-warning border-warning' : 'border-card-border')}>{smoker && <span className="text-black text-xs">✓</span>}</button><span className="text-sm">I smoke or vape nicotine</span></div>
               {smoker && (
                 <>
@@ -1524,12 +1524,12 @@ export default function OnboardingPage() {
                 </div>
               </div>
 
-              <p className="text-[10px] text-accent uppercase tracking-wider mt-2">Strength benchmarks (if lifting — optional)</p>
+              <p className="text-xs text-accent uppercase tracking-wider mt-2">Strength benchmarks (if lifting — optional)</p>
               <div className="grid grid-cols-2 gap-2">
-                <div><label className="text-[10px] text-muted">Max pull-ups</label><input type="number" value={maxPullups} onChange={e => setMaxPullups(e.target.value)} className="w-full mt-1 rounded-xl bg-card border border-card-border px-3 py-2 text-xs outline-none focus:border-accent font-mono" /></div>
-                <div><label className="text-[10px] text-muted">Squat 1RM (kg)</label><input type="number" value={squatWeight} onChange={e => setSquatWeight(e.target.value)} className="w-full mt-1 rounded-xl bg-card border border-card-border px-3 py-2 text-xs outline-none focus:border-accent font-mono" /></div>
-                <div><label className="text-[10px] text-muted">Bench 1RM (kg)</label><input type="number" value={benchWeight} onChange={e => setBenchWeight(e.target.value)} className="w-full mt-1 rounded-xl bg-card border border-card-border px-3 py-2 text-xs outline-none focus:border-accent font-mono" /></div>
-                <div><label className="text-[10px] text-muted">Deadlift 1RM (kg)</label><input type="number" value={deadliftWeight} onChange={e => setDeadliftWeight(e.target.value)} className="w-full mt-1 rounded-xl bg-card border border-card-border px-3 py-2 text-xs outline-none focus:border-accent font-mono" /></div>
+                <div><label className="text-xs text-muted">Max pull-ups</label><input type="number" value={maxPullups} onChange={e => setMaxPullups(e.target.value)} className="w-full mt-1 rounded-xl bg-card border border-card-border px-3 py-2 text-xs outline-none focus:border-accent font-mono" /></div>
+                <div><label className="text-xs text-muted">Squat 1RM (kg)</label><input type="number" value={squatWeight} onChange={e => setSquatWeight(e.target.value)} className="w-full mt-1 rounded-xl bg-card border border-card-border px-3 py-2 text-xs outline-none focus:border-accent font-mono" /></div>
+                <div><label className="text-xs text-muted">Bench 1RM (kg)</label><input type="number" value={benchWeight} onChange={e => setBenchWeight(e.target.value)} className="w-full mt-1 rounded-xl bg-card border border-card-border px-3 py-2 text-xs outline-none focus:border-accent font-mono" /></div>
+                <div><label className="text-xs text-muted">Deadlift 1RM (kg)</label><input type="number" value={deadliftWeight} onChange={e => setDeadliftWeight(e.target.value)} className="w-full mt-1 rounded-xl bg-card border border-card-border px-3 py-2 text-xs outline-none focus:border-accent font-mono" /></div>
               </div>
 
               <div className="grid grid-cols-3 gap-2">
@@ -1569,19 +1569,19 @@ export default function OnboardingPage() {
 
               <div className="grid grid-cols-2 gap-2">
                 <button onClick={() => setDepressionSymptoms(!depressionSymptoms)} className={clsx('p-3 rounded-xl text-xs text-left transition-all', depressionSymptoms ? 'bg-warning/20 text-warning border border-warning/50' : 'bg-card border border-card-border text-muted-foreground')}>
-                  <div className={clsx('w-4 h-4 rounded border-2 inline-flex items-center justify-center mr-2 text-[10px]', depressionSymptoms ? 'bg-warning border-warning text-black' : 'border-card-border')}>{depressionSymptoms ? '✓' : ''}</div>
+                  <div className={clsx('w-4 h-4 rounded border-2 inline-flex items-center justify-center mr-2 text-xs', depressionSymptoms ? 'bg-warning border-warning text-black' : 'border-card-border')}>{depressionSymptoms ? '✓' : ''}</div>
                   Current depression symptoms
                 </button>
                 <button onClick={() => setAnxietySymptoms(!anxietySymptoms)} className={clsx('p-3 rounded-xl text-xs text-left transition-all', anxietySymptoms ? 'bg-warning/20 text-warning border border-warning/50' : 'bg-card border border-card-border text-muted-foreground')}>
-                  <div className={clsx('w-4 h-4 rounded border-2 inline-flex items-center justify-center mr-2 text-[10px]', anxietySymptoms ? 'bg-warning border-warning text-black' : 'border-card-border')}>{anxietySymptoms ? '✓' : ''}</div>
+                  <div className={clsx('w-4 h-4 rounded border-2 inline-flex items-center justify-center mr-2 text-xs', anxietySymptoms ? 'bg-warning border-warning text-black' : 'border-card-border')}>{anxietySymptoms ? '✓' : ''}</div>
                   Current anxiety symptoms
                 </button>
                 <button onClick={() => setTherapyNow(!therapyNow)} className={clsx('p-3 rounded-xl text-xs text-left transition-all', therapyNow ? 'bg-accent/20 text-accent border border-accent/50' : 'bg-card border border-card-border text-muted-foreground')}>
-                  <div className={clsx('w-4 h-4 rounded border-2 inline-flex items-center justify-center mr-2 text-[10px]', therapyNow ? 'bg-accent border-accent text-black' : 'border-card-border')}>{therapyNow ? '✓' : ''}</div>
+                  <div className={clsx('w-4 h-4 rounded border-2 inline-flex items-center justify-center mr-2 text-xs', therapyNow ? 'bg-accent border-accent text-black' : 'border-card-border')}>{therapyNow ? '✓' : ''}</div>
                   Currently in therapy
                 </button>
                 <div className="col-span-1">
-                  <label className="text-[10px] text-muted">Psych meds (if any)</label>
+                  <label className="text-xs text-muted">Psych meds (if any)</label>
                   <input type="text" value={psychMeds} onChange={e => setPsychMeds(e.target.value)} placeholder="e.g. SSRI, ADHD meds..." className="w-full mt-1 rounded-lg bg-card border border-card-border px-2 py-2 text-xs outline-none focus:border-accent" />
                 </div>
               </div>
@@ -1621,7 +1621,7 @@ export default function OnboardingPage() {
                   <label className="text-xs text-muted-foreground">Current medications</label>
                   <button onClick={addMedication} className="flex items-center gap-1 text-xs text-accent"><Plus className="w-3 h-3" /> Add</button>
                 </div>
-                {medications.length === 0 && <p className="text-[10px] text-muted">None. Click &quot;Add&quot; if you take any.</p>}
+                {medications.length === 0 && <p className="text-xs text-muted">None. Click &quot;Add&quot; if you take any.</p>}
                 <div className="space-y-2">
                   {medications.map((m, i) => (
                     <div key={i} className="flex gap-2 items-center">
@@ -1645,7 +1645,7 @@ export default function OnboardingPage() {
                 <input type="text" value={supplements} onChange={e => setSupplements(e.target.value)} placeholder="Vitamin D, Omega-3, Magnesium..." className="w-full mt-1 rounded-xl bg-card border border-card-border px-3 py-2.5 text-sm outline-none focus:border-accent" />
               </div>
 
-              <p className="text-[10px] text-accent uppercase tracking-wider mt-2">History</p>
+              <p className="text-xs text-accent uppercase tracking-wider mt-2">History</p>
               <div>
                 <label className="text-xs text-muted-foreground">Past surgeries or hospitalizations</label>
                 <textarea value={surgeries} onChange={e => setSurgeries(e.target.value)} rows={2} placeholder="e.g. appendectomy 2015, knee arthroscopy 2022" className="w-full mt-1 rounded-xl bg-card border border-card-border px-3 py-2.5 text-xs outline-none focus:border-accent resize-none" />
@@ -1683,7 +1683,7 @@ export default function OnboardingPage() {
                 </select>
               </div>
 
-              <p className="text-[10px] text-accent uppercase tracking-wider mt-2">Sex & reproductive</p>
+              <p className="text-xs text-accent uppercase tracking-wider mt-2">Sex & reproductive</p>
               <div><label className="text-xs text-muted-foreground mb-2 block">Libido (1-10): <span className="text-accent font-medium">{libidoScore}</span></label>
                 <input type="range" min={1} max={10} value={libidoScore} onChange={e => setLibidoScore(parseInt(e.target.value))} className="w-full h-2 bg-card-border rounded-lg appearance-none cursor-pointer accent-[#34d399]" />
               </div>
@@ -1739,13 +1739,13 @@ export default function OnboardingPage() {
                 </select>
               </div>
 
-              <p className="text-[10px] text-accent uppercase tracking-wider mt-2">Daily hygiene</p>
+              <p className="text-xs text-accent uppercase tracking-wider mt-2">Daily hygiene</p>
               <div className="grid grid-cols-2 gap-2">
                 <button onClick={() => setFlossDaily(!flossDaily)} className={clsx('p-3 rounded-xl text-xs text-center transition-all', flossDaily ? 'bg-accent/20 text-accent border border-accent/50' : 'bg-card border border-card-border text-muted-foreground')}>🦷 Floss daily</button>
                 <button onClick={() => setSpfDaily(!spfDaily)} className={clsx('p-3 rounded-xl text-xs text-center transition-all', spfDaily ? 'bg-accent/20 text-accent border border-accent/50' : 'bg-card border border-card-border text-muted-foreground')}>☀️ SPF daily</button>
               </div>
 
-              <p className="text-[10px] text-warning uppercase tracking-wider mt-2">⚠️ Acute red flags (check any that apply)</p>
+              <p className="text-xs text-warning uppercase tracking-wider mt-2">⚠️ Acute red flags (check any that apply)</p>
               <div className="grid grid-cols-1 gap-2">
                 {[
                   'Unexplained weight loss >5kg in 6 months',
@@ -1758,13 +1758,13 @@ export default function OnboardingPage() {
                   'Shortness of breath at rest',
                 ].map(f => (
                   <button key={f} onClick={() => toggle<string>(setRedFlagsAcute as (fn: (p: string[]) => string[]) => void, f)} className={clsx('flex items-center gap-2 px-3 py-2 rounded-xl text-xs text-left transition-all', redFlagsAcute.includes(f) ? 'bg-danger/20 text-danger border border-danger/50' : 'bg-card border border-card-border text-muted-foreground')}>
-                    <div className={clsx('w-4 h-4 rounded border-2 flex items-center justify-center text-[10px]', redFlagsAcute.includes(f) ? 'bg-danger border-danger text-black' : 'border-card-border')}>{redFlagsAcute.includes(f) ? '✓' : ''}</div>
+                    <div className={clsx('w-4 h-4 rounded border-2 flex items-center justify-center text-xs', redFlagsAcute.includes(f) ? 'bg-danger border-danger text-black' : 'border-card-border')}>{redFlagsAcute.includes(f) ? '✓' : ''}</div>
                     {f}
                   </button>
                 ))}
               </div>
               {redFlagsAcute.length > 0 && (
-                <p className="text-[10px] text-danger p-2 rounded-lg bg-danger/10 border border-danger/30">⚠️ See a doctor promptly — these symptoms need medical evaluation, not a supplement protocol.</p>
+                <p className="text-xs text-danger p-2 rounded-lg bg-danger/10 border border-danger/30">⚠️ See a doctor promptly — these symptoms need medical evaluation, not a supplement protocol.</p>
               )}
             </CollapseSection>
 
@@ -1795,7 +1795,7 @@ export default function OnboardingPage() {
                 <button onClick={() => setAirPurifier(!airPurifier)} className={clsx('p-3 rounded-xl text-xs text-center transition-all', airPurifier ? 'bg-accent/20 text-accent border border-accent/50' : 'bg-card border border-card-border text-muted-foreground')}>💨 Air purifier</button>
                 <button onClick={() => setTeflonNonstick(!teflonNonstick)} className={clsx('p-3 rounded-xl text-xs text-center transition-all', teflonNonstick ? 'bg-warning/20 text-warning border border-warning/50' : 'bg-card border border-card-border text-muted-foreground')}>🍳 Teflon non-stick</button>
                 <div className="col-span-1">
-                  <label className="text-[10px] text-muted">Water filter</label>
+                  <label className="text-xs text-muted">Water filter</label>
                   <select value={waterFilter} onChange={e => setWaterFilter(e.target.value)} className="w-full mt-1 rounded-lg bg-card border border-card-border px-2 py-2 text-xs outline-none focus:border-accent">
                     <option value="">Select</option>
                     <option value="none">None — tap</option>
@@ -1907,7 +1907,7 @@ export default function OnboardingPage() {
                       );
                     })}
                   </div>
-                  <p className="text-[10px] text-muted mt-1.5">{activeDays.length === 7 ? 'All week' : activeDays.length === 0 ? 'No active days — fully free' : `Free: ${['Mon','Tue','Wed','Thu','Fri','Sat','Sun'].filter(d => !activeDays.includes(d)).join(', ')}`}</p>
+                  <p className="text-xs text-muted mt-1.5">{activeDays.length === 7 ? 'All week' : activeDays.length === 0 ? 'No active days — fully free' : `Free: ${['Mon','Tue','Wed','Thu','Fri','Sat','Sun'].filter(d => !activeDays.includes(d)).join(', ')}`}</p>
                 </div>
 
                 {scheduleType !== 'school' && (
@@ -1937,13 +1937,13 @@ export default function OnboardingPage() {
                   <button key={v} onClick={() => setGymAccess(v)} className={clsx('py-3 px-3 rounded-xl text-xs font-medium transition-all text-left',
                     gymAccess === v ? 'bg-accent/10 border border-accent/50 text-accent' : 'bg-card border border-card-border text-muted-foreground hover:border-accent/30')}>
                     <p className="font-semibold">{l}</p>
-                    <p className="text-[10px] text-muted mt-0.5 normal-case">{d}</p>
+                    <p className="text-xs text-muted mt-0.5 normal-case">{d}</p>
                   </button>
                 ))}
               </div>
               {(gymAccess === 'home_gym' || gymAccess === 'minimal') && (
                 <div className="mt-2">
-                  <p className="text-[10px] text-muted-foreground mb-1.5">What equipment do you have?</p>
+                  <p className="text-xs text-muted-foreground mb-1.5">What equipment do you have?</p>
                   <div className="flex flex-wrap gap-1.5">
                     {['dumbbells', 'barbell', 'kettlebell', 'pull-up bar', 'resistance bands', 'bench', 'bike/treadmill', 'TRX/rings'].map(e => {
                       const on = gymEquipment.includes(e);
@@ -1967,7 +1967,7 @@ export default function OnboardingPage() {
             <div><label className="text-xs text-muted-foreground mb-2 block">Best time for exercise</label>
               <div className="grid grid-cols-5 gap-2">
                 {(['morning', 'lunch', 'evening', 'weekends', 'inconsistent'] as const).map(v => (
-                  <button key={v} onClick={() => setExerciseWindow(v)} className={clsx('py-2 rounded-xl text-[10px] font-medium capitalize transition-all', exerciseWindow === v ? 'bg-accent text-black' : 'bg-card border border-card-border text-muted-foreground')}>{v}</button>
+                  <button key={v} onClick={() => setExerciseWindow(v)} className={clsx('py-2 rounded-xl text-xs font-medium capitalize transition-all', exerciseWindow === v ? 'bg-accent text-black' : 'bg-card border border-card-border text-muted-foreground')}>{v}</button>
                 ))}
               </div>
             </div>
@@ -2148,7 +2148,7 @@ export default function OnboardingPage() {
           <div className="relative bg-surface-1 rounded-t-3xl sm:rounded-3xl w-full sm:max-w-lg mx-0 sm:mx-4 max-h-[88dvh] overflow-y-auto border border-card-border animate-fade-in-up">
             <div className="sticky top-0 bg-surface-1/95 backdrop-blur-lg border-b border-card-border p-5 flex items-center justify-between">
               <div>
-                <p className="text-[10px] font-mono uppercase tracking-widest text-accent">Almost done</p>
+                <p className="text-xs font-mono uppercase tracking-widest text-accent">Almost done</p>
                 <h2 id="review-title" className="text-lg font-semibold mt-0.5">Does this look right?</h2>
               </div>
               <button onClick={() => setShowReview(false)} aria-label="Close review" className="p-1.5 rounded-lg text-muted-foreground hover:text-foreground hover:bg-surface-2 transition-colors">
@@ -2161,53 +2161,53 @@ export default function OnboardingPage() {
                   scan in 10 seconds. A 30-row table would defeat the purpose. */}
               <div className="grid grid-cols-2 gap-x-4 gap-y-3">
                 <div>
-                  <p className="text-[10px] text-muted uppercase tracking-widest">Age</p>
+                  <p className="text-xs text-muted uppercase tracking-widest">Age</p>
                   <p className="font-medium">{age || '—'}</p>
                 </div>
                 <div>
-                  <p className="text-[10px] text-muted uppercase tracking-widest">Sex</p>
+                  <p className="text-xs text-muted uppercase tracking-widest">Sex</p>
                   <p className="font-medium capitalize">{sex || '—'}</p>
                 </div>
                 <div>
-                  <p className="text-[10px] text-muted uppercase tracking-widest">Height / Weight</p>
+                  <p className="text-xs text-muted uppercase tracking-widest">Height / Weight</p>
                   <p className="font-medium">{heightCm || '—'} cm · {weightKg || '—'} kg</p>
                 </div>
                 <div>
-                  <p className="text-[10px] text-muted uppercase tracking-widest">Activity</p>
+                  <p className="text-xs text-muted uppercase tracking-widest">Activity</p>
                   <p className="font-medium">{activityLevel || '—'}</p>
                 </div>
                 <div className="col-span-2">
-                  <p className="text-[10px] text-muted uppercase tracking-widest">Sleep</p>
+                  <p className="text-xs text-muted uppercase tracking-widest">Sleep</p>
                   <p className="font-medium">{sleepHours ? `${sleepHours}h avg` : '—'} · quality {sleepQuality ?? '—'}/10</p>
                 </div>
                 <div className="col-span-2">
-                  <p className="text-[10px] text-muted uppercase tracking-widest">Exercise load</p>
+                  <p className="text-xs text-muted uppercase tracking-widest">Exercise load</p>
                   <p className="font-medium">{cardioMin || 0} min cardio · {strengthSessions || 0} strength/wk</p>
                 </div>
                 <div>
-                  <p className="text-[10px] text-muted uppercase tracking-widest">Alcohol</p>
+                  <p className="text-xs text-muted uppercase tracking-widest">Alcohol</p>
                   <p className="font-medium">{alcoholPerWeek ?? 0} drinks/wk</p>
                 </div>
                 <div>
-                  <p className="text-[10px] text-muted uppercase tracking-widest">Caffeine</p>
+                  <p className="text-xs text-muted uppercase tracking-widest">Caffeine</p>
                   <p className="font-medium">{caffeineServings ?? 0} servings/day</p>
                 </div>
                 <div className="col-span-2">
-                  <p className="text-[10px] text-muted uppercase tracking-widest">Smoker</p>
+                  <p className="text-xs text-muted uppercase tracking-widest">Smoker</p>
                   <p className="font-medium">{smoker ? 'Yes' : 'No'}</p>
                 </div>
               </div>
 
               {conditions.length > 0 && (
                 <div className="pt-3 border-t border-card-border">
-                  <p className="text-[10px] text-muted uppercase tracking-widest mb-1">Conditions</p>
+                  <p className="text-xs text-muted uppercase tracking-widest mb-1">Conditions</p>
                   <p className="text-[13px] leading-relaxed">{conditions.join(' · ')}</p>
                 </div>
               )}
 
               {medications.filter(m => m.name.trim()).length > 0 && (
                 <div className="pt-3 border-t border-card-border">
-                  <p className="text-[10px] text-muted uppercase tracking-widest mb-1">Medications</p>
+                  <p className="text-xs text-muted uppercase tracking-widest mb-1">Medications</p>
                   <ul className="space-y-1 text-[13px]">
                     {medications.filter(m => m.name.trim()).map((m, i) => (
                       <li key={i} className="leading-relaxed">
@@ -2222,13 +2222,13 @@ export default function OnboardingPage() {
 
               {(primaryGoal || secondaryGoals.length > 0) && (
                 <div className="pt-3 border-t border-card-border">
-                  <p className="text-[10px] text-muted uppercase tracking-widest mb-1">Goals</p>
+                  <p className="text-xs text-muted uppercase tracking-widest mb-1">Goals</p>
                   <p className="text-[13px] leading-relaxed">{[primaryGoal, ...secondaryGoals].filter(Boolean).join(' · ')}</p>
                 </div>
               )}
 
               <div className="pt-3 border-t border-card-border">
-                <p className="text-[10px] text-muted uppercase tracking-widest mb-1">Biomarkers entered</p>
+                <p className="text-xs text-muted uppercase tracking-widest mb-1">Biomarkers entered</p>
                 <p className="text-[13px] leading-relaxed">
                   <span className="font-mono font-medium">{filledCount}</span> of {BIG_11_CODES.length} core markers.
                   {filledCount === 0 && <span className="text-muted-foreground"> The protocol will estimate from your lifestyle — upload a lab PDF later to refine.</span>}

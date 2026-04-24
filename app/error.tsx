@@ -41,7 +41,7 @@ export default function GlobalError({ error, reset }: { error: Error & { digest?
             This is on us, not you. Your data is safe. Try once more, and if it persists, refresh the page.
           </p>
           {error?.digest && (
-            <p className="text-[10px] text-muted mt-3 font-mono">error id: {error.digest}</p>
+            <p className="text-xs text-muted mt-3 font-mono">error id: {error.digest}</p>
           )}
         </div>
         <div className="flex items-center justify-center gap-2 flex-wrap">

@@ -51,11 +51,11 @@ export function StreakWidget({ streak, longestStreak, perfectDays, userId }: Str
             </div>
             <div>
               <p className="text-2xl font-bold font-mono tabular-nums leading-none">{streak}<span className="text-sm text-muted ml-1 font-normal">day{streak === 1 ? '' : 's'}</span></p>
-              <p className="text-[10px] text-muted uppercase tracking-widest mt-1">Current streak</p>
+              <p className="text-xs text-muted uppercase tracking-widest mt-1">Current streak</p>
             </div>
           </div>
           <div className="text-right">
-            <p className="text-[10px] text-muted uppercase tracking-widest">Best</p>
+            <p className="text-xs text-muted uppercase tracking-widest">Best</p>
             <p className="text-lg font-bold font-mono tabular-nums">{longestStreak}</p>
           </div>
         </div>
@@ -71,7 +71,7 @@ export function StreakWidget({ streak, longestStreak, perfectDays, userId }: Str
             <div className="h-1.5 rounded-full bg-surface-3 overflow-hidden">
               <div className="h-full bg-accent transition-all duration-500" style={{ width: `${pct}%` }} />
             </div>
-            <p className="text-[10px] text-muted">
+            <p className="text-xs text-muted">
               <span className="text-accent font-medium">{next.days - streak}</span> days to <span className="text-foreground">{next.label}</span>
             </p>
           </div>
@@ -102,7 +102,7 @@ export function StreakWidget({ streak, longestStreak, perfectDays, userId }: Str
                 <Trophy className="w-5 h-5 text-accent" />
               </div>
               <div className="flex-1 min-w-0">
-                <p className="text-[10px] font-mono uppercase tracking-widest text-accent">Milestone</p>
+                <p className="text-xs font-mono uppercase tracking-widest text-accent">Milestone</p>
                 <h3 id="streak-celebration-title" className="text-base font-semibold mt-0.5">{celebrating.label}</h3>
                 <p className="text-[12px] text-muted-foreground mt-1 leading-relaxed">{celebrating.blurb}</p>
               </div>

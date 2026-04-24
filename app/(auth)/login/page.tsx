@@ -122,7 +122,7 @@ export default function LoginPage() {
           <p className="text-sm text-muted-foreground max-w-xs mx-auto">
             AI-powered longevity protocols calibrated to <span className="text-foreground">your</span> biomarkers.
           </p>
-          <div className="flex items-center justify-center gap-3 text-[10px] text-muted">
+          <div className="flex items-center justify-center gap-3 text-xs text-muted">
             <span>🔬 {BIOMARKER_COUNT} biomarkers</span>
             <span>•</span>
             <span>🧬 {PATTERN_COUNT} patterns</span>
@@ -170,7 +170,7 @@ export default function LoginPage() {
                 )}
                 Continue with Google
               </button>
-              <div className="flex items-center gap-3 text-[10px] text-muted">
+              <div className="flex items-center gap-3 text-xs text-muted">
                 <div className="flex-1 h-px bg-card-border" />
                 <span>or with email</span>
                 <div className="flex-1 h-px bg-card-border" />
@@ -207,7 +207,7 @@ export default function LoginPage() {
                   className="w-full rounded-xl bg-background border border-card-border px-4 py-2.5 text-sm outline-none focus:border-accent transition-colors font-mono"
                 />
                 {mode === 'register' && password.length > 0 && (
-                  <p className={`text-[10px] mt-1 ${passwordIssues(password) ? 'text-amber-400' : 'text-accent'}`}>
+                  <p className={`text-xs mt-1 ${passwordIssues(password) ? 'text-amber-400' : 'text-accent'}`}>
                     {passwordIssues(password) || '✓ Strong enough'}
                   </p>
                 )}
@@ -250,7 +250,7 @@ export default function LoginPage() {
           )}
         </div>
 
-        <p className="text-[10px] text-center text-muted">
+        <p className="text-xs text-center text-muted">
           <Link href="/" className="text-accent hover:underline">Back to home</Link>
         </p>
       </div>

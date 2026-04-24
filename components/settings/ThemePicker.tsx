@@ -62,7 +62,7 @@ export function ThemePicker() {
             >
               <Icon className="w-5 h-5" />
               <span className="text-xs font-semibold">{opt.label}</span>
-              <span className="text-[10px] text-muted leading-tight">{opt.hint}</span>
+              <span className="text-xs text-muted leading-tight">{opt.hint}</span>
             </button>
           );
         })}

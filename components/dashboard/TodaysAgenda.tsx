@@ -105,7 +105,7 @@ export function TodaysAgenda() {
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-2">
                       <p className={clsx('text-sm font-medium truncate', item.done && 'line-through')}>{item.title}</p>
-                      <span className={clsx('text-[9px] font-mono uppercase tracking-widest px-1.5 py-0.5 rounded-full border shrink-0',
+                      <span className={clsx('text-[11px] font-medium font-mono uppercase tracking-widest px-1.5 py-0.5 rounded-full border shrink-0',
                         item.status === 'overdue' ? 'text-amber-400 bg-amber-500/10 border-amber-500/30'
                         : item.status === 'now' ? 'text-accent bg-accent/10 border-accent/30'
                         : item.status === 'done' ? 'text-muted-foreground bg-surface-3 border-card-border'

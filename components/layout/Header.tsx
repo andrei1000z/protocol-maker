@@ -67,7 +67,7 @@ function UserMenu() {
       {open && (
         <div className="absolute right-0 top-full mt-2 w-60 rounded-xl bg-surface-1 border border-card-border shadow-xl p-1.5 z-50 animate-fade-in-up">
           <div className="px-3 py-2.5 border-b border-card-border mb-1">
-            <p className="text-[10px] uppercase tracking-widest text-muted">Signed in as</p>
+            <p className="text-xs uppercase tracking-widest text-muted">Signed in as</p>
             <p className="text-sm font-medium truncate mt-0.5">{name || 'Unnamed account'}</p>
           </div>
           <Link
@@ -90,7 +90,7 @@ function UserMenu() {
             onClick={() => { router.refresh(); setOpen(false); }}
             className="w-full flex items-center gap-2.5 px-3 py-2 rounded-lg hover:bg-surface-2 text-sm text-left transition-colors"
           >
-            <span className="w-4 h-4 text-muted-foreground flex items-center justify-center text-[10px]">↻</span>
+            <span className="w-4 h-4 text-muted-foreground flex items-center justify-center text-xs">↻</span>
             Refresh data
           </button>
           <div className="my-1 border-t border-card-border" />
@@ -146,7 +146,7 @@ export function Header() {
             window.dispatchEvent(new KeyboardEvent('keydown', { key: 'k', ctrlKey: true }));
           }}
           aria-label="Open command palette"
-          className="hidden md:inline-flex items-center gap-1.5 px-2 py-1 rounded-lg border border-card-border bg-surface-2 text-[10px] font-mono text-muted-foreground hover:text-foreground hover:border-accent/30 transition-colors"
+          className="hidden md:inline-flex items-center gap-1.5 px-2 py-1 rounded-lg border border-card-border bg-surface-2 text-xs font-mono text-muted-foreground hover:text-foreground hover:border-accent/30 transition-colors"
           title="Command palette"
         >
           <kbd>⌘K</kbd>
