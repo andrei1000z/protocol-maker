@@ -18,6 +18,7 @@ import { logAiTokens, usageFromAnthropic, usageFromGroq, type AiTokenUsage } fro
 import { trackServer } from '@/lib/analytics';
 import { inspectProtocolShape } from '@/lib/engine/schemas';
 import { describeMealsForPrompt, type MealRow } from '@/lib/engine/meals';
+import { describeFeedbackForPrompt, type SupplementFeedbackRow } from '@/lib/engine/supplement-feedback';
 
 // 90s budget: Claude ~40-55s on long-tail, Groq fallback 20-30s on top.
 // 60s was tight — a Claude that barely fails at 55s left <5s for Groq.
@@ -239,11 +240,26 @@ export async function POST(request: Request) {
       }
     } catch { /* meals table may not exist yet on pre-migration DBs — ignore */ }
 
+    // Pull the last 30 days of user-reported supplement reactions so the AI
+    // can route around poorly-tolerated compounds on the new protocol. Same
+    // silent-failure tolerance as meals (pre-migration DBs would 404 here).
+    let supplementFeedbackSummary: string | null = null;
+    try {
+      const fbSince = new Date(Date.now() - 30 * 864e5).toISOString();
+      const { data: fbRows } = await supabase.from('supplement_feedback')
+        .select('*').eq('user_id', user.id).gte('reported_at', fbSince)
+        .order('reported_at', { ascending: false }).limit(50);
+      if (Array.isArray(fbRows) && fbRows.length > 0) {
+        supplementFeedbackSummary = describeFeedbackForPrompt(fbRows as SupplementFeedbackRow[]);
+      }
+    } catch { /* supplement_feedback table pre-migration — ignore */ }
+
     const prompt = buildMasterPromptV2(
       profile, classified, patterns, BIOMARKER_DB,
       longevityScore, biologicalAge, recentSignalsSummary,
       { rate30d: adherenceScore30d, topMissedItems: adherenceTopMissed, activeDays: adherenceActiveDays },
       mealsSummary ?? undefined,
+      supplementFeedbackSummary ?? undefined,
     );
 
     // Try Claude Opus first (best medical reasoning), fallback to Groq, then deterministic

@@ -14,6 +14,7 @@ import { logger } from '@/lib/logger';
 import { logAiTokens, usageFromAnthropic, usageFromGroq, type AiTokenUsage } from '@/lib/ai-costs';
 import { inspectProtocolShape } from '@/lib/engine/schemas';
 import { describeMealsForPrompt, type MealRow } from '@/lib/engine/meals';
+import { describeFeedbackForPrompt, type SupplementFeedbackRow } from '@/lib/engine/supplement-feedback';
 import { syncProvider } from '@/lib/integrations/sync';
 import { isConfigured as ouraConfigured } from '@/lib/integrations/oura';
 import { isConfigured as fitbitConfigured } from '@/lib/integrations/fitbit';
@@ -365,11 +366,24 @@ async function regenerateForUser(userId: string): Promise<{ skipped?: boolean; s
     }
   } catch { /* ignore */ }
 
+  // 30-day supplement-feedback summary — mirror the interactive route.
+  let supplementFeedbackSummary: string | null = null;
+  try {
+    const fbSince = new Date(Date.now() - 30 * 864e5).toISOString();
+    const { data: fbRows } = await supabase.from('supplement_feedback')
+      .select('*').eq('user_id', userId).gte('reported_at', fbSince)
+      .order('reported_at', { ascending: false }).limit(50);
+    if (Array.isArray(fbRows) && fbRows.length > 0) {
+      supplementFeedbackSummary = describeFeedbackForPrompt(fbRows as SupplementFeedbackRow[]);
+    }
+  } catch { /* ignore */ }
+
   const prompt = buildMasterPromptV2(
     mergedProfile as UserProfile, classified, patterns, BIOMARKER_DB,
     longevityScore, biologicalAge, recentSignalsSummary,
     { rate30d: adherenceRate30d, topMissedItems: adherenceTopMissed, activeDays: activeDates.size },
     mealsSummary ?? undefined,
+    supplementFeedbackSummary ?? undefined,
   );
 
   try {

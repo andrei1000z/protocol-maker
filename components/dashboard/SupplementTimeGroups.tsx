@@ -20,7 +20,8 @@ import {
   type SupplementLike,
 } from '@/lib/engine/supplement-timing';
 import clsx from 'clsx';
-import { ChevronDown } from 'lucide-react';
+import { ChevronDown, AlertTriangle } from 'lucide-react';
+import { SupplementFeedbackModal } from '@/components/dashboard/SupplementFeedbackModal';
 
 interface Props {
   supplements: SupplementLike[] | null | undefined;
@@ -30,6 +31,8 @@ interface Props {
 const BUCKET_ORDER: SupplementBucket[] = ['morning', 'midday', 'evening', 'bedtime', 'anytime'];
 
 export function SupplementTimeGroups({ supplements }: Props) {
+  // When set, renders the feedback modal targeting this supplement.
+  const [feedbackFor, setFeedbackFor] = useState<string | null>(null);
   // Track the active bucket so the UI can auto-expand the one that matches
   // the user's local time. Updates every minute so a user sitting on the
   // page across a bucket transition sees the right section open.
@@ -94,7 +97,7 @@ export function SupplementTimeGroups({ supplements }: Props) {
             {isOpen && (
               <ul className="px-3 pb-3 space-y-1.5">
                 {items.map((s, i) => (
-                  <li key={`${s.name || ''}-${i}`} className="flex items-start gap-3 px-3 py-2 rounded-lg bg-surface-1/60 border border-card-border">
+                  <li key={`${s.name || ''}-${i}`} className="group flex items-start gap-3 px-3 py-2 rounded-lg bg-surface-1/60 border border-card-border">
                     <div className="flex-1 min-w-0">
                       <p className="text-[13px] font-medium truncate">
                         {s.name}
@@ -115,6 +118,17 @@ export function SupplementTimeGroups({ supplements }: Props) {
                         </p>
                       )}
                     </div>
+                    {s.name && (
+                      <button
+                        type="button"
+                        onClick={() => setFeedbackFor(s.name || null)}
+                        aria-label={`Raportează efect secundar la ${s.name}`}
+                        title="Raportează efect secundar"
+                        className="shrink-0 p-1.5 rounded-lg text-muted-foreground opacity-0 group-hover:opacity-100 focus:opacity-100 hover:text-amber-400 hover:bg-amber-500/10 transition-all"
+                      >
+                        <AlertTriangle className="w-3.5 h-3.5" />
+                      </button>
+                    )}
                   </li>
                 ))}
               </ul>
@@ -122,6 +136,12 @@ export function SupplementTimeGroups({ supplements }: Props) {
           </div>
         );
       })}
+      {feedbackFor && (
+        <SupplementFeedbackModal
+          supplementName={feedbackFor}
+          onClose={() => setFeedbackFor(null)}
+        />
+      )}
     </div>
   );
 }

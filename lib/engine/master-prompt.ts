@@ -315,6 +315,11 @@ export function buildMasterPromptV2(
   // (from /api/meals). When present the AI can calibrate nutrition advice
   // to what the user actually eats, not what onboarding claimed.
   mealsSummary?: string,
+  // Optional — paragraph listing supplements the user has flagged with side
+  // effects in the last 30 days (from supplement_feedback). The prompt uses
+  // this to route around poorly-tolerated compounds on the next regen
+  // ("magnesium glycinate → malate for GI" etc.).
+  supplementFeedbackSummary?: string,
 ): string {
   const bmi = profile.weightKg / ((profile.heightCm / 100) ** 2);
   const bmiCategory = bmi < 18.5 ? 'underweight' : bmi < 25 ? 'normal' : bmi < 30 ? 'overweight' : 'obese';
@@ -659,6 +664,10 @@ in topWins/topRisks and pick realistic adjustments (shift composition first,
 volume second). Don't prescribe a Mediterranean plan to someone who's clearly
 eating mostly ultra-processed food — meet them where they are and name the
 highest-impact single swap.
+` : ''}
+${supplementFeedbackSummary ? `
+═══ USER-REPORTED SUPPLEMENT REACTIONS (last 30 days — hard signal, not a survey) ═══
+${supplementFeedbackSummary}
 ` : ''}
 ${adherence && adherence.rate30d !== null ? `
 ═══ ADHERENCE SIGNAL (last 30 days — reality check on the previous protocol) ═══

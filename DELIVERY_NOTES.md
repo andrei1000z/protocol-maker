@@ -4,6 +4,53 @@ Append-only log of shipped work. Newest entries at top.
 
 ---
 
+## Phase 5.5 — Supplement side-effect reporting · 2026-04-24
+
+Full vertical slice: DB → API → UI → master prompt wiring.
+
+### Shipped
+
+**DB (new migration `supabase/migrations/0002_supplement_feedback.sql`)**
+- `public.supplement_feedback` table: user_id, supplement_name, categories[], notes, reported_at, optional protocol_id.
+- Range + length guards: notes ≤1000 chars, categories ≤10, supplement_name 1-120.
+- RLS + FORCE RLS with `supplement_feedback_own` policy.
+- Indexes: hot-path `(user_id, reported_at desc)` + GIN on categories.
+
+**API (`app/api/supplement-feedback/route.ts`)**
+- POST (Zod-validated, rate-limited on the save-profile budget 20/h).
+- GET for listing (last 30d default, max 90d).
+- DELETE by id, RLS-scoped.
+- Controlled vocabulary of 7 categories: digestive, sleep, energy, mood, skin, headache, other.
+
+**UI (`components/dashboard/SupplementFeedbackModal.tsx`)**
+- Bottom-sheet modal on mobile / centered on desktop.
+- Category checkboxes (aria-pressed, big tap targets) + optional 1000-char free-text field.
+- Wire-up in `SupplementTimeGroups.tsx`: hover/focus on a supplement reveals an `AlertTriangle` icon; click opens the modal pre-filled with that supplement's name. 100% RO copy.
+- Success toast: "Raport înregistrat — {supplement} va fi ajustat la următoarea regenerare."
+
+**Prompt integration (`lib/engine/supplement-feedback.ts`)**
+- `describeFeedbackForPrompt(rows)` → compact paragraph: "User reported side effects on: · X — categories (Nd ago). Notes: ..." + closing guidance to avoid or swap ("magnesium glycinate → malate for GI; 5-HTP → L-tryptophan for anxious"). Deduplicates repeated reports, caps note length at 180 chars.
+- `buildMasterPromptV2` extended with `supplementFeedbackSummary?` (position after `mealsSummary`). New prompt section "USER-REPORTED SUPPLEMENT REACTIONS" appears under the meals block.
+- Both `/api/generate-protocol` and `/api/cron/daily-regenerate` now fetch last-30d feedback rows with silent-fail tolerance (pre-migration DBs just skip the section).
+- +6 unit tests (empty/null, single entry, dedup-same-supplement, long-notes trim, guidance paragraph present, unknown-category graceful fallback).
+
+### Required action on existing deployments
+Run `supabase/migrations/0002_supplement_feedback.sql` in SQL Editor. Idempotent.
+
+### Verification
+```bash
+$ npx tsc --noEmit        # clean
+$ npm test                # 323/323 (+6 feedback tests)
+```
+
+Manual QA:
+1. Dashboard → supplement card → hover an item → AlertTriangle appears → click → modal opens.
+2. Check "Digestive", type "bloating 1h after dose", submit → success toast.
+3. Regenerate protocol → next version mentions reaction in its reasoning / avoids the reported supplement.
+4. `select * from supplement_feedback` shows the row with the correct user_id.
+
+---
+
 ## Phase 4/7/9 follow-ons — undo toast + last-refreshed chip + critical-fields chip · 2026-04-24
 
 ### Shipped
