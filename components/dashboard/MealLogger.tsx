@@ -93,21 +93,21 @@ interface AnalysisResponse {
 
 type TimePreset = { label: string; offsetMin: number };
 const TIME_PRESETS: TimePreset[] = [
-  { label: 'Now',        offsetMin: 0 },
-  { label: '30m ago',    offsetMin: -30 },
-  { label: '1h ago',     offsetMin: -60 },
-  { label: '2h ago',     offsetMin: -120 },
-  { label: 'Breakfast',  offsetMin: -9999 }, // resolved at submit time
-  { label: 'Lunch',      offsetMin: -9999 },
-  { label: 'Dinner',     offsetMin: -9999 },
+  { label: 'Acum',          offsetMin: 0 },
+  { label: 'Acum 30 min',   offsetMin: -30 },
+  { label: 'Acum 1h',       offsetMin: -60 },
+  { label: 'Acum 2h',       offsetMin: -120 },
+  { label: 'Mic dejun',     offsetMin: -9999 }, // resolved at submit time
+  { label: 'Prânz',         offsetMin: -9999 },
+  { label: 'Cină',          offsetMin: -9999 },
 ];
 
 function resolvePresetTime(label: string): Date {
   const d = new Date();
   const byMeal: Record<string, [number, number]> = {
-    'Breakfast': [8, 0],
-    'Lunch':     [13, 0],
-    'Dinner':    [19, 30],
+    'Mic dejun': [8, 0],
+    'Prânz':     [13, 0],
+    'Cină':      [19, 30],
   };
   if (byMeal[label]) {
     const [h, m] = byMeal[label];
@@ -125,11 +125,11 @@ function fmtTime(iso: string): string {
 }
 function fmtRelative(iso: string): string {
   const hours = Math.round((Date.now() - new Date(iso).getTime()) / 3_600_000);
-  if (hours < 1) return 'just now';
-  if (hours < 24) return `${hours}h ago`;
+  if (hours < 1) return 'chiar acum';
+  if (hours < 24) return `acum ${hours}h`;
   const days = Math.round(hours / 24);
-  if (days === 1) return 'yesterday';
-  return `${days}d ago`;
+  if (days === 1) return 'ieri';
+  return `acum ${days} zile`;
 }
 
 export function MealLogger() {
@@ -163,14 +163,14 @@ export function MealLogger() {
       const res = await fetch('/api/generate-protocol', { method: 'POST' });
       if (!res.ok) {
         const j = await res.json().catch(() => ({}));
-        throw new Error(j.error || `Regen failed (${res.status})`);
+        throw new Error(j.error || `Regenerarea a eșuat (${res.status})`);
       }
       invalidate.myData();
       invalidate.liveScores();
       invalidate.protocolHistory();
-      toast({ tone: 'success', title: 'Protocol refreshed', description: 'Your meals are now factored into nutrition picks and supplements.' });
+      toast({ tone: 'success', title: 'Protocol actualizat', description: 'Mesele tale sunt acum incluse în nutriție și suplimente.' });
     } catch (e) {
-      toast({ tone: 'error', title: 'Regen failed', description: e instanceof Error ? e.message : 'Try again.' });
+      toast({ tone: 'error', title: 'Regenerarea a eșuat', description: e instanceof Error ? e.message : 'Încearcă din nou.' });
     } finally {
       setRegenerating(false);
     }
@@ -184,11 +184,11 @@ export function MealLogger() {
             <Utensils className="w-5 h-5 text-accent" />
           </div>
           <div>
-            <h2 className="text-base sm:text-lg font-semibold tracking-tight">What you ate</h2>
+            <h2 className="text-base sm:text-lg font-semibold tracking-tight">Ce ai mâncat</h2>
             <p className="text-[11px] text-muted-foreground leading-relaxed mt-0.5">
               {todaysMeals.length === 0
-                ? 'Take a photo. Get calories, protein, verdict, and longevity impact in 5 seconds.'
-                : `${todaysMeals.length} meal${todaysMeals.length === 1 ? '' : 's'} today · ${Math.round(todayTotals.calories)} kcal · ${Math.round(todayTotals.protein_g)}g protein.`}
+                ? 'Fă o poză. Primești calorii, proteine, verdict și impact pe longevitate în 5 secunde.'
+                : `${todaysMeals.length} ${todaysMeals.length === 1 ? 'masă azi' : 'mese azi'} · ${Math.round(todayTotals.calories)} kcal · ${Math.round(todayTotals.protein_g)}g proteine.`}
             </p>
           </div>
         </div>
@@ -197,7 +197,7 @@ export function MealLogger() {
           className="shrink-0 inline-flex items-center gap-1.5 text-xs sm:text-sm font-semibold px-3.5 py-2 rounded-xl bg-accent text-black hover:bg-accent-bright transition-colors"
         >
           <Camera className="w-4 h-4" />
-          Add meal
+          Adaugă masă
         </button>
       </div>
 
@@ -211,7 +211,7 @@ export function MealLogger() {
         <div className="h-16 rounded-xl bg-surface-3/40 animate-pulse" />
       ) : recent.length === 0 ? (
         <p className="text-[11px] text-muted-foreground italic">
-          Nothing logged yet. What you eat over the next week shapes your next protocol update.
+          Nimic logat încă. Ce mănânci în săptămâna următoare va modela următoarea actualizare a protocolului.
         </p>
       ) : (
         <>
@@ -226,7 +226,7 @@ export function MealLogger() {
               className="text-[11px] text-muted-foreground hover:text-accent transition-colors inline-flex items-center gap-1"
             >
               {expanded ? <ChevronUp className="w-3 h-3" /> : <ChevronDown className="w-3 h-3" />}
-              {expanded ? 'Show less' : `Show ${recent.length - 3} more from last 7 days`}
+              {expanded ? 'Arată mai puțin' : `Arată încă ${recent.length - 3} din ultimele 7 zile`}
             </button>
           )}
         </>
@@ -239,9 +239,9 @@ export function MealLogger() {
           <div className="flex items-center gap-2.5 min-w-0">
             <Sparkles className="w-4 h-4 text-accent shrink-0" />
             <div className="min-w-0">
-              <p className="text-xs font-semibold">Refresh your protocol with this week&apos;s meals</p>
+              <p className="text-xs font-semibold">Actualizează protocolul cu mesele din săptămâna asta</p>
               <p className="text-xs text-muted-foreground leading-relaxed">
-                {recent.length} meals analyzed. Supplements + timing re-tune to what you actually eat.
+                {recent.length} mese analizate. Suplimente + timing se re-calibrează pe ce mănânci în realitate.
               </p>
             </div>
           </div>
@@ -253,12 +253,12 @@ export function MealLogger() {
             {regenerating ? (
               <>
                 <span className="w-3 h-3 border-2 border-black/40 border-t-black rounded-full animate-spin" />
-                Regenerating…
+                Regenerez…
               </>
             ) : (
               <>
                 <RefreshCw className="w-3 h-3" />
-                Refresh
+                Actualizează
               </>
             )}
           </button>
@@ -288,9 +288,9 @@ function TodaysIntakeStrip({
   // added sugar.
   const watch = (() => {
     const candidates: Array<{ key: string; value: number; cap: number; unit: string; label: string }> = [
-      { key: 'sodium',    value: totals.sodium_mg,       cap: targets.sodium_mg_max,       unit: 'mg', label: 'Sodium' },
-      { key: 'satfat',    value: totals.saturated_fat_g, cap: targets.saturated_fat_g_max, unit: 'g',  label: 'Sat fat' },
-      { key: 'addsugar',  value: totals.added_sugar_g,   cap: targets.added_sugar_g_max,   unit: 'g',  label: 'Added sugar' },
+      { key: 'sodium',    value: totals.sodium_mg,       cap: targets.sodium_mg_max,       unit: 'mg', label: 'Sodiu' },
+      { key: 'satfat',    value: totals.saturated_fat_g, cap: targets.saturated_fat_g_max, unit: 'g',  label: 'Gr. sat.' },
+      { key: 'addsugar',  value: totals.added_sugar_g,   cap: targets.added_sugar_g_max,   unit: 'g',  label: 'Zahăr adăugat' },
     ];
     // Return the one with the highest ratio — but only if any is above 0, so
     // early-morning breakfast of oatmeal shows the user "nothing to worry about".
@@ -300,9 +300,9 @@ function TodaysIntakeStrip({
 
   return (
     <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
-      <IntakeBar label="Calories" unit="kcal"  value={totals.calories}  target={targets.calories}       type="target"  icon={Flame} />
-      <IntakeBar label="Protein"  unit="g"     value={totals.protein_g} target={targets.protein_g}      type="target" />
-      <IntakeBar label="Fiber"    unit="g"     value={totals.fiber_g}   target={targets.fiber_g}        type="target" />
+      <IntakeBar label="Calorii"  unit="kcal"  value={totals.calories}  target={targets.calories}       type="target"  icon={Flame} />
+      <IntakeBar label="Proteine" unit="g"     value={totals.protein_g} target={targets.protein_g}      type="target" />
+      <IntakeBar label="Fibre"    unit="g"     value={totals.fiber_g}   target={targets.fiber_g}        type="target" />
       <IntakeBar label={watch.label} unit={watch.unit} value={watch.value} target={watch.cap} type="ceiling" icon={AlertTriangle} />
     </div>
   );
@@ -380,7 +380,7 @@ function MealRow({ meal }: { meal: NonNullable<ReturnType<typeof useMeals>['data
     : 'text-muted-foreground';
 
   const handleDelete = async () => {
-    if (!window.confirm(`Delete "${meal.title}"?`)) return;
+    if (!window.confirm(`Ștergi „${meal.title}"?`)) return;
     await fetch(`/api/meals?id=${encodeURIComponent(meal.id)}`, { method: 'DELETE' });
     invalidate.meals();
   };
@@ -397,7 +397,7 @@ function MealRow({ meal }: { meal: NonNullable<ReturnType<typeof useMeals>['data
           )}
           {impactColor && typeof lis === 'number' && (
             <span className={clsx('text-[11px] font-medium font-mono font-semibold tabular-nums shrink-0', impactColor)}>
-              {lis > 0 ? `+${lis}` : lis} impact
+              impact {lis > 0 ? `+${lis}` : lis}
             </span>
           )}
         </div>
@@ -412,7 +412,7 @@ function MealRow({ meal }: { meal: NonNullable<ReturnType<typeof useMeals>['data
       </div>
       <button
         onClick={handleDelete}
-        aria-label={`Delete ${meal.title}`}
+        aria-label={`Șterge ${meal.title}`}
         className="p-1.5 rounded-lg text-muted-foreground opacity-0 group-hover:opacity-100 hover:text-danger hover:bg-surface-3 transition-all shrink-0"
       >
         <Trash2 className="w-3.5 h-3.5" />
@@ -428,7 +428,7 @@ function MealLoggerModal({ onClose }: { onClose: () => void }) {
   const [file, setFile] = useState<File | null>(null);
   const [preview, setPreview] = useState<string | null>(null);
   const [userText, setUserText] = useState('');
-  const [selectedPreset, setSelectedPreset] = useState<string>('Now');
+  const [selectedPreset, setSelectedPreset] = useState<string>('Acum');
   const [customTime, setCustomTime] = useState<string>('');
   const [analyzing, setAnalyzing] = useState(false);
   const [analysis, setAnalysis] = useState<AnalysisResponse | null>(null);
@@ -488,9 +488,9 @@ function MealLoggerModal({ onClose }: { onClose: () => void }) {
       if (!res.ok) {
         const j = await res.json().catch(() => ({}));
         if (res.status === 413) {
-          throw new Error('Photo still too big after shrinking. Try a smaller photo or describe the meal in text.');
+          throw new Error('Poza e tot prea mare după micșorare. Încearcă o poză mai mică sau descrie masa în text.');
         }
-        throw new Error(j.error || `Couldn't read the plate (${res.status}). Try again.`);
+        throw new Error(j.error || `Nu am putut citi farfuria (${res.status}). Încearcă din nou.`);
       }
       const data = (await res.json()) as AnalysisResponse;
       setAnalysis(data);
@@ -573,13 +573,13 @@ function MealLoggerModal({ onClose }: { onClose: () => void }) {
         <div className="sticky top-0 z-10 bg-surface-1/95 backdrop-blur-lg border-b border-card-border p-5 flex items-center justify-between">
           <div>
             <p className="text-xs font-mono uppercase tracking-widest text-accent">
-              {analysis ? 'Check this looks right' : 'Add a meal'}
+              {analysis ? 'Verifică dacă e bine' : 'Adaugă o masă'}
             </p>
             <h2 id="meal-logger-title" className="text-lg font-semibold mt-0.5">
-              {analysis ? editableTitle : 'Snap it or describe it'}
+              {analysis ? editableTitle : 'Fă o poză sau descrie-o'}
             </h2>
           </div>
-          <button onClick={onClose} aria-label="Close" className="p-1.5 rounded-lg text-muted-foreground hover:text-foreground hover:bg-surface-2 transition-colors">
+          <button onClick={onClose} aria-label="Închide" className="p-1.5 rounded-lg text-muted-foreground hover:text-foreground hover:bg-surface-2 transition-colors">
             <X className="w-4 h-4" />
           </button>
         </div>
@@ -590,13 +590,13 @@ function MealLoggerModal({ onClose }: { onClose: () => void }) {
             {/* Photo picker. On iOS the capture attr opens the camera
                 directly; desktop browsers show a file picker. Both supported. */}
             <div>
-              <p className="text-[11px] font-semibold uppercase tracking-widest text-muted mb-2">1. Photo <span className="text-muted/60 font-normal normal-case tracking-normal">(fastest option)</span></p>
+              <p className="text-[11px] font-semibold uppercase tracking-widest text-muted mb-2">1. Poză <span className="text-muted/60 font-normal normal-case tracking-normal">(cea mai rapidă variantă)</span></p>
               {preview ? (
                 <div className="relative rounded-2xl overflow-hidden border border-card-border">
-                  <Image src={preview} alt="Meal preview" width={800} height={600} className="w-full max-h-72 object-cover" unoptimized />
+                  <Image src={preview} alt="Previzualizare masă" width={800} height={600} className="w-full max-h-72 object-cover" unoptimized />
                   <button
                     onClick={() => { setFile(null); if (preview) URL.revokeObjectURL(preview); setPreview(null); }}
-                    aria-label="Remove photo"
+                    aria-label="Elimină poza"
                     className="absolute top-2 right-2 p-1.5 rounded-lg bg-black/60 text-white hover:bg-black/80"
                   >
                     <X className="w-4 h-4" />
@@ -610,13 +610,13 @@ function MealLoggerModal({ onClose }: { onClose: () => void }) {
               ) : compressing ? (
                 <div className="rounded-2xl border border-card-border bg-surface-2 p-6 flex flex-col items-center gap-2">
                   <span className="w-5 h-5 border-2 border-accent/30 border-t-accent rounded-full animate-spin" />
-                  <p className="text-[11px] text-muted-foreground">Shrinking photo…</p>
+                  <p className="text-[11px] text-muted-foreground">Micșorez poza…</p>
                 </div>
               ) : (
                 <div className="grid grid-cols-2 gap-2">
                   <label className="rounded-xl bg-surface-2 border border-card-border hover:border-accent/40 p-4 text-center cursor-pointer transition-colors">
                     <Camera className="w-5 h-5 mx-auto text-accent" />
-                    <p className="text-[11px] font-medium mt-1.5">Open camera</p>
+                    <p className="text-[11px] font-medium mt-1.5">Deschide camera</p>
                     <input
                       ref={fileRef}
                       type="file"
@@ -628,7 +628,7 @@ function MealLoggerModal({ onClose }: { onClose: () => void }) {
                   </label>
                   <label className="rounded-xl bg-surface-2 border border-card-border hover:border-accent/40 p-4 text-center cursor-pointer transition-colors">
                     <Upload className="w-5 h-5 mx-auto text-muted-foreground" />
-                    <p className="text-[11px] font-medium mt-1.5">Choose file</p>
+                    <p className="text-[11px] font-medium mt-1.5">Alege fișier</p>
                     <input type="file" accept="image/*" className="hidden" onChange={handleFileChange} />
                   </label>
                 </div>
@@ -638,12 +638,12 @@ function MealLoggerModal({ onClose }: { onClose: () => void }) {
             {/* Text */}
             <div>
               <p className="text-[11px] font-semibold uppercase tracking-widest text-muted mb-2 flex items-center gap-1.5">
-                <Type className="w-3 h-3" /> 2. Or type what you ate <span className="text-muted/60 font-normal normal-case tracking-normal">(skip if you added a photo)</span>
+                <Type className="w-3 h-3" /> 2. Sau scrie ce ai mâncat <span className="text-muted/60 font-normal normal-case tracking-normal">(sari peste dacă ai adăugat poză)</span>
               </p>
               <textarea
                 value={userText}
                 onChange={e => setUserText(e.target.value)}
-                placeholder="chicken with rice, avocado, olive oil"
+                placeholder="pui cu orez, avocado, ulei de măsline"
                 rows={3}
                 className="w-full rounded-xl bg-surface-2 border border-card-border px-3 py-2.5 text-sm outline-none focus:border-accent/50 placeholder:text-muted-foreground/50 resize-none"
               />
@@ -652,7 +652,7 @@ function MealLoggerModal({ onClose }: { onClose: () => void }) {
             {/* Time picker */}
             <div>
               <p className="text-[11px] font-semibold uppercase tracking-widest text-muted mb-2 flex items-center gap-1.5">
-                <Clock className="w-3 h-3" /> 3. When did you eat?
+                <Clock className="w-3 h-3" /> 3. Când ai mâncat?
               </p>
               <div className="flex flex-wrap gap-1.5">
                 {TIME_PRESETS.map(p => (
@@ -673,7 +673,7 @@ function MealLoggerModal({ onClose }: { onClose: () => void }) {
                 value={customTime}
                 onChange={e => { setCustomTime(e.target.value); setSelectedPreset('__custom'); }}
                 className="mt-2 w-full rounded-xl bg-surface-2 border border-card-border px-3 py-2 text-sm outline-none focus:border-accent/50"
-                aria-label="Custom time"
+                aria-label="Oră personalizată"
               />
             </div>
 
@@ -689,17 +689,17 @@ function MealLoggerModal({ onClose }: { onClose: () => void }) {
               {analyzing ? (
                 <>
                   <span className="w-4 h-4 border-2 border-black/40 border-t-black rounded-full animate-spin" />
-                  Reading the plate…
+                  Citesc farfuria…
                 </>
               ) : (
                 <>
                   <Sparkles className="w-4 h-4" />
-                  See what's in it
+                  Vezi ce e înăuntru
                 </>
               )}
             </button>
             <p className="text-xs text-center text-muted">
-              Your photo isn't saved — only the title, macros, and verdict.
+              Poza ta nu e salvată — doar titlul, macros și verdictul.
             </p>
           </div>
         )}
@@ -741,7 +741,7 @@ function MealLoggerModal({ onClose }: { onClose: () => void }) {
 
             {analysis.analysis.ingredients.length > 0 && (
               <div>
-                <p className="text-xs font-mono uppercase tracking-widest text-muted mb-1.5">Ingredients</p>
+                <p className="text-xs font-mono uppercase tracking-widest text-muted mb-1.5">Ingrediente</p>
                 <div className="flex flex-wrap gap-1">
                   {analysis.analysis.ingredients.map(ing => (
                     <span key={ing} className="text-[11px] px-2 py-0.5 rounded-full bg-surface-2 border border-card-border text-foreground/90">
@@ -753,7 +753,7 @@ function MealLoggerModal({ onClose }: { onClose: () => void }) {
             )}
 
             <div className="text-xs text-muted pt-2 border-t border-card-border">
-              Eaten at {fmtTime(analysis.eatenAt)}
+              Mâncat la {fmtTime(analysis.eatenAt)}
             </div>
 
             {error && (
@@ -767,7 +767,7 @@ function MealLoggerModal({ onClose }: { onClose: () => void }) {
                 className="px-4 py-3 rounded-xl bg-surface-3 border border-card-border text-sm text-muted-foreground hover:text-foreground transition-colors inline-flex items-center justify-center gap-1.5"
               >
                 <RefreshCw className="w-3.5 h-3.5" />
-                Try again
+                Reîncearcă
               </button>
               <button
                 onClick={handleSave}
@@ -777,12 +777,12 @@ function MealLoggerModal({ onClose }: { onClose: () => void }) {
                 {saving ? (
                   <>
                     <span className="w-3.5 h-3.5 border-2 border-black/40 border-t-black rounded-full animate-spin" />
-                    Saving…
+                    Salvez…
                   </>
                 ) : (
                   <>
                     <Check className="w-3.5 h-3.5" />
-                    Looks right — save
+                    E bine — salvează
                   </>
                 )}
               </button>
@@ -796,9 +796,9 @@ function MealLoggerModal({ onClose }: { onClose: () => void }) {
 
 function VerdictPill({ verdict, reasons }: { verdict: MealAnalysis['verdict']; reasons: string[] }) {
   const toneMap = {
-    good:  { bg: 'bg-accent/5 border-accent/25',        text: 'text-accent',       label: 'Solid meal' },
-    mixed: { bg: 'bg-amber-500/5 border-amber-500/25',  text: 'text-amber-400',    label: 'Decent — a few things to tweak' },
-    bad:   { bg: 'bg-red-500/5 border-red-500/20',      text: 'text-danger',       label: 'Not your best' },
+    good:  { bg: 'bg-accent/5 border-accent/25',        text: 'text-accent',       label: 'Masă solidă' },
+    mixed: { bg: 'bg-amber-500/5 border-amber-500/25',  text: 'text-amber-400',    label: 'OK — câteva lucruri de ajustat' },
+    bad:   { bg: 'bg-red-500/5 border-red-500/20',      text: 'text-danger',       label: 'Nu cel mai bine' },
   } as const;
   const tone = toneMap[verdict];
   return (
@@ -817,11 +817,11 @@ function VerdictPill({ verdict, reasons }: { verdict: MealAnalysis['verdict']; r
 
 function MacrosRow({ analysis }: { analysis: MealAnalysis }) {
   const items: Array<{ label: string; value: number | null | undefined; unit: string; icon?: React.ElementType }> = [
-    { label: 'kcal',    value: analysis.calories,  unit: '',  icon: Flame },
-    { label: 'Protein', value: analysis.protein_g, unit: 'g' },
-    { label: 'Carbs',   value: analysis.carbs_g,   unit: 'g' },
-    { label: 'Fat',     value: analysis.fat_g,     unit: 'g' },
-    { label: 'Fiber',   value: analysis.fiber_g,   unit: 'g' },
+    { label: 'kcal',     value: analysis.calories,  unit: '',  icon: Flame },
+    { label: 'Proteine', value: analysis.protein_g, unit: 'g' },
+    { label: 'Carbo',    value: analysis.carbs_g,   unit: 'g' },
+    { label: 'Grăsimi',  value: analysis.fat_g,     unit: 'g' },
+    { label: 'Fibre',    value: analysis.fiber_g,   unit: 'g' },
   ];
   const filled = items.filter(i => typeof i.value === 'number');
   if (filled.length === 0) return null;
@@ -863,8 +863,8 @@ function LongevityImpactTile({ score }: { score: number | null }) {
       <p className={clsx('text-lg font-bold font-mono tabular-nums leading-none', tone.text)}>
         {score > 0 ? `+${score}` : score}
       </p>
-      <p className="text-[8px] text-muted uppercase tracking-widest mt-1">Longevity</p>
-      <p className="text-[8px] text-muted">impact</p>
+      <p className="text-[8px] text-muted uppercase tracking-widest mt-1">Impact</p>
+      <p className="text-[8px] text-muted">longevitate</p>
     </div>
   );
 }
@@ -880,25 +880,25 @@ function ExtendedNutrition({ analysis }: { analysis: MealAnalysis }) {
   type Row = { label: string; value: number | null | undefined; unit: string; tone?: 'watch' | 'ok'; hint?: string };
 
   const rows: Row[] = [
-    { label: 'Sugar',          value: d.sugar_g,         unit: 'g',  hint: 'total including natural' },
-    { label: 'Added sugar',    value: d.added_sugar_g,   unit: 'g',  tone: (d.added_sugar_g ?? 0) > 15 ? 'watch' : 'ok' },
-    { label: 'Saturated fat',  value: d.saturated_fat_g, unit: 'g',  tone: (d.saturated_fat_g ?? 0) > 10 ? 'watch' : 'ok' },
-    { label: 'Sodium',         value: d.sodium_mg,       unit: 'mg', tone: (d.sodium_mg ?? 0) > 800 ? 'watch' : 'ok' },
-    { label: 'Cholesterol',    value: d.cholesterol_mg,  unit: 'mg' },
+    { label: 'Zahăr',          value: d.sugar_g,         unit: 'g',  hint: 'total, inclusiv natural' },
+    { label: 'Zahăr adăugat',  value: d.added_sugar_g,   unit: 'g',  tone: (d.added_sugar_g ?? 0) > 15 ? 'watch' : 'ok' },
+    { label: 'Gr. saturate',   value: d.saturated_fat_g, unit: 'g',  tone: (d.saturated_fat_g ?? 0) > 10 ? 'watch' : 'ok' },
+    { label: 'Sodiu',          value: d.sodium_mg,       unit: 'mg', tone: (d.sodium_mg ?? 0) > 800 ? 'watch' : 'ok' },
+    { label: 'Colesterol',     value: d.cholesterol_mg,  unit: 'mg' },
     { label: 'Omega-3',        value: d.omega_3_g,       unit: 'g',  tone: (d.omega_3_g ?? 0) >= 1 ? 'ok' : undefined },
-    { label: 'Caffeine',       value: d.caffeine_mg,     unit: 'mg' },
-    { label: 'Alcohol',        value: d.alcohol_g,       unit: 'g',  tone: (d.alcohol_g ?? 0) > 0 ? 'watch' : undefined },
+    { label: 'Cafeină',        value: d.caffeine_mg,     unit: 'mg' },
+    { label: 'Alcool',         value: d.alcohol_g,       unit: 'g',  tone: (d.alcohol_g ?? 0) > 0 ? 'watch' : undefined },
   ];
 
   const microsObj = d.micros ?? {};
   const microRows: Row[] = [
     { label: 'Vit C',    value: microsObj.vitamin_c_mg, unit: 'mg' },
-    { label: 'Iron',     value: microsObj.iron_mg,      unit: 'mg' },
-    { label: 'Magnesium',value: microsObj.magnesium_mg, unit: 'mg' },
-    { label: 'Calcium',  value: microsObj.calcium_mg,   unit: 'mg' },
-    { label: 'Potassium',value: microsObj.potassium_mg, unit: 'mg' },
+    { label: 'Fier',     value: microsObj.iron_mg,      unit: 'mg' },
+    { label: 'Magneziu', value: microsObj.magnesium_mg, unit: 'mg' },
+    { label: 'Calciu',   value: microsObj.calcium_mg,   unit: 'mg' },
+    { label: 'Potasiu',  value: microsObj.potassium_mg, unit: 'mg' },
     { label: 'Zinc',     value: microsObj.zinc_mg,      unit: 'mg' },
-    { label: 'Vit D',    value: microsObj.vitamin_d_iu, unit: 'IU' },
+    { label: 'Vit D',    value: microsObj.vitamin_d_iu, unit: 'UI' },
   ];
 
   const macroFilled = rows.filter(r => typeof r.value === 'number' && (r.value as number) > 0);
@@ -920,9 +920,9 @@ function ExtendedNutrition({ analysis }: { analysis: MealAnalysis }) {
       >
         <span className="flex items-center gap-2">
           <Zap className="w-3.5 h-3.5 text-accent" />
-          <span className="text-[11px] font-semibold uppercase tracking-widest">Full nutrition breakdown</span>
+          <span className="text-[11px] font-semibold uppercase tracking-widest">Defalcare nutrițională completă</span>
           {anyWatch && !open && (
-            <span className="text-[11px] font-medium text-amber-400 font-mono">· check sodium / sugar</span>
+            <span className="text-[11px] font-medium text-amber-400 font-mono">· verifică sodiu / zahăr</span>
           )}
         </span>
         {open ? <ChevronUp className="w-3.5 h-3.5 text-muted" /> : <ChevronDown className="w-3.5 h-3.5 text-muted" />}
@@ -950,7 +950,7 @@ function ExtendedNutrition({ analysis }: { analysis: MealAnalysis }) {
           )}
           {microFilled.length > 0 && (
             <div>
-              <p className="text-[11px] font-medium text-muted uppercase tracking-widest mb-1">Micronutrients</p>
+              <p className="text-[11px] font-medium text-muted uppercase tracking-widest mb-1">Micronutrienți</p>
               <div className="grid grid-cols-3 sm:grid-cols-4 gap-1.5">
                 {microFilled.map(r => (
                   <div key={r.label} className="rounded-lg p-1.5 bg-surface-1 border border-card-border">
@@ -977,35 +977,35 @@ function ExtendedNutrition({ analysis }: { analysis: MealAnalysis }) {
 // ─────────────────────────────────────────────────────────────────────────────
 const FLAG_TONES: Record<string, { label: string; cls: string }> = {
   // Positive
-  whole_food:           { label: 'Whole food',           cls: 'bg-accent/10 text-accent border-accent/25' },
-  high_protein:         { label: 'High protein',         cls: 'bg-accent/10 text-accent border-accent/25' },
-  high_fiber:           { label: 'High fiber',           cls: 'bg-accent/10 text-accent border-accent/25' },
-  high_omega3:          { label: 'High omega-3',         cls: 'bg-accent/10 text-accent border-accent/25' },
-  high_polyphenols:     { label: 'High polyphenols',     cls: 'bg-accent/10 text-accent border-accent/25' },
-  leafy_greens:         { label: 'Leafy greens',         cls: 'bg-accent/10 text-accent border-accent/25' },
-  fermented:            { label: 'Fermented',            cls: 'bg-accent/10 text-accent border-accent/25' },
-  nutrient_dense:       { label: 'Nutrient-dense',       cls: 'bg-accent/10 text-accent border-accent/25' },
-  anti_inflammatory:    { label: 'Anti-inflammatory',    cls: 'bg-accent/10 text-accent border-accent/25' },
+  whole_food:           { label: 'Aliment integral',     cls: 'bg-accent/10 text-accent border-accent/25' },
+  high_protein:         { label: 'Proteină multă',       cls: 'bg-accent/10 text-accent border-accent/25' },
+  high_fiber:           { label: 'Fibre multe',          cls: 'bg-accent/10 text-accent border-accent/25' },
+  high_omega3:          { label: 'Omega-3 mult',         cls: 'bg-accent/10 text-accent border-accent/25' },
+  high_polyphenols:     { label: 'Polifenoli mulți',     cls: 'bg-accent/10 text-accent border-accent/25' },
+  leafy_greens:         { label: 'Frunze verzi',         cls: 'bg-accent/10 text-accent border-accent/25' },
+  fermented:            { label: 'Fermentat',            cls: 'bg-accent/10 text-accent border-accent/25' },
+  nutrient_dense:       { label: 'Dens nutrițional',     cls: 'bg-accent/10 text-accent border-accent/25' },
+  anti_inflammatory:    { label: 'Antiinflamator',       cls: 'bg-accent/10 text-accent border-accent/25' },
   // Watch
-  high_added_sugar:     { label: 'High added sugar',     cls: 'bg-amber-500/10 text-amber-400 border-amber-500/25' },
-  high_sodium:          { label: 'High sodium',          cls: 'bg-amber-500/10 text-amber-400 border-amber-500/25' },
-  high_saturated_fat:   { label: 'High sat fat',         cls: 'bg-amber-500/10 text-amber-400 border-amber-500/25' },
-  low_protein:          { label: 'Low protein',          cls: 'bg-amber-500/10 text-amber-400 border-amber-500/25' },
-  high_processed_carbs: { label: 'Processed carbs',      cls: 'bg-amber-500/10 text-amber-400 border-amber-500/25' },
-  fried:                { label: 'Fried',                cls: 'bg-amber-500/10 text-amber-400 border-amber-500/25' },
-  alcohol:              { label: 'Alcohol',              cls: 'bg-amber-500/10 text-amber-400 border-amber-500/25' },
+  high_added_sugar:     { label: 'Zahăr adăugat mult',   cls: 'bg-amber-500/10 text-amber-400 border-amber-500/25' },
+  high_sodium:          { label: 'Sodiu mult',           cls: 'bg-amber-500/10 text-amber-400 border-amber-500/25' },
+  high_saturated_fat:   { label: 'Grăsime sat. multă',   cls: 'bg-amber-500/10 text-amber-400 border-amber-500/25' },
+  low_protein:          { label: 'Proteină puțină',      cls: 'bg-amber-500/10 text-amber-400 border-amber-500/25' },
+  high_processed_carbs: { label: 'Carbo procesați',      cls: 'bg-amber-500/10 text-amber-400 border-amber-500/25' },
+  fried:                { label: 'Prăjit',               cls: 'bg-amber-500/10 text-amber-400 border-amber-500/25' },
+  alcohol:              { label: 'Alcool',               cls: 'bg-amber-500/10 text-amber-400 border-amber-500/25' },
   // Negative
-  ultra_processed:      { label: 'Ultra-processed',      cls: 'bg-red-500/10 text-danger border-red-500/25' },
-  low_nutrient_density: { label: 'Low nutrient density', cls: 'bg-red-500/10 text-danger border-red-500/25' },
-  high_refined_sugar:   { label: 'Refined sugar',        cls: 'bg-red-500/10 text-danger border-red-500/25' },
-  trans_fat_risk:       { label: 'Trans fat risk',       cls: 'bg-red-500/10 text-danger border-red-500/25' },
+  ultra_processed:      { label: 'Ultra-procesat',       cls: 'bg-red-500/10 text-danger border-red-500/25' },
+  low_nutrient_density: { label: 'Nutrițional scăzut',   cls: 'bg-red-500/10 text-danger border-red-500/25' },
+  high_refined_sugar:   { label: 'Zahăr rafinat',        cls: 'bg-red-500/10 text-danger border-red-500/25' },
+  trans_fat_risk:       { label: 'Risc grăsimi trans',   cls: 'bg-red-500/10 text-danger border-red-500/25' },
 };
 
 function QualityFlags({ flags }: { flags: string[] }) {
   if (!flags.length) return null;
   return (
     <div>
-      <p className="text-xs font-mono uppercase tracking-widest text-muted mb-1.5">What stood out</p>
+      <p className="text-xs font-mono uppercase tracking-widest text-muted mb-1.5">Ce a ieșit în evidență</p>
       <div className="flex flex-wrap gap-1">
         {flags.map(f => {
           const tone = FLAG_TONES[f] ?? { label: f.replace(/_/g, ' '), cls: 'bg-surface-2 text-muted-foreground border-card-border' };
@@ -1029,18 +1029,18 @@ function ClassificationChips({ nova, gi }: { nova: number | null; gi: number | n
   const novaMeta = (() => {
     if (nova === null) return null;
     switch (nova) {
-      case 1: return { label: 'NOVA 1 · Whole food',          cls: 'bg-accent/10 text-accent border-accent/25' };
-      case 2: return { label: 'NOVA 2 · Culinary ingredient', cls: 'bg-accent/10 text-accent border-accent/25' };
-      case 3: return { label: 'NOVA 3 · Processed',           cls: 'bg-amber-500/10 text-amber-400 border-amber-500/25' };
-      case 4: return { label: 'NOVA 4 · Ultra-processed',     cls: 'bg-red-500/10 text-danger border-red-500/25' };
+      case 1: return { label: 'NOVA 1 · Aliment integral',    cls: 'bg-accent/10 text-accent border-accent/25' };
+      case 2: return { label: 'NOVA 2 · Ingredient culinar',  cls: 'bg-accent/10 text-accent border-accent/25' };
+      case 3: return { label: 'NOVA 3 · Procesat',            cls: 'bg-amber-500/10 text-amber-400 border-amber-500/25' };
+      case 4: return { label: 'NOVA 4 · Ultra-procesat',      cls: 'bg-red-500/10 text-danger border-red-500/25' };
       default: return null;
     }
   })();
 
   const giMeta = gi === null ? null
-    : gi < 55 ? { label: `GI ${gi} · Low`,    cls: 'bg-accent/10 text-accent border-accent/25' }
-    : gi < 70 ? { label: `GI ${gi} · Medium`, cls: 'bg-amber-500/10 text-amber-400 border-amber-500/25' }
-    :           { label: `GI ${gi} · High`,   cls: 'bg-red-500/10 text-danger border-red-500/25' };
+    : gi < 55 ? { label: `GI ${gi} · Scăzut`, cls: 'bg-accent/10 text-accent border-accent/25' }
+    : gi < 70 ? { label: `GI ${gi} · Mediu`,  cls: 'bg-amber-500/10 text-amber-400 border-amber-500/25' }
+    :           { label: `GI ${gi} · Ridicat`,cls: 'bg-red-500/10 text-danger border-red-500/25' };
 
   return (
     <div className="flex flex-wrap gap-1.5">
