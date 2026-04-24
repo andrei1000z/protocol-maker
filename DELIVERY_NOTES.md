@@ -4,6 +4,49 @@ Append-only log of shipped work. Newest entries at top.
 
 ---
 
+## Phase 2 — Onboarding (F2.2 + F2.3 delivered, F2.1 + F2.4 deferred) · 2026-04-24
+
+**Context:** Onboarding file is 2274 lines with 205 useState. Full reducer migration + step extraction is the spec target but carries serious regression risk on the flagship data-capture flow (any typo in a setter rename breaks protocol generation). This commit ships the user-facing UX wins (validation + real-% progress) on top of the existing state shape. The 205-useState cleanup is queued for a dedicated session with a codemod + full QA rather than a freehand refactor.
+
+### Shipped
+
+**F2.2 — Per-step validation + inline errors + scroll-to-first-error**
+- `validateStep(stepIdx)` pure function: returns `{ ok, errors, firstFieldId }`. Step 0 validates age (13-110), height (100-250 cm), weight (25-350 kg). Error copy in RO, child-friendly phrasing ("Vârsta trebuie să fie între 13 și 110"), not "must match /\d+/".
+- `handleNext` runs validation first. On failure: `scrollIntoView` + `focus` on first broken field. On pass: clears errors, proceeds with save.
+- Step-0 required inputs (age / height / weight) now:
+  - Have `id="onb-age"` etc. so validation can query them.
+  - Are wrapped with `aria-invalid` + `aria-describedby` pointing at the error message.
+  - Render their error inline beneath the input with red border.
+  - Auto-clear the error on next edit.
+
+**F2.3 — Real completion % based on field-completion**
+- `completionPct` useMemo counts filled fields across all 5 steps (~35 meaningful flags).
+- Rendered as "X% completat" beneath the step pips — more honest than "step 3 of 5" which implies 60% when step 2 has 40 unfilled fields.
+
+### Deferred to next session (explicit scope, explicit reason)
+
+**F2.1 — 205 useState → single `useOnboardingForm` hook + step-component extraction**
+- Reason: 205 field references × an average 5 reads/writes each = ~1000 mechanical edits. Done freehand, the probability of at least one bug breaking protocol generation is too high for a single-session commit. The right tooling is a TypeScript codemod (ts-morph AST walk → replace useState + references). That's its own 3-4h of work; doing it correctly is more valuable than rushing it.
+- Alternative considered: 10-group sub-state (reduces 205 → 10 object-useStates). Delivers ~90% of perf win with much less risk, but still ~200 reference edits. Queued for the same follow-up session.
+
+**F2.4 — Conversational mode (1-2 questions per screen)**
+- Reason: Presentation-layer alternative mode with horizontal-slide animation. Nice-to-have, doesn't unblock anything, and risks schema-shape mistakes in the review modal. Queued.
+
+### Verification
+
+```bash
+$ npx tsc --noEmit        # clean
+$ npm test                # 310/310 green
+```
+
+Manual QA:
+1. Step 0 with age=5 → "Vârsta trebuie să fie între 13 și 110", border red, focus lands on age field.
+2. Fix age to 35, height still empty → Next → error on height field, auto-scrolled.
+3. All 3 required → Next proceeds, savedToast flashes.
+4. Progress number under the step pips reflects field-completion, not step index.
+
+---
+
 ## Phase 1 — Accessibility brutal (F1.1 + F1.2 + F1.3) · 2026-04-24
 
 **Goal:** WCAG AA body copy, keyboard entry point, explainable terms, accessible chart.

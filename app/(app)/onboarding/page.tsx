@@ -746,6 +746,64 @@ export default function OnboardingPage() {
     }
   };
 
+  // Per-step validation — returns { ok, errors, firstFieldId } so we can block
+  // handleNext + scroll/focus to the first broken field. Keeps error copy in RO
+  // (primary locale) + child-friendly; no "must match /\d+/" jargon.
+  //
+  // Error keys are the DOM id attributes of the corresponding input, so
+  // validateAndFocusStep can just querySelector them without any lookup table.
+  const validateStep = (stepIdx: number): { ok: boolean; errors: Record<string, string>; firstFieldId?: string } => {
+    const errors: Record<string, string> = {};
+    if (stepIdx === 0) {
+      const ageNum = parseInt(age);
+      const heightNum = parseFloat(heightCm);
+      const weightNum = parseFloat(weightKg);
+      if (!age) errors['onb-age'] = 'Vârsta e necesară ca să ajustăm protocolul.';
+      else if (!Number.isFinite(ageNum) || ageNum < 13 || ageNum > 110) errors['onb-age'] = 'Vârsta trebuie să fie între 13 și 110.';
+      if (!heightCm) errors['onb-height'] = 'Înălțimea în cm e necesară.';
+      else if (!Number.isFinite(heightNum) || heightNum < 100 || heightNum > 250) errors['onb-height'] = 'Înălțimea trebuie să fie între 100 și 250 cm.';
+      if (!weightKg) errors['onb-weight'] = 'Greutatea în kg e necesară.';
+      else if (!Number.isFinite(weightNum) || weightNum < 25 || weightNum > 350) errors['onb-weight'] = 'Greutatea trebuie să fie între 25 și 350 kg.';
+    }
+    // Steps 1-4 are self-contained — current flow has no hard-required fields
+    // beyond step 0, and we keep it that way to minimize drop-off.
+    const firstFieldId = Object.keys(errors)[0];
+    return { ok: Object.keys(errors).length === 0, errors, firstFieldId };
+  };
+
+  const [stepErrors, setStepErrors] = useState<Record<string, string>>({});
+
+  // Real completion % — counts filled fields across the whole form, not the
+  // raw step index. Users see "68% completat" instead of "Step 3/5" which
+  // doesn't reflect that step 2 has 40 fields and step 3 has 12.
+  const completionPct = useMemo(() => {
+    // Flat list of "is this filled?" checks across all meaningful fields.
+    // Not exhaustive — some exotic fields like pregnancyWeeks are scoped and
+    // shouldn't count against users who aren't pregnant.
+    const filled = [
+      !!age, !!heightCm, !!weightKg, !!country, !!city, !!ethnicity,              // basics core
+      !!restingHR, !!waistCm, !!bodyFatPct, !!bloodPressureSys, !!vo2Max,          // optional measurements
+      Object.values(biomarkers).filter(Boolean).length >= 3,                        // bloodwork (≥3 = worth counting)
+      !!sleepHours, !!bedtime, !!wakeTime, sleepIssues.length > 0,                  // sleep
+      !!dietType, !!typicalDay, !!firstMealTime, fruitsPerDay !== '' || veggiesPerDay !== '',  // diet
+      cardioMin > 0, strengthSessions > 0, fitnessLevel > 0,                        // exercise
+      stressLevel > 0, !!meditationPractice, happinessScore > 0,                    // mental
+      conditions.length > 0, familyHistory.length > 0,                              // medical
+      !!scheduleType, activeDays.length > 0, !!gymAccess,                           // schedule
+      !!primaryGoal, secondaryGoals.length > 0, !!motivation, timelineMonths > 0,   // goals
+      !!smartwatchBrand && smartwatchBrand !== 'none',                              // wearables
+    ];
+    const total = filled.length;
+    const done = filled.filter(Boolean).length;
+    return Math.round((done / total) * 100);
+  }, [
+    age, heightCm, weightKg, country, city, ethnicity, restingHR, waistCm, bodyFatPct, bloodPressureSys, vo2Max,
+    biomarkers, sleepHours, bedtime, wakeTime, sleepIssues.length, dietType, typicalDay, firstMealTime,
+    fruitsPerDay, veggiesPerDay, cardioMin, strengthSessions, fitnessLevel, stressLevel, meditationPractice,
+    happinessScore, conditions.length, familyHistory.length, scheduleType, activeDays.length, gymAccess,
+    primaryGoal, secondaryGoals.length, motivation, timelineMonths, smartwatchBrand,
+  ]);
+
   const buildOnboardingData = () => ({
     // Identity
     name, age: parseInt(age) || 25, birthDate, sex, chromosomes, genderIdentity, transitioning, transitionTo,
@@ -845,6 +903,21 @@ export default function OnboardingPage() {
   };
 
   const handleNext = async () => {
+    // Validate BEFORE we save — no point persisting an invalid state only to
+    // bounce the user back with an error. Scrolls + focuses the first broken
+    // field so the user doesn't have to hunt for what's wrong.
+    const { ok, errors, firstFieldId } = validateStep(step);
+    setStepErrors(errors);
+    if (!ok) {
+      if (firstFieldId) {
+        const el = document.getElementById(firstFieldId);
+        if (el) {
+          el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+          (el as HTMLInputElement).focus({ preventScroll: true });
+        }
+      }
+      return;
+    }
     if (step === 0 && hasBloodWork === false) { await saveProgress(0); setStep(2); triggerSaved(); return; }
     await saveProgress(step + 1);
     setStep(step + 1);
@@ -946,6 +1019,10 @@ export default function OnboardingPage() {
             </div>
           ))}
         </div>
+        {/* Real completion % — counts filled fields across all 5 steps. Gives
+            the user something more honest than "step 3 of 5" (which would say
+            60% while step 2 has 40 fields unfilled). */}
+        <p className="text-xs text-muted mt-2 font-mono">{completionPct}% completat</p>
       </div>
 
       <div className="flex-1 px-6 pb-40 max-w-2xl mx-auto w-full overflow-y-auto">
@@ -964,23 +1041,60 @@ export default function OnboardingPage() {
                 <input type="text" value={name} onChange={e => setName(e.target.value)} placeholder="Alex" className="w-full mt-1 rounded-xl bg-card border border-card-border px-3 py-2.5 text-sm outline-none focus:border-accent" />
               </div>
               <div>
-                <label className="text-xs text-muted-foreground">Age <span className="text-accent">*</span></label>
-                <input type="number" value={age} onChange={e => setAge(e.target.value)} placeholder="25" className="w-full mt-1 rounded-xl bg-card border border-card-border px-3 py-2.5 text-sm outline-none focus:border-accent font-mono" />
-                <p className="text-xs text-muted mt-1">Or choose birth date below for precision</p>
+                <label htmlFor="onb-age" className="text-xs text-muted-foreground">Age <span className="text-accent">*</span></label>
+                <input
+                  id="onb-age"
+                  type="number"
+                  value={age}
+                  onChange={e => { setAge(e.target.value); if (stepErrors['onb-age']) setStepErrors(p => { const { 'onb-age': _removed, ...rest } = p; void _removed; return rest; }); }}
+                  aria-invalid={!!stepErrors['onb-age']}
+                  aria-describedby={stepErrors['onb-age'] ? 'onb-age-err' : undefined}
+                  placeholder="25"
+                  className={clsx('w-full mt-1 rounded-xl bg-card border px-3 py-2.5 text-sm outline-none focus:border-accent font-mono',
+                    stepErrors['onb-age'] ? 'border-danger' : 'border-card-border')}
+                />
+                {stepErrors['onb-age']
+                  ? <p id="onb-age-err" className="text-xs text-danger mt-1">{stepErrors['onb-age']}</p>
+                  : <p className="text-xs text-muted mt-1">Sau alege data nașterii mai jos pentru precizie</p>}
               </div>
               <div className="col-span-2">
                 <label className="text-xs text-muted-foreground">Birth date (optional — more precise than age alone)</label>
                 <input type="date" value={birthDate} onChange={e => { setBirthDate(e.target.value); if (e.target.value) { const yrs = Math.floor((Date.now() - new Date(e.target.value).getTime()) / (365.25 * 24 * 3600 * 1000)); setAge(String(yrs)); } }} className="w-full mt-1 rounded-xl bg-card border border-card-border px-3 py-2.5 text-sm outline-none focus:border-accent font-mono" />
               </div>
               <div>
-                <label className="text-xs text-muted-foreground">Height (cm) <span className="text-accent">*</span></label>
-                <input type="number" value={heightCm} onChange={e => setHeightCm(e.target.value)} placeholder="180" className="w-full mt-1 rounded-xl bg-card border border-card-border px-3 py-2.5 text-sm outline-none focus:border-accent font-mono" />
-                <p className="text-xs text-muted mt-1">Recommended: measure now for accuracy</p>
+                <label htmlFor="onb-height" className="text-xs text-muted-foreground">Înălțime (cm) <span className="text-accent">*</span></label>
+                <input
+                  id="onb-height"
+                  type="number"
+                  value={heightCm}
+                  onChange={e => { setHeightCm(e.target.value); if (stepErrors['onb-height']) setStepErrors(p => { const { 'onb-height': _removed, ...rest } = p; void _removed; return rest; }); }}
+                  aria-invalid={!!stepErrors['onb-height']}
+                  aria-describedby={stepErrors['onb-height'] ? 'onb-height-err' : undefined}
+                  placeholder="180"
+                  className={clsx('w-full mt-1 rounded-xl bg-card border px-3 py-2.5 text-sm outline-none focus:border-accent font-mono',
+                    stepErrors['onb-height'] ? 'border-danger' : 'border-card-border')}
+                />
+                {stepErrors['onb-height']
+                  ? <p id="onb-height-err" className="text-xs text-danger mt-1">{stepErrors['onb-height']}</p>
+                  : <p className="text-xs text-muted mt-1">Măsoară acum pentru acuratețe</p>}
               </div>
               <div>
-                <label className="text-xs text-muted-foreground">Weight (kg) <span className="text-accent">*</span></label>
-                <input type="number" step="0.1" value={weightKg} onChange={e => setWeightKg(e.target.value)} placeholder="80" className="w-full mt-1 rounded-xl bg-card border border-card-border px-3 py-2.5 text-sm outline-none focus:border-accent font-mono" />
-                <p className="text-xs text-muted mt-1">Recommended: weigh now, morning, no clothes</p>
+                <label htmlFor="onb-weight" className="text-xs text-muted-foreground">Greutate (kg) <span className="text-accent">*</span></label>
+                <input
+                  id="onb-weight"
+                  type="number"
+                  step="0.1"
+                  value={weightKg}
+                  onChange={e => { setWeightKg(e.target.value); if (stepErrors['onb-weight']) setStepErrors(p => { const { 'onb-weight': _removed, ...rest } = p; void _removed; return rest; }); }}
+                  aria-invalid={!!stepErrors['onb-weight']}
+                  aria-describedby={stepErrors['onb-weight'] ? 'onb-weight-err' : undefined}
+                  placeholder="80"
+                  className={clsx('w-full mt-1 rounded-xl bg-card border px-3 py-2.5 text-sm outline-none focus:border-accent font-mono',
+                    stepErrors['onb-weight'] ? 'border-danger' : 'border-card-border')}
+                />
+                {stepErrors['onb-weight']
+                  ? <p id="onb-weight-err" className="text-xs text-danger mt-1">{stepErrors['onb-weight']}</p>
+                  : <p className="text-xs text-muted mt-1">Cântărește-te dimineața, pe nemâncate</p>}
               </div>
             </div>
 
