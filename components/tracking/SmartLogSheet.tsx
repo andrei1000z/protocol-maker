@@ -2,8 +2,9 @@
 
 import { useState, useMemo } from 'react';
 import clsx from 'clsx';
-import { X, Check, Clock, AlertCircle, Zap } from 'lucide-react';
+import { X, Check, Clock, AlertCircle, Zap, Sparkles } from 'lucide-react';
 import type { DailyMetrics } from '@/lib/hooks/useDailyMetrics';
+import { isCriticalField } from '@/lib/engine/metric-catalog';
 
 // ============================================================================
 // Time-aware field groups — user sees only metrics relevant for RIGHT NOW,
@@ -424,9 +425,11 @@ export function SmartLogSheet({ open, onClose, metrics, onSave, deviceSources, m
                   </div>
                 )}
 
-                {section.groups.map((group) => (
+                {section.groups.map((group) => {
+                  const criticalInGroup = group.fields.filter(f => isCriticalField(String(f.key))).length;
+                  return (
                   <div key={`${section.bucket}-${group.title}`}>
-                    <div className="flex items-center justify-between gap-2 mb-3">
+                    <div className="flex items-center justify-between gap-2 mb-2">
                       <p className="text-xs uppercase tracking-widest text-accent font-mono">{group.title}</p>
                       {(() => {
                         const pending = countPending(group, metrics, local, deviceSources);
@@ -434,6 +437,15 @@ export function SmartLogSheet({ open, onClose, metrics, onSave, deviceSources, m
                         return <span className="text-xs text-muted font-mono">{pending} blank</span>;
                       })()}
                     </div>
+                    {criticalInGroup > 0 && (
+                      // "Critical fields" chip — signals which inputs here
+                      // actually move the longevity engine. User at 10 pm
+                      // decides: fill the ✨-starred ones first, skip the rest.
+                      <div className="mb-3 inline-flex items-center gap-1.5 text-xs px-2 py-0.5 rounded-full bg-accent/10 border border-accent/25 text-accent">
+                        <Sparkles className="w-3 h-3" />
+                        <span>{criticalInGroup} critic{criticalInGroup === 1 ? '' : 'e'} pentru scorul tău</span>
+                      </div>
+                    )}
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                       {group.fields.map(spec => {
                         const sources = deviceSources?.[String(spec.key)] || [];
@@ -449,6 +461,9 @@ export function SmartLogSheet({ open, onClose, metrics, onSave, deviceSources, m
                           <div key={String(spec.key)} className="space-y-1.5">
                             <label className="block text-xs text-muted-foreground">
                               <span className="flex items-center gap-1.5 flex-wrap">
+                                {isCriticalField(String(spec.key)) && (
+                                  <span className="text-accent text-xs" title="Câmp critic pentru scorul de longevitate" aria-label="Câmp critic">✨</span>
+                                )}
                                 <span>{spec.label}</span>
                                 {deviceSource && (
                                   <span className="inline-flex items-center gap-0.5 text-xs px-1.5 py-0.5 rounded bg-accent/10 border border-accent/20 text-accent font-medium uppercase tracking-wider">
@@ -517,7 +532,8 @@ export function SmartLogSheet({ open, onClose, metrics, onSave, deviceSources, m
                       })}
                     </div>
                   </div>
-                ))}
+                  );
+                })}
               </div>
             );
           })}

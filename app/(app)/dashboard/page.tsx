@@ -24,6 +24,7 @@ import { ProgressRing } from '@/components/ui/SectionCard';
 import { MedicalDisclaimer } from '@/components/dashboard/MedicalDisclaimer';
 import { FirstVisitTour } from '@/components/dashboard/FirstVisitTour';
 import { FallbackBanner } from '@/components/dashboard/FallbackBanner';
+import { LastRefreshedChip } from '@/components/dashboard/LastRefreshedChip';
 import clsx from 'clsx';
 import dynamic from 'next/dynamic';
 
@@ -609,6 +610,9 @@ export default function DashboardPage() {
           deterministic) produced the current protocol. Gives the user a free
           regen CTA — no stealth downgrades. */}
       {fallbackBannerInfo && <FallbackBanner source={fallbackBannerInfo.source} />}
+
+      {/* Last-refreshed chip — quiet trust signal. Hidden in demo mode. */}
+      {!demoMode && <LastRefreshedChip createdAt={myData?.protocol?.created_at} />}
 
       {/* ═══════════════ INCOMPLETE-PROTOCOL BANNER ═══════════════
           Detects the "AI returned only {diagnostic:{...}}" failure mode that used

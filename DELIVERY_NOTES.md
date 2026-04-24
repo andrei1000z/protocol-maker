@@ -4,6 +4,38 @@ Append-only log of shipped work. Newest entries at top.
 
 ---
 
+## Phase 4/7/9 follow-ons — undo toast + last-refreshed chip + critical-fields chip · 2026-04-24
+
+### Shipped
+
+**F9.5 — Undo toast pattern**
+- `lib/toast.ts`: added `toast.undoable(title, undo, description?)` — fires a success toast with an "Anulează" action. Clicking runs the provided handler and emits a confirmation "Anulat" toast (or an error toast if it throws).
+- `components/dashboard/MealLogger.tsx` → `handleSave` now calls `toast.undoable` with a DELETE handler that removes the just-saved meal row and re-invalidates caches. User has ~5s to rewind a mis-tap before the toast disappears.
+- +2 unit tests cover the happy path + error path.
+- Pattern extends cleanly to metrics/workouts in follow-up sessions. The undo handler is arbitrary async work, so any endpoint that supports a reverse operation can plug in.
+
+**F9.4 — Last-refreshed chip on dashboard header**
+- `components/dashboard/LastRefreshedChip.tsx` NEW. Single-line quiet trust signal: `🕐 Protocol actualizat 3h în urmă · Regenerează`. Hidden in demo mode. Click triggers `/api/generate-protocol` POST + standard invalidation, shows toast.
+- Rendered below the FallbackBanner + above the hero so it never competes for attention but is always within eyeshot when user lands.
+
+**F4.2 — Critical-fields chip on SmartLog groups**
+- `lib/engine/metric-catalog.ts` NEW. Defines `CRITICAL_METRIC_KEYS` (weight_kg, sleep_hours, resting_hr, hrv_sleep_avg, sleep_score, sleep_quality, steps, stress_level) + `isCriticalField(key)` helper + per-bucket lists.
+- `components/tracking/SmartLogSheet.tsx`: each group shows a chip "✨ N critice pentru scorul tău" above the fields, and each individual critical field gets a ✨ prefix next to its label. User at 10pm decides which of the 30 open inputs to fill first.
+
+### Verification
+
+```bash
+$ npx tsc --noEmit     # clean
+$ npm test             # 317/317 (+2 toast.undoable tests)
+```
+
+Manual QA:
+1. Add meal → "Masă salvată" toast with "Anulează" button. Click within 5s → meal disappears, "Anulat" toast confirms.
+2. Dashboard header now shows "Protocol actualizat Xh în urmă · Regenerează". Click → full regen + success toast.
+3. SmartLogSheet per-bucket group header shows "✨ 2 critice pentru scorul tău"; critical fields have ✨ prefix.
+
+---
+
 ## Phase 8 — Performance · 2026-04-24
 
 ### Shipped

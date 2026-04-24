@@ -38,6 +38,37 @@ toast.success = (title: string, description?: string) => toast({ title, descript
 toast.warning = (title: string, description?: string) => toast({ title, description, tone: 'warning' });
 toast.error   = (title: string, description?: string) => toast({ title, description, tone: 'error' });
 
+/**
+ * Undo-able toast. Fires a success toast with a prominent "Undo" button;
+ * clicking it runs the supplied `undo` handler. Second toast fires after the
+ * undo completes so the user knows the reversal landed.
+ *
+ * Used after destructive-adjacent saves (meals, metrics, workouts): the user
+ * gets a 4-second window to rewind a mis-tap without digging through a menu.
+ */
+toast.undoable = (title: string, undo: () => Promise<void> | void, description?: string) =>
+  toast({
+    title,
+    description,
+    tone: 'success',
+    duration: 5000,
+    action: {
+      label: 'Anulează',
+      onAction: async () => {
+        try {
+          await undo();
+          toast({ title: 'Anulat', tone: 'default', duration: 2000 });
+        } catch (err) {
+          toast({
+            title: 'Nu am putut anula',
+            description: err instanceof Error ? err.message : undefined,
+            tone: 'error',
+          });
+        }
+      },
+    },
+  });
+
 /** Subscribe to toast events. Returns the unsubscribe function. The
  *  ToastViewport component uses this; app code should call `toast()` instead. */
 export function subscribeToasts(handler: (evt: ToastEvent) => void): () => void {

@@ -521,9 +521,28 @@ function MealLoggerModal({ onClose }: { onClose: () => void }) {
         const j = await res.json().catch(() => ({}));
         throw new Error(j.error || `Save failed (${res.status})`);
       }
+      const saved = await res.json().catch(() => ({} as { meal?: { id?: string } }));
+      const savedId = saved?.meal?.id;
       invalidate.meals();
       // Nutrition inputs will change on the next regen — prompt that too.
       invalidate.liveScores();
+      // Undoable toast — 5s window to rewind a mis-tap. DELETE endpoint
+      // already exists and is RLS-scoped so hitting it from the client is
+      // safe even if a race causes the delete after the server changed the
+      // row ownership.
+      if (savedId) {
+        toast.undoable(
+          'Masă salvată',
+          async () => {
+            await fetch(`/api/meals?id=${encodeURIComponent(savedId)}`, { method: 'DELETE' });
+            invalidate.meals();
+            invalidate.liveScores();
+          },
+          analysis.analysis.title,
+        );
+      } else {
+        toast({ title: 'Masă salvată', tone: 'success' });
+      }
       onClose();
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Save failed');

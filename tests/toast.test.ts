@@ -62,4 +62,31 @@ describe('toast bus', () => {
     expect(onAction).toHaveBeenCalled();
     unsub();
   });
+
+  test('toast.undoable wires an Anulează action that runs the handler', async () => {
+    const unsub = subscribeToasts(e => received.push(e));
+    const undo = vi.fn(() => Promise.resolve());
+    toast.undoable('Masă salvată', undo, 'Omlet cu avocado');
+    const evt = received[0] as { tone: string; action: { label: string; onAction: () => Promise<void> } };
+    expect(evt.tone).toBe('success');
+    expect(evt.action.label).toBe('Anulează');
+    await evt.action.onAction();
+    expect(undo).toHaveBeenCalled();
+    // A confirmation "Anulat" toast should have fired after the undo ran.
+    expect(received.length).toBe(2);
+    expect((received[1] as { title: string }).title).toBe('Anulat');
+    unsub();
+  });
+
+  test('toast.undoable surfaces errors when the undo handler throws', async () => {
+    const unsub = subscribeToasts(e => received.push(e));
+    const undo = vi.fn(() => { throw new Error('DELETE failed'); });
+    toast.undoable('Saved', undo);
+    const evt = received[0] as { action: { onAction: () => Promise<void> } };
+    await evt.action.onAction();
+    expect(received.length).toBe(2);
+    expect((received[1] as { tone: string; title: string }).tone).toBe('error');
+    expect((received[1] as { title: string }).title).toContain('anula');
+    unsub();
+  });
 });
