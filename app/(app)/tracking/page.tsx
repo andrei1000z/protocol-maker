@@ -682,7 +682,7 @@ export default function TrackingPage() {
       {/* ═══════════ PAGE HEADER ═══════════ */}
       <div className="flex items-end justify-between gap-4 animate-fade-in flex-wrap">
         <div>
-          <h1 className="text-2xl sm:text-3xl font-semibold tracking-tight">Daily Tracking</h1>
+          <h1 className="text-2xl sm:text-3xl font-semibold tracking-tight">Tracking zilnic</h1>
           <p className="text-sm text-muted-foreground mt-1">{weekday} · {dateStr}</p>
         </div>
         <div className="flex items-center gap-1.5 overflow-x-auto scrollbar-none max-w-full">
@@ -779,7 +779,7 @@ export default function TrackingPage() {
 
       {/* ═══════════ INSIGHTS ═══════════ */}
       {insights.length > 0 && (
-        <Section icon={Lightbulb} title="Insights" subtitle="Patterns we spotted in your recent data">
+        <Section icon={Lightbulb} title="Observații" subtitle="Tipare observate în datele tale recente">
           <div className="space-y-2">
             {insights.map((ins, i) => <InsightRow key={i} insight={ins} />)}
           </div>
@@ -793,12 +793,12 @@ export default function TrackingPage() {
       {activeTab === 'today' && (
         <>
           {/* Weekly bar */}
-          <Section icon={TrendingUp} title="This week" subtitle="Daily protocol completion">
+          <Section icon={TrendingUp} title="Săptămâna asta" subtitle="Complianță zilnică la protocol">
             <WeeklyBar data={weekData} />
           </Section>
 
           {/* 30-day heatmap */}
-          <Section icon={ClipboardCheck} title="Last 30 days" subtitle={`Averaged ${monthlyAvg}% completion`}>
+          <Section icon={ClipboardCheck} title="Ultimele 30 de zile" subtitle={`${monthlyAvg}% complianță în medie`}>
             <Heatmap30 data={monthData} />
             <div className="flex items-center justify-end gap-2 mt-3 text-xs text-muted">
               Less
@@ -815,7 +815,7 @@ export default function TrackingPage() {
 
           {/* Protocol checklist per type */}
           {items.length === 0 ? (
-            <Section icon={AlertCircle} title="No protocol yet" subtitle="Complete onboarding to see your daily checklist">
+            <Section icon={AlertCircle} title="Încă nu ai un protocol" subtitle="Completează onboarding-ul ca să vezi checklistul zilnic">
               <a href="/onboarding" className="inline-block px-5 py-2.5 rounded-xl bg-accent text-black text-sm font-semibold hover:bg-accent-bright transition-colors">Generate protocol</a>
             </Section>
           ) : (
@@ -881,7 +881,7 @@ export default function TrackingPage() {
               graceUsed={graceUsed}
             />
           )}
-          <Section icon={Check} title="Daily habits" subtitle="Longevity habits beyond the protocol checklist">
+          <Section icon={Check} title="Obiceiuri zilnice" subtitle="Obiceiuri de longevitate dincolo de checklistul protocolului">
             <HabitsTab completed={todayMetrics.habits_completed ?? []} onToggle={toggleHabit} />
           </Section>
         </>
@@ -898,7 +898,7 @@ export default function TrackingPage() {
         const locked = ACHIEVEMENTS.filter(a => !earnedIds.has(a.id));
         return (
           <>
-            <Section icon={Trophy} title="Earned" subtitle={`${earned.length} of ${ACHIEVEMENTS.length} unlocked`}>
+            <Section icon={Trophy} title="Câștigate" subtitle={`${earned.length} din ${ACHIEVEMENTS.length} deblocate`}>
               {earned.length === 0 ? (
                 <p className="text-xs text-muted-foreground">No awards yet — keep logging and they'll start rolling in.</p>
               ) : (
@@ -932,7 +932,7 @@ export default function TrackingPage() {
               )}
             </Section>
 
-            <Section icon={Trophy} title="Locked" subtitle={`${locked.length} awards to chase`}>
+            <Section icon={Trophy} title="Blocate" subtitle={`${locked.length} premii de urmărit`}>
               <div className="grid grid-cols-3 sm:grid-cols-4 gap-3">
                 {locked.map(a => (
                   <div

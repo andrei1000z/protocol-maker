@@ -392,16 +392,16 @@ export default function StatisticsPage() {
       {/* Header */}
       <div className="flex items-end justify-between gap-4 animate-fade-in">
         <div>
-          <h1 className="text-2xl sm:text-3xl font-semibold tracking-tight">Statistics</h1>
+          <h1 className="text-2xl sm:text-3xl font-semibold tracking-tight">Statistici</h1>
           <p className="text-sm text-muted-foreground mt-1">
-            Every metric you&apos;ve logged, over time. Improvement shown relative to when you started the protocol.
+            Fiecare metrică pe care ai logat-o, în timp. Îmbunătățirea e raportată la momentul când ai început protocolul.
           </p>
         </div>
         {metrics.length > 0 && (
           <button
             onClick={exportCSV}
             className="shrink-0 text-xs px-3.5 py-2 rounded-xl bg-surface-2 border border-card-border hover:border-accent/40 text-muted-foreground hover:text-accent transition-all flex items-center gap-1.5"
-            title="Download CSV — doctor-friendly, opens in Excel / Sheets"
+            title="Descarcă CSV — format prietenos pentru medic, se deschide în Excel / Sheets"
           >
             📥 Export CSV
           </button>
@@ -412,10 +412,10 @@ export default function StatisticsPage() {
       {metricsWithData.length === 0 && (
         <EmptyState
           icon={Sparkles}
-          title="Charts appear after your first reading"
-          description="Every measurement gets its own line chart — weight, HRV recovery, sleep score, BP. You'll see exactly what's improving and what's drifting."
-          primary={{ label: 'Open tracking →', href: '/tracking' }}
-          secondary={{ label: 'Browse biomarkers', href: '/biomarkers' }}
+          title="Graficele apar după prima măsurătoare"
+          description="Fiecare măsurătoare are propriul grafic — greutate, HRV, sleep score, TA. Vezi exact ce se îmbunătățește și ce derapează."
+          primary={{ label: 'Deschide tracking →', href: '/tracking' }}
+          secondary={{ label: 'Vezi biomarkerii', href: '/biomarkers' }}
           tone="accent"
         />
       )}

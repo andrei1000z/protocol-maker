@@ -594,7 +594,7 @@ function DeleteAccountModal({ open, onClose, onConfirm, onExport }: { open: bool
             <AlertTriangle className="w-6 h-6 text-danger" />
           </div>
           <div>
-            <h2 id="delete-account-title" className="text-xl font-semibold tracking-tight">Delete your account?</h2>
+            <h2 id="delete-account-title" className="text-xl font-semibold tracking-tight">Ștergi contul?</h2>
             <p className="text-sm text-muted-foreground mt-2 leading-relaxed">
               This is <strong className="text-foreground">permanent</strong>. Your account, profile, protocols, blood work, tracking history, and shared links will all be gone. We can&apos;t recover them.
             </p>
@@ -611,8 +611,8 @@ function DeleteAccountModal({ open, onClose, onConfirm, onExport }: { open: bool
           >
             <Download className="w-4 h-4 shrink-0" />
             <div className="flex-1 min-w-0">
-              <p className="text-sm font-medium">{exported ? 'Data exported ✓' : 'Export my data first (GDPR)'}</p>
-              <p className="text-[11px] text-muted-foreground">{exported ? 'Downloaded as JSON' : 'JSON backup of everything — recommended before deleting'}</p>
+              <p className="text-sm font-medium">{exported ? 'Date exportate ✓' : 'Exportă datele întâi (GDPR)'}</p>
+              <p className="text-[11px] text-muted-foreground">{exported ? 'Descărcat ca JSON' : 'Backup JSON cu tot — recomandat înainte de ștergere'}</p>
             </div>
           </button>
 
@@ -900,8 +900,8 @@ export default function SettingsPage() {
       {/* Page header */}
       <div className="flex items-end justify-between gap-4 animate-fade-in">
         <div>
-          <h1 className="text-2xl sm:text-3xl font-semibold tracking-tight">Settings</h1>
-          <p className="text-sm text-muted-foreground mt-1">Your profile, history, and account controls.</p>
+          <h1 className="text-2xl sm:text-3xl font-semibold tracking-tight">Setări</h1>
+          <p className="text-sm text-muted-foreground mt-1">Profil, istoric și controale ale contului.</p>
         </div>
       </div>
 
@@ -910,7 +910,7 @@ export default function SettingsPage() {
         <SettingsCard
           icon={User}
           title={name}
-          subtitle={birthDate ? `Born ${new Date(birthDate).toLocaleDateString('ro-RO', { month: 'short', day: 'numeric', year: 'numeric' })}` : (country || city) ? [city, country].filter(Boolean).join(', ') : 'Profile overview'}
+          subtitle={birthDate ? `Născut ${new Date(birthDate).toLocaleDateString('ro-RO', { month: 'short', day: 'numeric', year: 'numeric' })}` : (country || city) ? [city, country].filter(Boolean).join(', ') : 'Profil'}
           action={editing ? (
             <div className="flex gap-2">
               <button onClick={() => setEditing(false)} className="text-xs px-3 py-1.5 rounded-lg bg-surface-3 text-muted-foreground hover:text-foreground transition-colors">Cancel</button>

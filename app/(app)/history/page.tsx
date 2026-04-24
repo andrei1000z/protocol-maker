@@ -161,33 +161,33 @@ export default function HistoryPage() {
       {/* Page header */}
       <div className="flex items-end justify-between gap-4 animate-fade-in flex-wrap">
         <div>
-          <h1 className="text-2xl sm:text-3xl font-semibold tracking-tight">History</h1>
-          <p className="text-sm text-muted-foreground mt-1">Your longevity journey over time — tests, protocols, trends.</p>
+          <h1 className="text-2xl sm:text-3xl font-semibold tracking-tight">Istoric</h1>
+          <p className="text-sm text-muted-foreground mt-1">Parcursul tău de longevitate în timp — analize, protocoale, tendințe.</p>
         </div>
         <button
           onClick={() => typeof window !== 'undefined' && window.print()}
           className="shrink-0 text-xs px-3.5 py-2 rounded-xl bg-surface-2 border border-card-border hover:border-accent/40 text-muted-foreground hover:text-accent transition-all flex items-center gap-1.5 print:hidden"
-          title="Print a doctor-friendly summary of your history"
+          title="Tipărește un rezumat al istoricului, pentru medic"
         >
-          🖨️ Print / save PDF
+          🖨️ Tipărește / salvează PDF
         </button>
       </div>
 
       {/* Medical print-mode header — only visible when printing */}
       <div className="hidden print:block">
-        <h1 className="text-2xl font-bold">Protocol — Patient History Report</h1>
-        <p className="text-xs mt-1">Generated {new Date().toLocaleDateString('ro-RO', { year: 'numeric', month: 'long', day: 'numeric' })} · Protocol-tawny.vercel.app</p>
+        <h1 className="text-2xl font-bold">Protocol — Raport istoric pacient</h1>
+        <p className="text-xs mt-1">Generat {new Date().toLocaleDateString('ro-RO', { year: 'numeric', month: 'long', day: 'numeric' })} · Protocol-tawny.vercel.app</p>
         <p className="text-xs mt-2 text-gray-600">
-          This report is generated from user-entered data and AI-derived analysis.
-          It is <strong>not a medical diagnosis</strong>. Reference ranges follow longevity-optimal bands
-          (Levine 2018 PhenoAge + Bryan Johnson Blueprint), which are stricter than population-average lab normals.
+          Acest raport e generat din date introduse de utilizator și analiză AI.
+          <strong> Nu e diagnostic medical</strong>. Intervalele de referință urmează bandele optime pentru longevitate
+          (Levine 2018 PhenoAge + Bryan Johnson Blueprint), mai stricte decât normalul populațional de laborator.
         </p>
         <hr className="my-3 border-gray-300" />
       </div>
 
       {/* Empty state */}
       {tests.length === 0 && protocols.length === 0 && (
-        <Section icon={FileText} title="Nothing tracked yet" subtitle="Complete onboarding to start building history">
+        <Section icon={FileText} title="Nimic înregistrat încă" subtitle="Completează onboarding-ul ca să începi istoricul">
           <div className="text-center py-10 space-y-4">
             <div className="w-16 h-16 rounded-2xl bg-surface-2 border border-card-border mx-auto flex items-center justify-center">
               <Clock className="w-7 h-7 text-muted" />
@@ -237,7 +237,7 @@ export default function HistoryPage() {
 
       {/* Protocol timeline chart */}
       {protocols.length >= 2 && (
-        <Section icon={Activity} title="Score over time" subtitle={`${protocols.length} updates across ${Math.round((new Date(protocols[protocols.length - 1].created_at).getTime() - new Date(protocols[0].created_at).getTime()) / 864e5)} days`}>
+        <Section icon={Activity} title="Scor în timp" subtitle={`${protocols.length} actualizări pe ${Math.round((new Date(protocols[protocols.length - 1].created_at).getTime() - new Date(protocols[0].created_at).getTime()) / 864e5)} zile`}>
           <div className="rounded-xl bg-surface-2 border border-card-border p-4 -mx-1">
             <MetricLineChart
               data={protocolChartData.map(p => ({ date: p.date, dateLabel: p.date, value: p.score }))}
@@ -264,7 +264,7 @@ export default function HistoryPage() {
 
       {/* Biggest biomarker movers */}
       {biomarkerChanges.length > 0 && (
-        <Section icon={Sparkles} title="What's moved the most" subtitle={`Top ${biomarkerChanges.length} biomarkers, first panel vs latest`}>
+        <Section icon={Sparkles} title="Ce s-a schimbat cel mai mult" subtitle={`Top ${biomarkerChanges.length} biomarkeri, primul set vs ultimul`}>
           <div className="space-y-1.5">
             {biomarkerChanges.map(c => (
               <div key={c.code} className="flex items-center justify-between gap-3 p-3 rounded-xl bg-surface-2 border border-card-border hover:border-card-border-hover transition-colors">
@@ -300,7 +300,7 @@ export default function HistoryPage() {
         return (
           <Section
             icon={GitCompareArrows}
-            title="Latest protocol vs previous"
+            title="Ultimul protocol vs precedent"
             subtitle={`Generated ${d.daysBetween} days apart · ${d.totalChanges} supplement change${d.totalChanges === 1 ? '' : 's'}`}
           >
             {/* Hero comparison */}
@@ -404,7 +404,7 @@ export default function HistoryPage() {
           no blood work yet. The top-level empty state only fires when both
           lists are empty, so this catches the "onboarded lifestyle-only" case. */}
       {tests.length === 0 && protocols.length > 0 && (
-        <Section icon={FileText} title="Blood tests" subtitle="Add a lab panel to unlock biomarker-level advice">
+        <Section icon={FileText} title="Analize de sânge" subtitle="Adaugă un buletin de analize ca să primești sfaturi la nivel de biomarker">
           <div className="rounded-2xl border border-dashed border-card-border bg-surface-2/40 p-6 text-center space-y-3">
             <p className="text-sm font-medium">No labs uploaded yet</p>
             <p className="text-[11px] text-muted-foreground max-w-sm mx-auto leading-relaxed">
@@ -421,8 +421,8 @@ export default function HistoryPage() {
       {tests.length > 0 && (
         <Section
           icon={FileText}
-          title="Blood tests"
-          subtitle={tests.length === 1 ? '1 test on file · upload another to compare' : `Select any two to compare (${tests.length} on file)`}
+          title="Analize de sânge"
+          subtitle={tests.length === 1 ? '1 analiză înregistrată · urcă alta pentru comparație' : `Selectează oricare două pentru comparație (${tests.length} în total)`}
         >
           <div className="space-y-2">
             {[...tests].reverse().map((test) => {
@@ -475,7 +475,7 @@ export default function HistoryPage() {
         return (
           <Section
             icon={GitCompareArrows}
-            title="Test comparison"
+            title="Comparație analize"
             subtitle={`${new Date(test1.taken_at).toLocaleDateString('ro-RO', { month: 'short', day: 'numeric', year: 'numeric' })} → ${new Date(test2.taken_at).toLocaleDateString('ro-RO', { month: 'short', day: 'numeric', year: 'numeric' })}`}
           >
             <div className="grid grid-cols-3 gap-2 mb-2">
@@ -519,7 +519,7 @@ export default function HistoryPage() {
 
       {/* Protocol regeneration log */}
       {protocols.length > 0 && (
-        <Section icon={Clock} title="Protocol regenerations" subtitle={`${protocols.length} generation${protocols.length === 1 ? '' : 's'} saved`}>
+        <Section icon={Clock} title="Regenerări de protocol" subtitle={`${protocols.length} ${protocols.length === 1 ? 'generare salvată' : 'generări salvate'}`}>
           <div className="space-y-1.5">
             {[...protocols].reverse().slice(0, 10).map((p, i, arr) => {
               const prev = arr[i + 1];

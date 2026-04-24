@@ -371,7 +371,7 @@ export default function ChatPage() {
         const err = await res.json().catch(() => ({ error: `HTTP ${res.status}` }));
         setMessages(curr => {
           const withoutPlaceholder = curr.slice(0, -1);
-          return [...withoutPlaceholder, { role: 'assistant', content: `${CHAT_ERROR_PREFIX}${err.error || 'Chat failed'}` }];
+          return [...withoutPlaceholder, { role: 'assistant', content: `${CHAT_ERROR_PREFIX}${err.error || 'Chat-ul a eșuat'}` }];
         });
         return;
       }
@@ -395,7 +395,7 @@ export default function ChatPage() {
     } catch (err) {
       setMessages(curr => {
         const withoutPlaceholder = curr.slice(0, -1);
-        return [...withoutPlaceholder, { role: 'assistant', content: `${CHAT_ERROR_PREFIX}${err instanceof Error ? err.message : 'Network error. Try again.'}` }];
+        return [...withoutPlaceholder, { role: 'assistant', content: `${CHAT_ERROR_PREFIX}${err instanceof Error ? err.message : 'Eroare de rețea. Încearcă din nou.'}` }];
       });
     } finally {
       setStreaming(false);
@@ -455,13 +455,13 @@ export default function ChatPage() {
             <Brain className="w-5 h-5 text-accent" />
           </div>
           <div className="flex-1 min-w-0">
-            <h1 className="text-lg sm:text-xl font-semibold tracking-tight">Longevity AI</h1>
+            <h1 className="text-lg sm:text-xl font-semibold tracking-tight">AI Longevitate</h1>
             <p className="text-xs text-muted-foreground mt-0.5">
               {ctx === null
-                ? 'Loading your context…'
+                ? 'Încarc contextul tău…'
                 : ctx.hasProtocol
-                  ? 'Has your full protocol, biomarkers, and tracking data loaded.'
-                  : 'Complete onboarding to unlock personalized answers.'}
+                  ? 'Are încărcate protocolul tău complet, biomarkerii și datele de tracking.'
+                  : 'Completează onboarding-ul pentru răspunsuri personalizate.'}
             </p>
             {contextChips.length > 0 && (
               <div className="flex flex-wrap gap-1.5 mt-2">
@@ -621,7 +621,7 @@ export default function ChatPage() {
             onChange={(e) => setInput(e.target.value)}
             onKeyDown={handleKeyDown}
             rows={1}
-            placeholder={ctx?.hasProtocol ? 'Ask anything — labs, sleep, supplements, food…' : 'Finish onboarding so I can give you real answers'}
+            placeholder={ctx?.hasProtocol ? 'Întreabă orice — analize, somn, suplimente, alimentație…' : 'Termină onboarding-ul ca să îți pot da răspunsuri reale'}
             className="w-full bg-transparent px-4 py-3 text-sm outline-none resize-none placeholder:text-muted-foreground/60 font-normal leading-relaxed max-h-[180px]"
             disabled={streaming}
           />
