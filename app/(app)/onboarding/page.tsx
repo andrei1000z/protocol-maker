@@ -9,7 +9,7 @@ import { GeneratingScreen } from '@/components/protocol/GeneratingScreen';
 import { Upload, FileText, ChevronDown, ChevronUp, Plus, X } from 'lucide-react';
 import clsx from 'clsx';
 
-const STEPS = ['Basics', 'Blood Work', 'Lifestyle', 'Day-to-Day', 'Goals'];
+const STEPS = ['De bază', 'Analize', 'Stil de viață', 'Rutină zilnică', 'Obiective'];
 
 // Auto-save draft key — versioned so a future schema rename invalidates
 // old drafts safely instead of trying to parse them against a new shape.
@@ -111,7 +111,7 @@ function DevicePicker({
       {/* Free-form "Other" input */}
       {brand === 'Other' && (
         <div className="space-y-2">
-          <label className="text-[11px] text-muted-foreground">Tell us brand + model:</label>
+          <label className="text-[11px] text-muted-foreground">Spune-ne marca + modelul:</label>
           <input
             type="text"
             value={other}
@@ -687,7 +687,7 @@ export default function OnboardingPage() {
     try { localStorage.removeItem(ONBOARDING_DRAFT_KEY); } catch { /* ignore */ }
   };
 
-  const activityLabels = ['Sedentary', 'Light', 'Moderate', 'Active', 'Athlete'];
+  const activityLabels = ['Sedentar', 'Ușor', 'Moderat', 'Activ', 'Atlet'];
 
   const updateBiomarker = (code: string, val: string) => setBiomarkers(prev => ({ ...prev, [code]: val }));
   const toggle = <T,>(setter: (f: (p: T[]) => T[]) => void, val: T) => setter(prev => prev.includes(val) ? prev.filter(x => x !== val) : [...prev, val]);
@@ -702,15 +702,15 @@ export default function OnboardingPage() {
     setError('');
     // Validate: only PDFs, max 10MB (Groq parse cost protection + sanity)
     if (!file.type.includes('pdf') && !file.name.toLowerCase().endsWith('.pdf')) {
-      setError('Only PDF files are supported. Try a Synevo / Regina Maria / MedLife lab report.');
+      setError('Suportăm doar fișiere PDF. Încearcă un buletin Synevo / Regina Maria / MedLife.');
       return;
     }
     if (file.size > 10 * 1024 * 1024) {
-      setError(`PDF is ${(file.size / 1024 / 1024).toFixed(1)}MB — max 10MB. Try the lab's "compact" or "summary" version.`);
+      setError(`PDF-ul are ${(file.size / 1024 / 1024).toFixed(1)}MB — maxim 10MB. Încearcă varianta "compact" sau "rezumat" de la laborator.`);
       return;
     }
     if (file.size < 1024) {
-      setError('PDF seems too small (under 1KB) — possibly corrupted. Re-download from your lab portal.');
+      setError('PDF-ul pare prea mic (sub 1KB) — posibil corupt. Re-descarcă din portalul laboratorului.');
       return;
     }
     setPdfParsing(true);
@@ -733,7 +733,7 @@ export default function OnboardingPage() {
       setBiomarkers(prev => ({ ...prev, ...newBiomarkers }));
       setPdfParsed(true);
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to parse PDF');
+      setError(err instanceof Error ? err.message : 'Nu am putut parsa PDF-ul');
     }
     setPdfParsing(false);
   };
@@ -978,7 +978,7 @@ export default function OnboardingPage() {
       });
       if (!genRes.ok) {
         const err = await genRes.json().catch(() => ({}));
-        throw new Error(err.error || `Protocol generation failed (${genRes.status})`);
+        throw new Error(err.error || `Generarea protocolului a eșuat (${genRes.status})`);
       }
       // Clear the local draft so a subsequent visit to /onboarding starts fresh
       // rather than rehydrating completed-state answers.
@@ -987,7 +987,7 @@ export default function OnboardingPage() {
       // final "ready" step has been held long enough to read.
       setGenerationComplete(true);
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Error. Try again.');
+      setError(err instanceof Error ? err.message : 'Eroare. Încearcă din nou.');
       setLoading(false);
       setGenerationComplete(false);
     }
@@ -1037,11 +1037,11 @@ export default function OnboardingPage() {
             {/* Required fields */}
             <div className="grid grid-cols-2 gap-3">
               <div>
-                <label className="text-xs text-muted-foreground">Name (optional)</label>
+                <label className="text-xs text-muted-foreground">Nume (opțional)</label>
                 <input type="text" value={name} onChange={e => setName(e.target.value)} placeholder="Alex" className="w-full mt-1 rounded-xl bg-card border border-card-border px-3 py-2.5 text-sm outline-none focus:border-accent" />
               </div>
               <div>
-                <label htmlFor="onb-age" className="text-xs text-muted-foreground">Age <span className="text-accent">*</span></label>
+                <label htmlFor="onb-age" className="text-xs text-muted-foreground">Vârstă <span className="text-accent">*</span></label>
                 <input
                   id="onb-age"
                   type="number"
@@ -1058,7 +1058,7 @@ export default function OnboardingPage() {
                   : <p className="text-xs text-muted mt-1">Sau alege data nașterii mai jos pentru precizie</p>}
               </div>
               <div className="col-span-2">
-                <label className="text-xs text-muted-foreground">Birth date (optional — more precise than age alone)</label>
+                <label className="text-xs text-muted-foreground">Data nașterii (opțional — mai precis decât doar vârsta)</label>
                 <input type="date" value={birthDate} onChange={e => { setBirthDate(e.target.value); if (e.target.value) { const yrs = Math.floor((Date.now() - new Date(e.target.value).getTime()) / (365.25 * 24 * 3600 * 1000)); setAge(String(yrs)); } }} className="w-full mt-1 rounded-xl bg-card border border-card-border px-3 py-2.5 text-sm outline-none focus:border-accent font-mono" />
               </div>
               <div>
@@ -1099,7 +1099,7 @@ export default function OnboardingPage() {
             </div>
 
             <div>
-              <label className="text-xs text-muted-foreground mb-2 block">Activity Level: <span className="text-accent font-medium">{activityLabels[activityLevel]}</span></label>
+              <label className="text-xs text-muted-foreground mb-2 block">Nivel de activitate: <span className="text-accent font-medium">{activityLabels[activityLevel]}</span></label>
               <input type="range" min={0} max={4} value={activityLevel} onChange={e => setActivityLevel(parseInt(e.target.value))} className="w-full h-2 bg-card-border rounded-lg appearance-none cursor-pointer accent-[#34d399]" />
               <div className="flex justify-between text-xs text-muted mt-1">{activityLabels.map(l => <span key={l}>{l}</span>)}</div>
             </div>
@@ -1155,7 +1155,7 @@ export default function OnboardingPage() {
             </div>
 
             <div>
-              <label className="text-xs text-muted-foreground mb-2 block">Do you have recent blood work?</label>
+              <label className="text-xs text-muted-foreground mb-2 block">Ai analize de sânge recente?</label>
               <div className="flex gap-3">
                 {[{ v: true, l: 'Yes, I have results' }, { v: false, l: 'No, skip this' }].map(({ v, l }) => (
                   <button key={String(v)} onClick={() => setHasBloodWork(v)} className={clsx('flex-1 py-3 rounded-xl text-sm font-medium transition-all', hasBloodWork === v ? 'bg-accent text-black' : 'bg-card border border-card-border text-muted-foreground')}>{l}</button>
@@ -1170,12 +1170,12 @@ export default function OnboardingPage() {
                 <h3 className="text-sm font-semibold">Your &ldquo;why&rdquo; — the most important field</h3>
               </div>
               <div>
-                <label className="text-xs text-muted-foreground">Top reasons + what triggered you NOW?</label>
-                <textarea value={motivation} onChange={e => setMotivation(e.target.value)} rows={3} placeholder="e.g. Dad had heart attack at 67 — I want to avoid that. I turned 35 and energy dropped. I want to be present for my kids long-term." className="w-full mt-1 rounded-xl bg-card border border-card-border px-3 py-2.5 text-sm outline-none focus:border-accent resize-none" />
+                <label className="text-xs text-muted-foreground">Motivele principale + ce te-a determinat ACUM?</label>
+                <textarea value={motivation} onChange={e => setMotivation(e.target.value)} rows={3} placeholder="ex: tata a avut infarct la 67 — vreau să evit asta. Am împlinit 35 și mi-a scăzut energia. Vreau să fiu prezent pentru copii pe termen lung." className="w-full mt-1 rounded-xl bg-card border border-card-border px-3 py-2.5 text-sm outline-none focus:border-accent resize-none" />
                 <p className="text-xs text-muted-foreground mt-1">The AI uses this to calibrate coaching tone + prioritize the right interventions for you.</p>
               </div>
               <div>
-                <label className="text-xs text-muted-foreground mb-2 block">How disciplined are you with habits? <span className="text-accent">{discipline}/10</span></label>
+                <label className="text-xs text-muted-foreground mb-2 block">Cât de disciplinat ești cu obiceiurile? <span className="text-accent">{discipline}/10</span></label>
                 <input type="range" min={1} max={10} value={discipline} onChange={e => setDiscipline(parseInt(e.target.value))} className="w-full h-2 bg-card-border rounded-lg appearance-none cursor-pointer accent-[#34d399]" />
               </div>
               <div className="flex items-center gap-3">
@@ -1185,9 +1185,9 @@ export default function OnboardingPage() {
             </div>
 
             {/* Identity & sex (collapsible) */}
-            <CollapseSection title="🧬 Identity & Biology (optional)" expanded={basicsExpanded.identity} onToggle={() => setBasicsExpanded(p => ({ ...p, identity: !p.identity }))}>
+            <CollapseSection title="🧬 Identitate și biologie (opțional)" expanded={basicsExpanded.identity} onToggle={() => setBasicsExpanded(p => ({ ...p, identity: !p.identity }))}>
               <div>
-                <label className="text-xs text-muted-foreground mb-2 block">Biological sex</label>
+                <label className="text-xs text-muted-foreground mb-2 block">Sex biologic</label>
                 <div className="grid grid-cols-3 gap-2">
                   {(['male', 'female', 'intersex'] as const).map(s => (
                     <button key={s} onClick={() => setSex(s)} className={clsx('py-2.5 rounded-xl text-sm font-medium capitalize transition-all', sex === s ? 'bg-accent text-black' : 'bg-card border border-card-border text-muted-foreground')}>
@@ -1198,7 +1198,7 @@ export default function OnboardingPage() {
               </div>
               {sex === 'intersex' && (
                 <div>
-                  <label className="text-xs text-muted-foreground">Chromosomes (if known)</label>
+                  <label className="text-xs text-muted-foreground">Cromozomi (dacă știi)</label>
                   <select value={chromosomes} onChange={e => setChromosomes(e.target.value)} className="w-full mt-1 rounded-xl bg-card border border-card-border px-3 py-2.5 text-sm outline-none focus:border-accent">
                     <option value="">Prefer not to say</option>
                     <option value="XX">XX</option>
@@ -1212,8 +1212,8 @@ export default function OnboardingPage() {
                 </div>
               )}
               <div>
-                <label className="text-xs text-muted-foreground">Gender identity (optional)</label>
-                <input type="text" value={genderIdentity} onChange={e => setGenderIdentity(e.target.value)} placeholder="e.g. man, woman, non-binary, trans man, trans woman" className="w-full mt-1 rounded-xl bg-card border border-card-border px-3 py-2.5 text-sm outline-none focus:border-accent" />
+                <label className="text-xs text-muted-foreground">Identitate de gen (opțional)</label>
+                <input type="text" value={genderIdentity} onChange={e => setGenderIdentity(e.target.value)} placeholder="ex: bărbat, femeie, non-binar, trans" className="w-full mt-1 rounded-xl bg-card border border-card-border px-3 py-2.5 text-sm outline-none focus:border-accent" />
               </div>
               <div className="flex items-center gap-3">
                 <button onClick={() => setTransitioning(!transitioning)} className={clsx('w-6 h-6 rounded-lg border-2 flex items-center justify-center shrink-0', transitioning ? 'bg-accent border-accent' : 'border-card-border')}>{transitioning && <span className="text-black text-xs">✓</span>}</button>
@@ -1221,7 +1221,7 @@ export default function OnboardingPage() {
               </div>
               {transitioning && (
                 <div>
-                  <label className="text-xs text-muted-foreground">Transitioning to (affects hormone protocol)</label>
+                  <label className="text-xs text-muted-foreground">În tranziție către (afectează protocolul hormonal)</label>
                   <select value={transitionTo} onChange={e => setTransitionTo(e.target.value)} className="w-full mt-1 rounded-xl bg-card border border-card-border px-3 py-2.5 text-sm outline-none focus:border-accent">
                     <option value="">Select...</option>
                     <option value="male">Masculinizing (HRT → male)</option>
@@ -1239,7 +1239,7 @@ export default function OnboardingPage() {
                   </div>
                   {pregnant && (
                     <div>
-                      <label className="text-xs text-muted-foreground">How many weeks?</label>
+                      <label className="text-xs text-muted-foreground">Câte săptămâni?</label>
                       <input type="number" value={pregnancyWeeks} onChange={e => setPregnancyWeeks(e.target.value)} placeholder="12" min={0} max={45} className="w-full mt-1 rounded-xl bg-card border border-card-border px-3 py-2.5 text-sm outline-none focus:border-accent font-mono" />
                     </div>
                   )}
@@ -1250,7 +1250,7 @@ export default function OnboardingPage() {
                 </>
               )}
               <div>
-                <label className="text-xs text-muted-foreground">Ethnicity / heritage (affects some biomarker ranges)</label>
+                <label className="text-xs text-muted-foreground">Etnie / moștenire (afectează unele intervale de biomarkeri)</label>
                 <select value={ethnicity} onChange={e => setEthnicity(e.target.value)} className="w-full mt-1 rounded-xl bg-card border border-card-border px-3 py-2.5 text-sm outline-none focus:border-accent">
                   <option value="">Select...</option>
                   <option value="european">European</option>
@@ -1263,7 +1263,7 @@ export default function OnboardingPage() {
                 </select>
               </div>
               <div>
-                <label className="text-xs text-muted-foreground mb-2 block">Occupation type</label>
+                <label className="text-xs text-muted-foreground mb-2 block">Tipul de muncă</label>
                 <div className="grid grid-cols-4 gap-2">
                   {(['desk', 'physical', 'shift', 'mixed'] as const).map(o => (
                     <button key={o} onClick={() => setOccupation(o)} className={clsx('py-2 rounded-xl text-xs font-medium capitalize transition-all', occupation === o ? 'bg-accent text-black' : 'bg-card border border-card-border text-muted-foreground')}>{o}</button>
@@ -1271,24 +1271,24 @@ export default function OnboardingPage() {
                 </div>
               </div>
               <div>
-                <label className="text-xs text-muted-foreground">Resting HR (if known, morning bpm)</label>
+                <label className="text-xs text-muted-foreground">Puls de repaus (dacă știi, bpm dimineața)</label>
                 <input type="number" value={restingHR} onChange={e => setRestingHR(e.target.value)} placeholder="65" className="w-full mt-1 rounded-xl bg-card border border-card-border px-3 py-2.5 text-sm outline-none focus:border-accent font-mono" />
               </div>
             </CollapseSection>
 
             {/* Location */}
-            <CollapseSection title="🌍 Location (optional — affects climate, pollution, food culture)" expanded={basicsExpanded.location} onToggle={() => setBasicsExpanded(p => ({ ...p, location: !p.location }))}>
+            <CollapseSection title="🌍 Locație (opțional — afectează clima, poluarea, cultura alimentară)" expanded={basicsExpanded.location} onToggle={() => setBasicsExpanded(p => ({ ...p, location: !p.location }))}>
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <label className="text-xs text-muted-foreground">Country of residence</label>
+                  <label className="text-xs text-muted-foreground">Țara de reședință</label>
                   <input type="text" value={country} onChange={e => setCountry(e.target.value)} placeholder="Romania" className="w-full mt-1 rounded-xl bg-card border border-card-border px-3 py-2.5 text-sm outline-none focus:border-accent" />
                 </div>
                 <div>
-                  <label className="text-xs text-muted-foreground">City</label>
+                  <label className="text-xs text-muted-foreground">Oraș</label>
                   <input type="text" value={city} onChange={e => setCity(e.target.value)} placeholder="București" className="w-full mt-1 rounded-xl bg-card border border-card-border px-3 py-2.5 text-sm outline-none focus:border-accent" />
                 </div>
                 <div>
-                  <label className="text-xs text-muted-foreground">Country of birth</label>
+                  <label className="text-xs text-muted-foreground">Țara nașterii</label>
                   <input type="text" value={birthCountry} onChange={e => setBirthCountry(e.target.value)} placeholder="Romania" className="w-full mt-1 rounded-xl bg-card border border-card-border px-3 py-2.5 text-sm outline-none focus:border-accent" />
                 </div>
                 <div>
@@ -1299,7 +1299,7 @@ export default function OnboardingPage() {
             </CollapseSection>
 
             {/* Body measurements (deep optional) */}
-            <CollapseSection title="📏 Body Measurements & Fitness Tests (all optional)" expanded={basicsExpanded.measurements} onToggle={() => setBasicsExpanded(p => ({ ...p, measurements: !p.measurements }))}>
+            <CollapseSection title="📏 Măsurători corporale și teste fitness (toate opționale)" expanded={basicsExpanded.measurements} onToggle={() => setBasicsExpanded(p => ({ ...p, measurements: !p.measurements }))}>
               <p className="text-xs text-muted-foreground">The more you fill in, the more precise your protocol. Skip anything you don&apos;t have.</p>
               <p className="text-xs text-accent uppercase tracking-wider mt-2">Circumference (cm)</p>
               <div className="grid grid-cols-2 gap-2">
@@ -1338,7 +1338,7 @@ export default function OnboardingPage() {
             </CollapseSection>
 
             {/* Family history */}
-            <CollapseSection title="🧬 Family History (drives preventive priorities)" expanded={basicsExpanded.family} onToggle={() => setBasicsExpanded(p => ({ ...p, family: !p.family }))}>
+            <CollapseSection title="🧬 Istoric familial (determină prioritățile preventive)" expanded={basicsExpanded.family} onToggle={() => setBasicsExpanded(p => ({ ...p, family: !p.family }))}>
               <div>
                 <label className="text-xs text-muted-foreground">Parents & grandparents — alive? If passed, at what age and from what?</label>
                 <textarea value={parentsAlive} onChange={e => setParentsAlive(e.target.value)} rows={3} placeholder="e.g. Dad passed at 67 from heart attack, Mom alive 72. Grandfathers both passed in 80s from cancer." className="w-full mt-1 rounded-xl bg-card border border-card-border px-3 py-2.5 text-xs outline-none focus:border-accent resize-none" />
@@ -1442,7 +1442,7 @@ export default function OnboardingPage() {
             </div>
 
             {/* Sleep */}
-            <CollapseSection title="😴 Sleep" expanded={lifestyleExpanded.sleep} onToggle={() => setLifestyleExpanded(p => ({ ...p, sleep: !p.sleep }))}>
+            <CollapseSection title="😴 Somn" expanded={lifestyleExpanded.sleep} onToggle={() => setLifestyleExpanded(p => ({ ...p, sleep: !p.sleep }))}>
               <div className="grid grid-cols-2 gap-3">
                 <div><label className="text-xs text-muted-foreground">Hours/night (avg)</label><input type="number" value={sleepHours} onChange={e => setSleepHours(e.target.value)} step="0.5" className="w-full mt-1 rounded-xl bg-card border border-card-border px-3 py-2.5 text-sm outline-none focus:border-accent font-mono" /></div>
                 <div><label className="text-xs text-muted-foreground">Quality (1-10)</label>
@@ -1517,7 +1517,7 @@ export default function OnboardingPage() {
             </CollapseSection>
 
             {/* Diet */}
-            <CollapseSection title="🥗 Diet & Substances" expanded={lifestyleExpanded.diet} onToggle={() => setLifestyleExpanded(p => ({ ...p, diet: !p.diet }))}>
+            <CollapseSection title="🥗 Dietă și substanțe" expanded={lifestyleExpanded.diet} onToggle={() => setLifestyleExpanded(p => ({ ...p, diet: !p.diet }))}>
               <div><label className="text-xs text-muted-foreground mb-2 block">Diet type</label>
                 <div className="flex flex-wrap gap-2">
                   {['omnivore', 'vegetarian', 'vegan', 'keto', 'carnivore', 'mediterranean', 'custom'].map(d => (
@@ -1621,7 +1621,7 @@ export default function OnboardingPage() {
             </CollapseSection>
 
             {/* Exercise */}
-            <CollapseSection title="🏋️ Exercise & Movement" expanded={lifestyleExpanded.exercise} onToggle={() => setLifestyleExpanded(p => ({ ...p, exercise: !p.exercise }))}>
+            <CollapseSection title="🏋️ Exerciții și mișcare" expanded={lifestyleExpanded.exercise} onToggle={() => setLifestyleExpanded(p => ({ ...p, exercise: !p.exercise }))}>
               <div className="grid grid-cols-2 gap-3">
                 <div><label className="text-xs text-muted-foreground">Cardio (min/week)</label><input type="number" value={cardioMin} onChange={e => setCardioMin(parseInt(e.target.value) || 0)} min={0} max={1000} className="w-full mt-1 rounded-xl bg-card border border-card-border px-3 py-2.5 text-sm outline-none focus:border-accent font-mono" /></div>
                 <div><label className="text-xs text-muted-foreground">Strength sessions/week</label><input type="number" value={strengthSessions} onChange={e => setStrengthSessions(parseInt(e.target.value) || 0)} min={0} max={7} className="w-full mt-1 rounded-xl bg-card border border-card-border px-3 py-2.5 text-sm outline-none focus:border-accent font-mono" /></div>
@@ -1663,7 +1663,7 @@ export default function OnboardingPage() {
             </CollapseSection>
 
             {/* Mental/Stress */}
-            <CollapseSection title="🧠 Mental Health & Stress" expanded={lifestyleExpanded.mental} onToggle={() => setLifestyleExpanded(p => ({ ...p, mental: !p.mental }))}>
+            <CollapseSection title="🧠 Sănătate mentală și stres" expanded={lifestyleExpanded.mental} onToggle={() => setLifestyleExpanded(p => ({ ...p, mental: !p.mental }))}>
               <div><label className="text-xs text-muted-foreground mb-2 block">Stress level (1-10): <span className="text-accent font-medium">{stressLevel}</span></label>
                 <input type="range" min={1} max={10} value={stressLevel} onChange={e => setStressLevel(parseInt(e.target.value))} className="w-full h-2 bg-card-border rounded-lg appearance-none cursor-pointer accent-[#34d399]" />
               </div>
@@ -1716,6 +1716,7 @@ export default function OnboardingPage() {
 
             {/* Medical */}
             <CollapseSection title="⚕️ Medical" expanded={lifestyleExpanded.medical} onToggle={() => setLifestyleExpanded(p => ({ ...p, medical: !p.medical }))}>
+
               <div><label className="text-xs text-muted-foreground mb-2 block">Diagnosed conditions</label>
                 <div className="flex flex-wrap gap-2">
                   {CONDITIONS.map(c => (
@@ -1883,7 +1884,7 @@ export default function OnboardingPage() {
             </CollapseSection>
 
             {/* Environment */}
-            <CollapseSection title="🌍 Environment & Exposures" expanded={lifestyleExpanded.environment} onToggle={() => setLifestyleExpanded(p => ({ ...p, environment: !p.environment }))}>
+            <CollapseSection title="🌍 Mediu și expuneri" expanded={lifestyleExpanded.environment} onToggle={() => setLifestyleExpanded(p => ({ ...p, environment: !p.environment }))}>
               <div><label className="text-xs text-muted-foreground">Housing type</label>
                 <select value={housingType} onChange={e => setHousingType(e.target.value)} className="w-full mt-1 rounded-xl bg-card border border-card-border px-3 py-2.5 text-sm outline-none focus:border-accent">
                   <option value="">Select...</option>
@@ -1934,7 +1935,7 @@ export default function OnboardingPage() {
             </CollapseSection>
 
             {/* Social */}
-            <CollapseSection title="👥 Social & Relationships" expanded={lifestyleExpanded.social} onToggle={() => setLifestyleExpanded(p => ({ ...p, social: !p.social }))}>
+            <CollapseSection title="👥 Social și relații" expanded={lifestyleExpanded.social} onToggle={() => setLifestyleExpanded(p => ({ ...p, social: !p.social }))}>
               <div><label className="text-xs text-muted-foreground">Relationship status</label>
                 <select value={relationshipStatus} onChange={e => setRelationshipStatus(e.target.value)} className="w-full mt-1 rounded-xl bg-card border border-card-border px-3 py-2.5 text-sm outline-none focus:border-accent">
                   <option value="">Prefer not to say</option>
@@ -2165,7 +2166,7 @@ export default function OnboardingPage() {
       {/* Auto-save toast — brief pulse after each Next so the user sees their progress is saved */}
       {savedToast && (
         <div className="fixed top-20 left-1/2 -translate-x-1/2 z-[55] bg-accent/15 border border-accent/40 text-accent text-xs font-medium px-3.5 py-1.5 rounded-full backdrop-blur-sm animate-fade-in-up pointer-events-none">
-          ✓ Saved
+          ✓ Salvat
         </div>
       )}
 
@@ -2180,13 +2181,13 @@ export default function OnboardingPage() {
       >
         <div className="max-w-2xl w-full flex gap-3">
         {step > 0 && (
-          <button onClick={handleBack} className="px-4 py-3 rounded-xl bg-card border border-card-border text-sm font-medium text-muted-foreground hover:text-foreground transition-colors">← Back</button>
+          <button onClick={handleBack} className="px-4 py-3 rounded-xl bg-card border border-card-border text-sm font-medium text-muted-foreground hover:text-foreground transition-colors">← Înapoi</button>
         )}
         <button
           onClick={() => step < 4 ? handleNext() : setShowReview(true)}
           disabled={!canNext() || loading}
           className="flex-1 py-3 rounded-xl bg-accent text-black font-semibold text-sm transition-all hover:bg-accent-dim active:scale-[0.98] disabled:opacity-40">
-          {step < 4 ? 'Next →' : 'Check your answers →'}
+          {step < 4 ? 'Continuă →' : 'Verifică răspunsurile →'}
         </button>
         </div>
       </div>
@@ -2200,9 +2201,9 @@ export default function OnboardingPage() {
               <span className="text-2xl">⚠️</span>
             </div>
             <div>
-              <h2 className="text-xl font-semibold tracking-tight">See a doctor first</h2>
+              <h2 className="text-xl font-semibold tracking-tight">Du-te întâi la medic</h2>
               <p className="text-sm text-muted-foreground mt-2 leading-relaxed">
-                You reported {redFlagsAcute.length === 1 ? 'a symptom' : `${redFlagsAcute.length} symptoms`} that need real medical evaluation:
+                Ai raportat {redFlagsAcute.length === 1 ? 'un simptom care are' : `${redFlagsAcute.length} simptome care au`} nevoie de evaluare medicală reală:
               </p>
               <ul className="mt-3 space-y-1 pl-1">
                 {redFlagsAcute.map(f => (
@@ -2221,7 +2222,7 @@ export default function OnboardingPage() {
                 {redFlagAck && <span className="text-black text-xs font-bold">✓</span>}
               </div>
               <span className="text-xs leading-relaxed">
-                I understand. I&apos;ll see a doctor about these symptoms. I want to use this AI protocol as <strong>complementary lifestyle guidance only</strong>, not a replacement for medical care.
+                Înțeleg. Voi merge la medic pentru aceste simptome. Vreau să folosesc acest protocol AI doar ca <strong>ghidaj complementar pentru stilul de viață</strong>, nu ca înlocuire a îngrijirii medicale.
               </span>
               <input type="checkbox" checked={redFlagAck} onChange={(e) => setRedFlagAck(e.target.checked)} className="sr-only" />
             </label>
@@ -2231,14 +2232,14 @@ export default function OnboardingPage() {
                 onClick={() => { setShowRedFlagModal(false); setRedFlagAck(false); }}
                 className="flex-1 py-3 rounded-xl bg-surface-3 text-foreground text-sm font-medium hover:bg-card-hover transition-colors"
               >
-                See a doctor first
+                Mă duc la medic întâi
               </button>
               <button
                 onClick={() => { setShowRedFlagModal(false); handleFinish(); }}
                 disabled={!redFlagAck}
                 className="flex-1 py-3 rounded-xl bg-accent text-black text-sm font-semibold hover:bg-accent-bright transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
               >
-                Got it, continue
+                Am înțeles, continuă
               </button>
             </div>
           </div>
@@ -2262,10 +2263,10 @@ export default function OnboardingPage() {
           <div className="relative bg-surface-1 rounded-t-3xl sm:rounded-3xl w-full sm:max-w-lg mx-0 sm:mx-4 max-h-[88dvh] overflow-y-auto border border-card-border animate-fade-in-up">
             <div className="sticky top-0 bg-surface-1/95 backdrop-blur-lg border-b border-card-border p-5 flex items-center justify-between">
               <div>
-                <p className="text-xs font-mono uppercase tracking-widest text-accent">Almost done</p>
-                <h2 id="review-title" className="text-lg font-semibold mt-0.5">Does this look right?</h2>
+                <p className="text-xs font-mono uppercase tracking-widest text-accent">Aproape gata</p>
+                <h2 id="review-title" className="text-lg font-semibold mt-0.5">Arată bine?</h2>
               </div>
-              <button onClick={() => setShowReview(false)} aria-label="Close review" className="p-1.5 rounded-lg text-muted-foreground hover:text-foreground hover:bg-surface-2 transition-colors">
+              <button onClick={() => setShowReview(false)} aria-label="Închide review" className="p-1.5 rounded-lg text-muted-foreground hover:text-foreground hover:bg-surface-2 transition-colors">
                 <X className="w-4 h-4" />
               </button>
             </div>
@@ -2275,7 +2276,7 @@ export default function OnboardingPage() {
                   scan in 10 seconds. A 30-row table would defeat the purpose. */}
               <div className="grid grid-cols-2 gap-x-4 gap-y-3">
                 <div>
-                  <p className="text-xs text-muted uppercase tracking-widest">Age</p>
+                  <p className="text-xs text-muted uppercase tracking-widest">Vârstă</p>
                   <p className="font-medium">{age || '—'}</p>
                 </div>
                 <div>
@@ -2283,45 +2284,45 @@ export default function OnboardingPage() {
                   <p className="font-medium capitalize">{sex || '—'}</p>
                 </div>
                 <div>
-                  <p className="text-xs text-muted uppercase tracking-widest">Height / Weight</p>
+                  <p className="text-xs text-muted uppercase tracking-widest">Înălțime / Greutate</p>
                   <p className="font-medium">{heightCm || '—'} cm · {weightKg || '—'} kg</p>
                 </div>
                 <div>
-                  <p className="text-xs text-muted uppercase tracking-widest">Activity</p>
+                  <p className="text-xs text-muted uppercase tracking-widest">Activitate</p>
                   <p className="font-medium">{activityLevel || '—'}</p>
                 </div>
                 <div className="col-span-2">
-                  <p className="text-xs text-muted uppercase tracking-widest">Sleep</p>
-                  <p className="font-medium">{sleepHours ? `${sleepHours}h avg` : '—'} · quality {sleepQuality ?? '—'}/10</p>
+                  <p className="text-xs text-muted uppercase tracking-widest">Somn</p>
+                  <p className="font-medium">{sleepHours ? `${sleepHours}h mediu` : '—'} · calitate {sleepQuality ?? '—'}/10</p>
                 </div>
                 <div className="col-span-2">
-                  <p className="text-xs text-muted uppercase tracking-widest">Exercise load</p>
-                  <p className="font-medium">{cardioMin || 0} min cardio · {strengthSessions || 0} strength/wk</p>
+                  <p className="text-xs text-muted uppercase tracking-widest">Încărcare exercițiu</p>
+                  <p className="font-medium">{cardioMin || 0} min cardio · {strengthSessions || 0} forță/săpt.</p>
                 </div>
                 <div>
-                  <p className="text-xs text-muted uppercase tracking-widest">Alcohol</p>
-                  <p className="font-medium">{alcoholPerWeek ?? 0} drinks/wk</p>
+                  <p className="text-xs text-muted uppercase tracking-widest">Alcool</p>
+                  <p className="font-medium">{alcoholPerWeek ?? 0} băuturi/săpt.</p>
                 </div>
                 <div>
-                  <p className="text-xs text-muted uppercase tracking-widest">Caffeine</p>
-                  <p className="font-medium">{caffeineServings ?? 0} servings/day</p>
+                  <p className="text-xs text-muted uppercase tracking-widest">Cafeină</p>
+                  <p className="font-medium">{caffeineServings ?? 0} porții/zi</p>
                 </div>
                 <div className="col-span-2">
-                  <p className="text-xs text-muted uppercase tracking-widest">Smoker</p>
-                  <p className="font-medium">{smoker ? 'Yes' : 'No'}</p>
+                  <p className="text-xs text-muted uppercase tracking-widest">Fumător</p>
+                  <p className="font-medium">{smoker ? 'Da' : 'Nu'}</p>
                 </div>
               </div>
 
               {conditions.length > 0 && (
                 <div className="pt-3 border-t border-card-border">
-                  <p className="text-xs text-muted uppercase tracking-widest mb-1">Conditions</p>
+                  <p className="text-xs text-muted uppercase tracking-widest mb-1">Condiții</p>
                   <p className="text-[13px] leading-relaxed">{conditions.join(' · ')}</p>
                 </div>
               )}
 
               {medications.filter(m => m.name.trim()).length > 0 && (
                 <div className="pt-3 border-t border-card-border">
-                  <p className="text-xs text-muted uppercase tracking-widest mb-1">Medications</p>
+                  <p className="text-xs text-muted uppercase tracking-widest mb-1">Medicamente</p>
                   <ul className="space-y-1 text-[13px]">
                     {medications.filter(m => m.name.trim()).map((m, i) => (
                       <li key={i} className="leading-relaxed">
@@ -2336,21 +2337,21 @@ export default function OnboardingPage() {
 
               {(primaryGoal || secondaryGoals.length > 0) && (
                 <div className="pt-3 border-t border-card-border">
-                  <p className="text-xs text-muted uppercase tracking-widest mb-1">Goals</p>
+                  <p className="text-xs text-muted uppercase tracking-widest mb-1">Obiective</p>
                   <p className="text-[13px] leading-relaxed">{[primaryGoal, ...secondaryGoals].filter(Boolean).join(' · ')}</p>
                 </div>
               )}
 
               <div className="pt-3 border-t border-card-border">
-                <p className="text-xs text-muted uppercase tracking-widest mb-1">Biomarkers entered</p>
+                <p className="text-xs text-muted uppercase tracking-widest mb-1">Biomarkeri introduși</p>
                 <p className="text-[13px] leading-relaxed">
-                  <span className="font-mono font-medium">{filledCount}</span> of {BIG_11_CODES.length} core markers.
-                  {filledCount === 0 && <span className="text-muted-foreground"> The protocol will estimate from your lifestyle — upload a lab PDF later to refine.</span>}
+                  <span className="font-mono font-medium">{filledCount}</span> din {BIG_11_CODES.length} markeri de bază.
+                  {filledCount === 0 && <span className="text-muted-foreground"> Protocolul va estima din stilul tău de viață — urcă un PDF cu analize mai târziu pentru precizie.</span>}
                 </p>
               </div>
 
               <p className="text-[11px] text-muted-foreground leading-relaxed pt-3 border-t border-card-border">
-                This takes about 15 seconds. You can edit anything later from Settings.
+                Durează cam 15 secunde. Poți edita orice mai târziu din Setări.
               </p>
             </div>
 
@@ -2359,13 +2360,13 @@ export default function OnboardingPage() {
                 onClick={() => setShowReview(false)}
                 className="flex-1 py-3 rounded-xl bg-surface-3 border border-card-border text-sm text-muted-foreground hover:text-foreground transition-colors"
               >
-                Back to edit
+                Înapoi la editare
               </button>
               <button
                 onClick={() => { setShowReview(false); handleFinish(); }}
                 className="flex-1 py-3 rounded-xl bg-accent text-black font-semibold text-sm hover:bg-accent-bright transition-colors"
               >
-                Build my protocol →
+                Construiește protocolul →
               </button>
             </div>
           </div>
