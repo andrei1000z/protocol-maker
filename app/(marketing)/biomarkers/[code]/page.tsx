@@ -75,7 +75,7 @@ export default async function BiomarkerPage({ params }: { params: Promise<{ code
         <div className="max-w-4xl mx-auto px-6 py-3 flex items-center justify-between">
           <Link href="/" className="text-accent font-bold text-lg tracking-tight">Protocol</Link>
           <Link href="/login" className="text-xs font-medium text-muted-foreground hover:text-accent transition-colors">
-            Get your protocol →
+            Vreau protocolul →
           </Link>
         </div>
       </header>
@@ -83,9 +83,9 @@ export default async function BiomarkerPage({ params }: { params: Promise<{ code
       <article className="max-w-3xl mx-auto px-6 py-10 sm:py-16 space-y-10">
         {/* Breadcrumb */}
         <nav className="text-xs text-muted flex items-center gap-1.5">
-          <Link href="/" className="hover:text-accent transition-colors">Home</Link>
+          <Link href="/" className="hover:text-accent transition-colors">Acasă</Link>
           <span>·</span>
-          <Link href="/biomarkers" className="hover:text-accent transition-colors">Biomarkers</Link>
+          <Link href="/biomarkers" className="hover:text-accent transition-colors">Biomarkeri</Link>
           <span>·</span>
           <span className="text-foreground">{b.shortName}</span>
         </nav>
@@ -111,13 +111,13 @@ export default async function BiomarkerPage({ params }: { params: Promise<{ code
         {hasBryan && b.bryanJohnsonValue !== undefined && (
           <section className="glass-card rounded-2xl p-5 space-y-3">
             <div className="flex items-baseline justify-between gap-2">
-              <p className="text-xs font-mono uppercase tracking-widest text-muted">Where people fall vs Bryan</p>
+              <p className="text-xs font-mono uppercase tracking-widest text-muted">Unde sunt oamenii vs Bryan</p>
               <p className="text-xs text-muted">
-                <span className="inline-block w-2 h-2 rounded-full bg-accent align-middle" /> optimal band
+                <span className="inline-block w-2 h-2 rounded-full bg-accent align-middle" /> banda optimă
                 <span className="mx-2">·</span>
                 <span className="inline-block w-2 h-2 rotate-45 bg-amber-400 align-middle" /> Bryan
                 <span className="mx-2">·</span>
-                <span className="inline-block w-[3px] h-3 bg-muted-foreground align-middle" /> population avg
+                <span className="inline-block w-[3px] h-3 bg-muted-foreground align-middle" /> medie populațională
               </p>
             </div>
             <BryanGapBar
@@ -129,8 +129,8 @@ export default async function BiomarkerPage({ params }: { params: Promise<{ code
               height={14}
             />
             <p className="text-[11px] text-muted-foreground leading-relaxed">
-              Population average: <span className="text-foreground font-medium">{((b.populationAvgLow + b.populationAvgHigh) / 2).toFixed(1)} {b.unit}</span>.
-              Bryan targets <span className="text-accent font-medium">{b.bryanJohnsonValue} {b.unit}</span> — {b.bryanJohnsonValue >= b.longevityOptimalLow && b.bryanJohnsonValue <= b.longevityOptimalHigh ? 'squarely inside the longevity-optimal band' : 'at the tight edge of longevity-optimal'}.
+              Medie populațională: <span className="text-foreground font-medium">{((b.populationAvgLow + b.populationAvgHigh) / 2).toFixed(1)} {b.unit}</span>.
+              Ținta lui Bryan: <span className="text-accent font-medium">{b.bryanJohnsonValue} {b.unit}</span> — {b.bryanJohnsonValue >= b.longevityOptimalLow && b.bryanJohnsonValue <= b.longevityOptimalHigh ? 'fix în banda optimă pentru longevitate' : 'chiar la limita benzii optime'}.
             </p>
           </section>
         )}
@@ -140,27 +140,27 @@ export default async function BiomarkerPage({ params }: { params: Promise<{ code
           <div className="glass-card rounded-2xl p-5 space-y-2">
             <div className="flex items-center gap-2 text-accent">
               <Target className="w-4 h-4" />
-              <span className="text-xs font-mono uppercase tracking-widest">Longevity-optimal</span>
+              <span className="text-xs font-mono uppercase tracking-widest">Optim longevitate</span>
             </div>
             <p className="text-2xl font-semibold font-mono tabular-nums">
               {b.longevityOptimalLow}<span className="text-muted text-lg">–</span>{b.longevityOptimalHigh}
               <span className="text-sm text-muted ml-1">{b.unit}</span>
             </p>
             <p className="text-[11px] text-muted-foreground leading-relaxed">
-              Tighter than standard lab ranges — derived from longevity literature.
+              Mai strict decât intervalul standard de laborator — derivat din literatura de longevitate.
             </p>
           </div>
           <div className="glass-card rounded-2xl p-5 space-y-2">
             <div className="flex items-center gap-2 text-muted-foreground">
               <Activity className="w-4 h-4" />
-              <span className="text-xs font-mono uppercase tracking-widest">Lab reference</span>
+              <span className="text-xs font-mono uppercase tracking-widest">Referință laborator</span>
             </div>
             <p className="text-2xl font-semibold font-mono tabular-nums text-muted-foreground">
               {b.populationAvgLow}<span className="text-muted text-lg">–</span>{b.populationAvgHigh}
               <span className="text-sm text-muted ml-1">{b.unit}</span>
             </p>
             <p className="text-[11px] text-muted-foreground leading-relaxed">
-              Standard population-based range your lab flags.
+              Intervalul populațional standard marcat de laborator.
             </p>
           </div>
           {hasBryan && (
@@ -174,7 +174,7 @@ export default async function BiomarkerPage({ params }: { params: Promise<{ code
                 <span className="text-sm text-muted ml-1">{b.unit}</span>
               </p>
               <p className="text-[11px] text-muted-foreground leading-relaxed">
-                Bryan&apos;s measured value from Blueprint protocol.
+                Valoarea măsurată a lui Bryan din protocolul Blueprint.
               </p>
             </div>
           )}
@@ -185,13 +185,13 @@ export default async function BiomarkerPage({ params }: { params: Promise<{ code
           <section className="space-y-4">
             <h2 className="text-xl font-semibold tracking-tight flex items-center gap-2">
               <AlertTriangle className="w-5 h-5 text-amber-400" />
-              If your {b.shortName} is high
+              Dacă {b.shortName} e ridicat
             </h2>
 
             {b.interventionsIfHigh.lifestyle.length > 0 && (
               <div>
                 <h3 className="text-sm font-semibold text-accent mb-2 flex items-center gap-1.5">
-                  <Leaf className="w-3.5 h-3.5" /> Lifestyle
+                  <Leaf className="w-3.5 h-3.5" /> Stil de viață
                 </h3>
                 <ul className="space-y-1.5 text-sm text-muted-foreground">
                   {b.interventionsIfHigh.lifestyle.map((l, i) => <li key={i} className="flex gap-2"><span className="text-accent">•</span>{l}</li>)}
@@ -202,7 +202,7 @@ export default async function BiomarkerPage({ params }: { params: Promise<{ code
             {b.interventionsIfHigh.supplements.length > 0 && (
               <div>
                 <h3 className="text-sm font-semibold text-accent mb-2 flex items-center gap-1.5">
-                  <Pill className="w-3.5 h-3.5" /> Supplements (discuss with doctor)
+                  <Pill className="w-3.5 h-3.5" /> Suplimente (discută cu medicul)
                 </h3>
                 <ul className="space-y-1.5 text-sm text-muted-foreground">
                   {b.interventionsIfHigh.supplements.map((s, i) => (
@@ -218,7 +218,7 @@ export default async function BiomarkerPage({ params }: { params: Promise<{ code
             {b.interventionsIfHigh.foods_add.length > 0 && (
               <div>
                 <h3 className="text-sm font-semibold text-accent mb-2 flex items-center gap-1.5">
-                  <Utensils className="w-3.5 h-3.5" /> Foods to add
+                  <Utensils className="w-3.5 h-3.5" /> Alimente de adăugat
                 </h3>
                 <p className="text-sm text-muted-foreground">{b.interventionsIfHigh.foods_add.join(' · ')}</p>
               </div>
@@ -226,7 +226,7 @@ export default async function BiomarkerPage({ params }: { params: Promise<{ code
 
             {b.interventionsIfHigh.foods_avoid.length > 0 && (
               <div>
-                <h3 className="text-sm font-semibold text-danger mb-2">Foods to avoid</h3>
+                <h3 className="text-sm font-semibold text-danger mb-2">Alimente de evitat</h3>
                 <p className="text-sm text-muted-foreground">{b.interventionsIfHigh.foods_avoid.join(' · ')}</p>
               </div>
             )}
@@ -234,7 +234,7 @@ export default async function BiomarkerPage({ params }: { params: Promise<{ code
             {b.interventionsIfHigh.medical.length > 0 && (
               <div>
                 <h3 className="text-sm font-semibold text-accent mb-2 flex items-center gap-1.5">
-                  <Stethoscope className="w-3.5 h-3.5" /> Medical follow-up
+                  <Stethoscope className="w-3.5 h-3.5" /> Control medical
                 </h3>
                 <ul className="space-y-1.5 text-sm text-muted-foreground">
                   {b.interventionsIfHigh.medical.map((m, i) => <li key={i} className="flex gap-2"><span className="text-accent">•</span>{m}</li>)}
@@ -249,13 +249,13 @@ export default async function BiomarkerPage({ params }: { params: Promise<{ code
           <section className="space-y-4">
             <h2 className="text-xl font-semibold tracking-tight flex items-center gap-2">
               <AlertTriangle className="w-5 h-5 text-amber-400" />
-              If your {b.shortName} is low
+              Dacă {b.shortName} e scăzut
             </h2>
 
             {b.interventionsIfLow.lifestyle.length > 0 && (
               <div>
                 <h3 className="text-sm font-semibold text-accent mb-2 flex items-center gap-1.5">
-                  <Leaf className="w-3.5 h-3.5" /> Lifestyle
+                  <Leaf className="w-3.5 h-3.5" /> Stil de viață
                 </h3>
                 <ul className="space-y-1.5 text-sm text-muted-foreground">
                   {b.interventionsIfLow.lifestyle.map((l, i) => <li key={i} className="flex gap-2"><span className="text-accent">•</span>{l}</li>)}
@@ -266,7 +266,7 @@ export default async function BiomarkerPage({ params }: { params: Promise<{ code
             {b.interventionsIfLow.supplements.length > 0 && (
               <div>
                 <h3 className="text-sm font-semibold text-accent mb-2 flex items-center gap-1.5">
-                  <Pill className="w-3.5 h-3.5" /> Supplements (discuss with doctor)
+                  <Pill className="w-3.5 h-3.5" /> Suplimente (discută cu medicul)
                 </h3>
                 <ul className="space-y-1.5 text-sm text-muted-foreground">
                   {b.interventionsIfLow.supplements.map((s, i) => (
@@ -282,7 +282,7 @@ export default async function BiomarkerPage({ params }: { params: Promise<{ code
             {b.interventionsIfLow.foods_add.length > 0 && (
               <div>
                 <h3 className="text-sm font-semibold text-accent mb-2 flex items-center gap-1.5">
-                  <Utensils className="w-3.5 h-3.5" /> Foods to add
+                  <Utensils className="w-3.5 h-3.5" /> Alimente de adăugat
                 </h3>
                 <p className="text-sm text-muted-foreground">{b.interventionsIfLow.foods_add.join(' · ')}</p>
               </div>
@@ -291,7 +291,7 @@ export default async function BiomarkerPage({ params }: { params: Promise<{ code
             {b.interventionsIfLow.medical.length > 0 && (
               <div>
                 <h3 className="text-sm font-semibold text-accent mb-2 flex items-center gap-1.5">
-                  <Stethoscope className="w-3.5 h-3.5" /> Medical follow-up
+                  <Stethoscope className="w-3.5 h-3.5" /> Control medical
                 </h3>
                 <ul className="space-y-1.5 text-sm text-muted-foreground">
                   {b.interventionsIfLow.medical.map((m, i) => <li key={i} className="flex gap-2"><span className="text-accent">•</span>{m}</li>)}
@@ -305,8 +305,8 @@ export default async function BiomarkerPage({ params }: { params: Promise<{ code
         {b.retestIntervalWeeks > 0 && (
           <section className="glass-card rounded-2xl p-5">
             <p className="text-sm">
-              <strong>Retest every {b.retestIntervalWeeks} {b.retestIntervalWeeks === 1 ? 'week' : 'weeks'}</strong>
-              <span className="text-muted-foreground"> after starting an intervention to see if it&apos;s working.</span>
+              <strong>Retestează la fiecare {b.retestIntervalWeeks} {b.retestIntervalWeeks === 1 ? 'săptămână' : 'săptămâni'}</strong>
+              <span className="text-muted-foreground"> după ce începi o intervenție, ca să vezi dacă funcționează.</span>
             </p>
           </section>
         )}
@@ -316,7 +316,7 @@ export default async function BiomarkerPage({ params }: { params: Promise<{ code
           <section className="space-y-4">
             <h2 className="text-xl font-semibold tracking-tight flex items-center gap-2">
               <Sparkles className="w-5 h-5 text-accent" />
-              Clinical patterns {b.shortName} can trigger
+              Tipare clinice pe care {b.shortName} le poate declanșa
             </h2>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
               {relatedPatterns.map(p => (
@@ -336,22 +336,22 @@ export default async function BiomarkerPage({ params }: { params: Promise<{ code
         {/* CTA */}
         <section className="rounded-3xl bg-gradient-to-br from-accent/10 via-accent/[0.03] to-transparent border border-accent/25 p-6 sm:p-8 text-center space-y-4">
           <h2 className="text-xl sm:text-2xl font-semibold tracking-tight">
-            Get a protocol tuned to <span className="text-accent">your</span> {b.shortName}
+            Primește un protocol calibrat pe <span className="text-accent">{b.shortName}</span> al tău
           </h2>
           <p className="text-sm text-muted-foreground max-w-md mx-auto leading-relaxed">
-            Upload a lab panel, get a personalized longevity protocol in under 60 seconds. Free during beta.
+            Urcă un buletin de analize, primești un protocol de longevitate personalizat în sub 60 de secunde. Gratuit în perioada beta.
           </p>
           <Link
             href="/login?mode=register"
             className="inline-flex items-center gap-2 bg-accent text-black font-semibold text-sm px-6 py-3 rounded-xl hover:bg-accent-bright transition-colors"
           >
-            Get started <ArrowRight className="w-4 h-4" />
+            Începe <ArrowRight className="w-4 h-4" />
           </Link>
         </section>
 
         {/* Disclaimer */}
         <p className="text-xs text-muted text-center leading-relaxed">
-          Educational content · not medical advice · always discuss changes with your doctor
+          Conținut educațional · nu e sfat medical · discută întotdeauna modificările cu medicul tău
         </p>
       </article>
     </div>

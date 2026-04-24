@@ -10,8 +10,8 @@ import { SITE_URL } from '@/lib/config';
 import { BiomarkerFinder, type BiomarkerCard } from '@/components/biomarkers/BiomarkerFinder';
 
 export const metadata: Metadata = {
-  title: 'Biomarker Reference — Longevity-Optimal Ranges + Bryan Johnson Targets',
-  description: `All ${BIOMARKER_DB.length} biomarkers Protocol analyzes, with longevity-optimal ranges tighter than standard lab ranges, Bryan Johnson's measured values, and what to do if yours are off.`,
+  title: 'Ghid biomarkeri — Intervale optime pentru longevitate + Țintele lui Bryan Johnson',
+  description: `Toți cei ${BIOMARKER_DB.length} biomarkeri analizați de Protocol, cu intervale optime pentru longevitate mai stricte decât cele standard, valorile măsurate ale lui Bryan Johnson și ce să faci dacă ai tăi sunt în afara țintei.`,
   alternates: { canonical: `${SITE_URL}/biomarkers` },
 };
 
@@ -36,7 +36,7 @@ export default function BiomarkerIndex() {
         <div className="max-w-5xl mx-auto px-6 py-3 flex items-center justify-between">
           <Link href="/" className="text-accent font-bold text-lg tracking-tight">Protocol</Link>
           <Link href="/login" className="text-xs font-medium text-muted-foreground hover:text-accent transition-colors">
-            Get your protocol →
+            Vreau protocolul →
           </Link>
         </div>
       </header>
@@ -44,10 +44,10 @@ export default function BiomarkerIndex() {
       <main className="max-w-5xl mx-auto px-6 py-10 sm:py-16 space-y-8">
         <div className="space-y-3 max-w-2xl">
           <h1 className="text-3xl sm:text-4xl font-semibold tracking-tight">
-            Biomarker reference
+            Ghid biomarkeri
           </h1>
           <p className="text-sm sm:text-base text-muted-foreground leading-relaxed">
-            {BIOMARKER_DB.length} biomarkers with <strong className="text-foreground">longevity-optimal</strong> ranges (tighter than lab-normal), Bryan Johnson&apos;s measured values where known, and actionable interventions if yours are off.
+            {BIOMARKER_DB.length} biomarkeri cu intervale <strong className="text-foreground">optime pentru longevitate</strong> (mai stricte decât normalul de laborator), valorile măsurate ale lui Bryan Johnson acolo unde sunt cunoscute și intervenții concrete dacă ai tăi sunt în afara țintei.
           </p>
         </div>
 

@@ -53,23 +53,23 @@ export default async function PatternPage({ params }: { params: Promise<{ slug: 
         <div className="max-w-4xl mx-auto px-6 py-3 flex items-center justify-between">
           <Link href="/" className="text-accent font-bold text-lg tracking-tight">Protocol</Link>
           <Link href="/login" className="text-xs font-medium text-muted-foreground hover:text-accent transition-colors">
-            Get your protocol →
+            Vreau protocolul →
           </Link>
         </div>
       </header>
 
       <article className="max-w-3xl mx-auto px-6 py-10 sm:py-16 space-y-10">
         <nav className="text-xs text-muted flex items-center gap-1.5">
-          <Link href="/" className="hover:text-accent transition-colors">Home</Link>
+          <Link href="/" className="hover:text-accent transition-colors">Acasă</Link>
           <span>·</span>
-          <Link href="/patterns" className="hover:text-accent transition-colors">Patterns</Link>
+          <Link href="/patterns" className="hover:text-accent transition-colors">Tipare</Link>
           <span>·</span>
           <span className="text-foreground">{p.name}</span>
         </nav>
 
         <div className="space-y-4">
           <span className="inline-block text-xs font-mono uppercase tracking-widest text-accent bg-accent/10 border border-accent/25 rounded-full px-3 py-1">
-            Clinical pattern
+            Tipar clinic
           </span>
           <h1 className="text-3xl sm:text-4xl font-semibold tracking-tight">{p.name}</h1>
           <p className="text-sm sm:text-base text-muted-foreground leading-relaxed max-w-2xl">
@@ -80,7 +80,7 @@ export default async function PatternPage({ params }: { params: Promise<{ slug: 
         <section className="space-y-4">
           <h2 className="text-xl font-semibold tracking-tight flex items-center gap-2">
             <Sparkles className="w-5 h-5 text-accent" />
-            How to address it
+            Cum îl adresezi
           </h2>
           <ul className="space-y-2.5">
             {p.recommendations.map((r, i) => (
@@ -98,7 +98,7 @@ export default async function PatternPage({ params }: { params: Promise<{ slug: 
           <section className="space-y-4">
             <h2 className="text-xl font-semibold tracking-tight flex items-center gap-2">
               <Activity className="w-5 h-5 text-accent" />
-              Biomarkers that trigger this pattern
+              Biomarkerii care declanșează acest tipar
             </h2>
             <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
               {p.triggeringCodes.map(code => {
@@ -121,21 +121,21 @@ export default async function PatternPage({ params }: { params: Promise<{ slug: 
 
         <section className="rounded-3xl bg-gradient-to-br from-accent/10 via-accent/[0.03] to-transparent border border-accent/25 p-6 sm:p-8 text-center space-y-4">
           <h2 className="text-xl sm:text-2xl font-semibold tracking-tight">
-            See if you have {p.name.toLowerCase()}
+            Vezi dacă ai {p.name.toLowerCase()}
           </h2>
           <p className="text-sm text-muted-foreground max-w-md mx-auto leading-relaxed">
-            Upload your lab panel and Protocol detects {PATTERN_REFERENCE.length} clinical patterns, then generates a personalized plan to reverse the ones you have.
+            Urcă buletinul de analize și Protocol detectează {PATTERN_REFERENCE.length} tipare clinice, apoi generează un plan personalizat să le inversezi pe cele pe care le ai.
           </p>
           <Link
             href="/login?mode=register"
             className="inline-flex items-center gap-2 bg-accent text-black font-semibold text-sm px-6 py-3 rounded-xl hover:bg-accent-bright transition-colors"
           >
-            Get started <ArrowRight className="w-4 h-4" />
+            Începe <ArrowRight className="w-4 h-4" />
           </Link>
         </section>
 
         <p className="text-xs text-muted text-center leading-relaxed">
-          Educational content · not medical advice · always discuss changes with your doctor
+          Conținut educațional · nu e sfat medical · discută întotdeauna modificările cu medicul tău
         </p>
       </article>
     </div>

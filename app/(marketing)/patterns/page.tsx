@@ -5,8 +5,8 @@ import { SITE_URL } from '@/lib/config';
 import { ArrowRight } from 'lucide-react';
 
 export const metadata: Metadata = {
-  title: 'Clinical Patterns Protocol Detects — Metabolic Syndrome, Prediabetes, and more',
-  description: `${PATTERN_REFERENCE.length} patterns Protocol detects from your bloodwork — each with a plain-English explanation and reversible-intervention roadmap.`,
+  title: 'Tipare clinice detectate de Protocol — Sindrom metabolic, prediabet și altele',
+  description: `${PATTERN_REFERENCE.length} tipare pe care Protocol le detectează în analizele tale — fiecare cu explicație pe înțelesul tuturor și roadmap de intervenții reversibile.`,
   alternates: { canonical: `${SITE_URL}/patterns` },
 };
 
@@ -17,16 +17,16 @@ export default function PatternIndex() {
         <div className="max-w-5xl mx-auto px-6 py-3 flex items-center justify-between">
           <Link href="/" className="text-accent font-bold text-lg tracking-tight">Protocol</Link>
           <Link href="/login" className="text-xs font-medium text-muted-foreground hover:text-accent transition-colors">
-            Get your protocol →
+            Vreau protocolul →
           </Link>
         </div>
       </header>
 
       <main className="max-w-4xl mx-auto px-6 py-10 sm:py-16 space-y-10">
         <div className="space-y-3 max-w-2xl">
-          <h1 className="text-3xl sm:text-4xl font-semibold tracking-tight">Clinical patterns</h1>
+          <h1 className="text-3xl sm:text-4xl font-semibold tracking-tight">Tipare clinice</h1>
           <p className="text-sm sm:text-base text-muted-foreground leading-relaxed">
-            Protocol detects <strong className="text-foreground">{PATTERN_REFERENCE.length}</strong> patterns in your bloodwork — each one triggers a reversible intervention roadmap.
+            Protocol detectează <strong className="text-foreground">{PATTERN_REFERENCE.length}</strong> tipare în analizele tale — fiecare declanșează un roadmap de intervenții reversibile.
           </p>
         </div>
 
