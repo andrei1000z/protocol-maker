@@ -52,11 +52,11 @@ export function WorkoutLogger() {
             <Dumbbell className="w-5 h-5 text-accent" />
           </div>
           <div>
-            <h2 className="text-base sm:text-lg font-semibold tracking-tight">Training</h2>
+            <h2 className="text-base sm:text-lg font-semibold tracking-tight">Antrenament</h2>
             <p className="text-[11px] text-muted-foreground mt-0.5 leading-relaxed">
               {today?.workout_done
-                ? `Done today: ${today.workout_minutes ?? '?'} min · ${today.workout_intensity ?? '?'}.`
-                : "Tap to log what you did today — one click logs the whole session."}
+                ? `Făcut azi: ${today.workout_minutes ?? '?'} min · ${today.workout_intensity ?? '?'}.`
+                : 'Apasă ca să logezi ce ai făcut azi — un click logează toată sesiunea.'}
             </p>
           </div>
         </div>
@@ -65,7 +65,7 @@ export function WorkoutLogger() {
           className="shrink-0 inline-flex items-center gap-1.5 text-xs sm:text-sm font-semibold px-3.5 py-2 rounded-xl bg-accent text-black hover:bg-accent-bright transition-colors"
         >
           <Zap className="w-4 h-4" />
-          {today?.workout_done ? 'Log another' : 'I trained today'}
+          {today?.workout_done ? 'Adaugă altul' : 'M-am antrenat azi'}
         </button>
       </div>
 
@@ -114,10 +114,10 @@ function WorkoutModal({ presets, existing, onClose, onPickPreset, onCustom }: Mo
       <div className="relative bg-surface-1 rounded-t-3xl sm:rounded-3xl w-full sm:max-w-lg max-h-[88dvh] overflow-y-auto border border-card-border animate-fade-in-up">
         <div className="sticky top-0 bg-surface-1/95 backdrop-blur-lg border-b border-card-border p-5 flex items-center justify-between">
           <div>
-            <p className="text-xs font-mono uppercase tracking-widest text-accent">Pick one</p>
-            <h2 className="text-lg font-semibold mt-0.5">Log your workout</h2>
+            <p className="text-xs font-mono uppercase tracking-widest text-accent">Alege una</p>
+            <h2 className="text-lg font-semibold mt-0.5">Logează antrenamentul</h2>
           </div>
-          <button onClick={onClose} aria-label="Close" className="p-1.5 rounded-lg text-muted-foreground hover:text-foreground hover:bg-surface-2 transition-colors">
+          <button onClick={onClose} aria-label="Închide" className="p-1.5 rounded-lg text-muted-foreground hover:text-foreground hover:bg-surface-2 transition-colors">
             <X className="w-4 h-4" />
           </button>
         </div>
@@ -125,7 +125,7 @@ function WorkoutModal({ presets, existing, onClose, onPickPreset, onCustom }: Mo
         <div className="p-5 space-y-3">
           {existing && (
             <p className="text-[11px] text-amber-400 bg-amber-500/5 border border-amber-500/25 rounded-lg p-2">
-              Already logged today: {existing.minutes ?? '?'} min · {existing.intensity ?? '?'}. Logging again replaces it.
+              Azi e deja logat: {existing.minutes ?? '?'} min · {existing.intensity ?? '?'}. Un log nou îl înlocuiește.
             </p>
           )}
 
@@ -163,12 +163,12 @@ function WorkoutModal({ presets, existing, onClose, onPickPreset, onCustom }: Mo
             onClick={() => setCustomOpen(o => !o)}
             className="w-full text-left p-3 rounded-xl bg-surface-2 border border-dashed border-card-border hover:border-card-border-hover transition-colors text-xs text-muted-foreground"
           >
-            {customOpen ? '↑ Hide custom' : '↓ Custom session'}
+            {customOpen ? '↑ Ascunde personalizat' : '↓ Sesiune personalizată'}
           </button>
           {customOpen && (
             <div className="p-4 rounded-xl bg-surface-2 border border-card-border space-y-3">
               <div>
-                <p className="text-xs font-mono uppercase tracking-widest text-muted mb-1.5">Duration · {customMin} min</p>
+                <p className="text-xs font-mono uppercase tracking-widest text-muted mb-1.5">Durată · {customMin} min</p>
                 <input
                   type="range" min={5} max={180} step={5}
                   value={customMin}
@@ -177,27 +177,30 @@ function WorkoutModal({ presets, existing, onClose, onPickPreset, onCustom }: Mo
                 />
               </div>
               <div>
-                <p className="text-xs font-mono uppercase tracking-widest text-muted mb-1.5">Intensity</p>
+                <p className="text-xs font-mono uppercase tracking-widest text-muted mb-1.5">Intensitate</p>
                 <div className="grid grid-cols-4 gap-1">
-                  {(['light', 'moderate', 'hard', 'max'] as const).map(i => (
-                    <button
-                      key={i}
-                      onClick={() => setCustomIntensity(i)}
-                      className={clsx('py-1.5 rounded-lg text-[11px] font-medium border transition-colors',
-                        customIntensity === i
-                          ? 'bg-accent/10 text-accent border-accent/30'
-                          : 'bg-surface-3 text-muted-foreground border-card-border hover:text-foreground')}
-                    >
-                      {i}
-                    </button>
-                  ))}
+                  {(['light', 'moderate', 'hard', 'max'] as const).map(i => {
+                    const roLabel = { light: 'ușor', moderate: 'moderat', hard: 'intens', max: 'max' }[i];
+                    return (
+                      <button
+                        key={i}
+                        onClick={() => setCustomIntensity(i)}
+                        className={clsx('py-1.5 rounded-lg text-[11px] font-medium border transition-colors',
+                          customIntensity === i
+                            ? 'bg-accent/10 text-accent border-accent/30'
+                            : 'bg-surface-3 text-muted-foreground border-card-border hover:text-foreground')}
+                      >
+                        {roLabel}
+                      </button>
+                    );
+                  })}
                 </div>
               </div>
               <button
                 onClick={async () => { await onCustom(customMin, customIntensity); }}
                 className="w-full py-2.5 rounded-xl bg-accent text-black font-semibold text-sm hover:bg-accent-bright transition-colors"
               >
-                Log {customMin}m {customIntensity}
+                Logează {customMin}m {{ light: 'ușor', moderate: 'moderat', hard: 'intens', max: 'max' }[customIntensity]}
               </button>
             </div>
           )}

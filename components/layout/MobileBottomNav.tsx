@@ -16,11 +16,11 @@ import clsx from 'clsx';
 import { Home, ClipboardCheck, BarChart3, MessageSquare, Settings } from 'lucide-react';
 
 const TABS = [
-  { href: '/dashboard',  icon: Home,            label: 'Home' },
-  { href: '/tracking',   icon: ClipboardCheck,  label: 'Track' },
-  { href: '/statistics', icon: BarChart3,       label: 'Stats' },
+  { href: '/dashboard',  icon: Home,            label: 'Acasă' },
+  { href: '/tracking',   icon: ClipboardCheck,  label: 'Tracking' },
+  { href: '/statistics', icon: BarChart3,       label: 'Statistici' },
   { href: '/chat',       icon: MessageSquare,   label: 'Chat' },
-  { href: '/settings',   icon: Settings,        label: 'You' },
+  { href: '/settings',   icon: Settings,        label: 'Tu' },
 ];
 
 export function MobileBottomNav() {

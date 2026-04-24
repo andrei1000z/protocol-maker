@@ -35,7 +35,7 @@ interface Command {
   /** Search keywords beyond `label` — e.g. biomarker codes ("LDL", "HSCRP"). */
   keywords?: string[];
   /** Visual grouping label. */
-  group: 'Go to' | 'Biomarkers' | 'Patterns' | 'Actions';
+  group: 'Navigare' | 'Biomarkeri' | 'Tipare' | 'Acțiuni';
 }
 
 export function CommandPalette() {
@@ -70,16 +70,16 @@ export function CommandPalette() {
   const commands: Command[] = useMemo(() => {
     const go = (path: string) => () => { setOpen(false); router.push(path); };
     const nav: Command[] = [
-      { id: 'nav-dashboard', group: 'Go to', label: 'Dashboard',  icon: Home,            run: go('/dashboard') },
-      { id: 'nav-tracking',  group: 'Go to', label: 'Tracking',   icon: ClipboardCheck,  run: go('/tracking') },
-      { id: 'nav-stats',     group: 'Go to', label: 'Statistics', icon: BarChart3,       run: go('/statistics') },
-      { id: 'nav-chat',      group: 'Go to', label: 'Chat',       icon: MessageSquare,   run: go('/chat') },
-      { id: 'nav-history',   group: 'Go to', label: 'History',    icon: FileText,        run: go('/history') },
-      { id: 'nav-settings',  group: 'Go to', label: 'Settings',   icon: Settings,        run: go('/settings') },
+      { id: 'nav-dashboard', group: 'Navigare', label: 'Dashboard',  icon: Home,            run: go('/dashboard') },
+      { id: 'nav-tracking',  group: 'Navigare', label: 'Tracking',   icon: ClipboardCheck,  run: go('/tracking') },
+      { id: 'nav-stats',     group: 'Navigare', label: 'Statistici', icon: BarChart3,       run: go('/statistics') },
+      { id: 'nav-chat',      group: 'Navigare', label: 'Chat',       icon: MessageSquare,   run: go('/chat') },
+      { id: 'nav-history',   group: 'Navigare', label: 'Istoric',    icon: FileText,        run: go('/history') },
+      { id: 'nav-settings',  group: 'Navigare', label: 'Setări',     icon: Settings,        run: go('/settings') },
     ];
     const biomarkers: Command[] = BIOMARKER_DB.map(b => ({
       id: `bm-${b.code}`,
-      group: 'Biomarkers',
+      group: 'Biomarkeri',
       label: `${b.shortName || b.name}`,
       hint: b.code,
       icon: Activity,
@@ -88,7 +88,7 @@ export function CommandPalette() {
     }));
     const patterns: Command[] = PATTERN_REFERENCE.map(p => ({
       id: `pt-${p.slug}`,
-      group: 'Patterns',
+      group: 'Tipare',
       label: p.name,
       hint: p.slug,
       icon: Sparkles,
@@ -97,7 +97,7 @@ export function CommandPalette() {
     }));
     const actions: Command[] = [
       {
-        id: 'act-logout', group: 'Actions', label: 'Sign out', icon: LogOut,
+        id: 'act-logout', group: 'Acțiuni', label: 'Deconectare', icon: LogOut,
         run: async () => { setOpen(false); await fetch('/api/logout', { method: 'POST' }); window.location.replace('/login'); },
       },
     ];
@@ -142,7 +142,7 @@ export function CommandPalette() {
     (acc[c.group] ||= []).push(c);
     return acc;
   }, {});
-  const groupOrder: Command['group'][] = ['Go to', 'Biomarkers', 'Patterns', 'Actions'];
+  const groupOrder: Command['group'][] = ['Navigare', 'Biomarkeri', 'Tipare', 'Acțiuni'];
 
   let runningIdx = 0;
   return (
@@ -165,7 +165,7 @@ export function CommandPalette() {
             value={query}
             onChange={e => { setQuery(e.target.value); setCursor(0); }}
             onKeyDown={handleKey}
-            placeholder="Search for a page, biomarker, or pattern…"
+            placeholder="Caută o pagină, biomarker sau tipar…"
             className="flex-1 bg-transparent text-sm outline-none placeholder:text-muted-foreground/50"
             aria-label="Command search"
           />
@@ -174,7 +174,7 @@ export function CommandPalette() {
 
         <div ref={listRef} className="max-h-[60vh] overflow-y-auto">
           {filtered.length === 0 ? (
-            <p className="text-center text-xs text-muted-foreground py-10">No matches for &ldquo;{query}&rdquo;</p>
+            <p className="text-center text-xs text-muted-foreground py-10">Nicio potrivire pentru &bdquo;{query}&rdquo;</p>
           ) : (
             groupOrder.map(g => {
               const items = grouped[g];

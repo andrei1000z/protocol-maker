@@ -21,12 +21,12 @@ import clsx from 'clsx';
 // AI assistants write sample prompts. Short, direct, no jargon unless
 // it's the user's word ("ApoB" yes, "metabolic panel" no).
 const QUICK_PROMPTS = [
-  'What\'s my #1 thing to fix?',
-  'Why did my score change?',
-  'Am I sleeping enough?',
-  'What should I eat for dinner?',
-  'Is there anything I should retest?',
-  'How do I lower my ApoB?',
+  'Ce ar trebui să repar primul?',
+  'De ce mi s-a schimbat scorul?',
+  'Dorm suficient?',
+  'Ce să mănânc la cină?',
+  'Ce ar trebui să retestez?',
+  'Cum îmi scad ApoB?',
 ];
 
 export function AskAIPill() {
@@ -63,8 +63,8 @@ export function AskAIPill() {
       {open && (
         <div className="mb-3 w-[min(88vw,360px)] rounded-2xl border border-card-border bg-surface-1 shadow-2xl p-4 space-y-3 animate-fade-in-up">
           <div className="flex items-start justify-between gap-3">
-            <p className="text-sm font-semibold leading-tight">Ask me anything</p>
-            <button onClick={() => setOpen(false)} aria-label="Close" className="p-1 -mr-1 rounded-lg text-muted-foreground hover:text-foreground hover:bg-surface-2 transition-colors">
+            <p className="text-sm font-semibold leading-tight">Întreabă orice</p>
+            <button onClick={() => setOpen(false)} aria-label="Închide" className="p-1 -mr-1 rounded-lg text-muted-foreground hover:text-foreground hover:bg-surface-2 transition-colors">
               <X className="w-3.5 h-3.5" />
             </button>
           </div>
@@ -74,9 +74,9 @@ export function AskAIPill() {
               autoFocus
               value={value}
               onChange={e => setValue(e.target.value)}
-              placeholder="Ask anything about your health…"
+              placeholder="Întreabă orice despre sănătatea ta…"
               className="w-full px-3 py-2.5 rounded-xl bg-surface-2 border border-card-border text-sm outline-none focus:border-accent/50 placeholder:text-muted-foreground/50"
-              aria-label="Question for the AI"
+              aria-label="Întrebare pentru AI"
             />
           </form>
 

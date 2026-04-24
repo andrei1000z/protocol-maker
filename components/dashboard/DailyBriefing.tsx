@@ -74,11 +74,11 @@ export function DailyBriefing({ name, latestMetrics, supplements, deltaLine }: D
               to "what's next". Keeps the card short when there's nothing new. */}
           {phase === 'morning' && verdict && (
             <p className="text-[13px] text-foreground/90 leading-relaxed">
-              {verdict === 'solid' && <>You slept <span className="text-accent font-medium">{hours!.toFixed(1)}h</span> — nice one.</>}
-              {verdict === 'okay'  && <>You slept <span className="font-medium">{hours!.toFixed(1)}h</span>. Decent, not great.</>}
-              {verdict === 'light' && <>You slept <span className="text-amber-400 font-medium">{hours!.toFixed(1)}h</span>. Try to catch up tonight.</>}
+              {verdict === 'solid' && <>Ai dormit <span className="text-accent font-medium">{hours!.toFixed(1)}h</span> — foarte bine.</>}
+              {verdict === 'okay'  && <>Ai dormit <span className="font-medium">{hours!.toFixed(1)}h</span>. Decent, nu grozav.</>}
+              {verdict === 'light' && <>Ai dormit <span className="text-amber-400 font-medium">{hours!.toFixed(1)}h</span>. Încearcă să recuperezi diseară.</>}
               {typeof latestMetrics?.resting_hr === 'number' && (
-                <span className="text-muted-foreground"> Resting HR <span className="font-mono">{Math.round(latestMetrics.resting_hr)}</span>.</span>
+                <span className="text-muted-foreground"> Puls repaus <span className="font-mono">{Math.round(latestMetrics.resting_hr)}</span>.</span>
               )}
             </p>
           )}
@@ -93,15 +93,15 @@ export function DailyBriefing({ name, latestMetrics, supplements, deltaLine }: D
               without forcing them to scroll. */}
           {activeSups.length > 0 ? (
             <p className="text-[13px] text-foreground/90 leading-relaxed">
-              Take with your {phase === 'morning' ? 'breakfast' : phase === 'midday' ? 'lunch' : phase === 'evening' ? 'dinner' : 'wind-down'}:{' '}
+              Ia cu {phase === 'morning' ? 'micul dejun' : phase === 'midday' ? 'prânzul' : phase === 'evening' ? 'cina' : 'relaxarea de seară'}:{' '}
               <span className="text-muted-foreground">
                 {activeSups.slice(0, 4).map(s => s.name).filter(Boolean).join(', ')}
-                {activeSups.length > 4 && ` +${activeSups.length - 4} more`}
+                {activeSups.length > 4 && ` +încă ${activeSups.length - 4}`}
               </span>
             </p>
           ) : (
             <p className="text-[13px] text-muted-foreground leading-relaxed">
-              Nothing on the stack right now — {phase === 'night' ? 'wind down and rest.' : 'keep hydrated.'}
+              Nimic în stack acum — {phase === 'night' ? 'relaxează-te și odihnește-te.' : 'hidratează-te.'}
             </p>
           )}
         </div>

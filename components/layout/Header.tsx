@@ -11,9 +11,9 @@ import { ThemeToggle } from './ThemeToggle';
 const LINKS = [
   { href: '/dashboard', label: 'Protocol' },
   { href: '/tracking', label: 'Tracking' },
-  { href: '/statistics', label: 'Stats' },
+  { href: '/statistics', label: 'Statistici' },
   { href: '/chat', label: 'Chat' },
-  { href: '/history', label: 'History' },
+  { href: '/history', label: 'Istoric' },
 ] as const;
 
 // User menu — avatar dropdown with name + settings + logout
@@ -76,7 +76,7 @@ function UserMenu() {
             className="flex items-center gap-2.5 px-3 py-2 rounded-lg hover:bg-surface-2 text-sm transition-colors"
           >
             <Settings className="w-4 h-4 text-muted-foreground" />
-            Settings
+            Setări
           </Link>
           <Link
             href="/history"
@@ -84,14 +84,14 @@ function UserMenu() {
             className="flex items-center gap-2.5 px-3 py-2 rounded-lg hover:bg-surface-2 text-sm transition-colors"
           >
             <User className="w-4 h-4 text-muted-foreground" />
-            Protocol history
+            Istoric protocoale
           </Link>
           <button
             onClick={() => { router.refresh(); setOpen(false); }}
             className="w-full flex items-center gap-2.5 px-3 py-2 rounded-lg hover:bg-surface-2 text-sm text-left transition-colors"
           >
             <span className="w-4 h-4 text-muted-foreground flex items-center justify-center text-xs">↻</span>
-            Refresh data
+            Reîncarcă datele
           </button>
           <div className="my-1 border-t border-card-border" />
           <button
@@ -99,7 +99,7 @@ function UserMenu() {
             className="w-full flex items-center gap-2.5 px-3 py-2 rounded-lg hover:bg-red-500/10 text-sm text-danger text-left transition-colors"
           >
             <LogOut className="w-4 h-4" />
-            Sign out
+            Deconectare
           </button>
         </div>
       )}
@@ -147,7 +147,7 @@ export function Header() {
           }}
           aria-label="Open command palette"
           className="hidden md:inline-flex items-center gap-1.5 px-2 py-1 rounded-lg border border-card-border bg-surface-2 text-xs font-mono text-muted-foreground hover:text-foreground hover:border-accent/30 transition-colors"
-          title="Command palette"
+          title="Paletă de comenzi"
         >
           <kbd>⌘K</kbd>
         </button>
