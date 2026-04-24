@@ -80,11 +80,11 @@ export function OAuthPermissionsModal({ open, provider, providerName, connectUrl
               <Shield className="w-5 h-5 text-accent" />
             </div>
             <div>
-              <h2 id="oauth-perms-title" className="text-lg font-semibold tracking-tight">Connecting {providerName}</h2>
-              <p className="text-[11px] text-muted-foreground mt-0.5">Review what we&apos;ll read before you continue.</p>
+              <h2 id="oauth-perms-title" className="text-lg font-semibold tracking-tight">Conectez {providerName}</h2>
+              <p className="text-[11px] text-muted-foreground mt-0.5">Verifică ce vom citi înainte să continui.</p>
             </div>
           </div>
-          <button onClick={onClose} aria-label="Close" className="p-1.5 rounded-lg text-muted-foreground hover:text-foreground hover:bg-surface-2 transition-colors">
+          <button onClick={onClose} aria-label="Închide" className="p-1.5 rounded-lg text-muted-foreground hover:text-foreground hover:bg-surface-2 transition-colors">
             <X className="w-4 h-4" />
           </button>
         </div>
@@ -92,7 +92,7 @@ export function OAuthPermissionsModal({ open, provider, providerName, connectUrl
         <section className="space-y-2">
           <div className="flex items-center gap-2 text-xs font-semibold text-accent">
             <Eye className="w-3.5 h-3.5" />
-            We&apos;ll READ
+            Vom CITI
           </div>
           <ul className="space-y-1.5 pl-1">
             {scopes.reads.map(r => (
@@ -106,12 +106,12 @@ export function OAuthPermissionsModal({ open, provider, providerName, connectUrl
         <section className="space-y-2">
           <div className="flex items-center gap-2 text-xs font-semibold text-muted-foreground">
             <Ban className="w-3.5 h-3.5" />
-            We will NEVER
+            NU vom face NICIODATĂ
           </div>
           <ul className="space-y-1.5 pl-1 text-sm text-muted-foreground">
-            <li className="flex items-start gap-2"><span className="text-muted mt-1 shrink-0">•</span>Write back to your {providerName} account — the connection is one-way.</li>
-            <li className="flex items-start gap-2"><span className="text-muted mt-1 shrink-0">•</span>Share your data with advertisers, insurers, or third parties.</li>
-            <li className="flex items-start gap-2"><span className="text-muted mt-1 shrink-0">•</span>Keep your tokens if you disconnect — they&apos;re deleted immediately.</li>
+            <li className="flex items-start gap-2"><span className="text-muted mt-1 shrink-0">•</span>Scriere în contul tău {providerName} — conexiunea e într-un singur sens.</li>
+            <li className="flex items-start gap-2"><span className="text-muted mt-1 shrink-0">•</span>Partajarea datelor cu advertiseri, asigurători sau terți.</li>
+            <li className="flex items-start gap-2"><span className="text-muted mt-1 shrink-0">•</span>Păstrarea token-urilor dacă te deconectezi — sunt șterse imediat.</li>
           </ul>
         </section>
 
@@ -124,18 +124,18 @@ export function OAuthPermissionsModal({ open, provider, providerName, connectUrl
             onClick={onClose}
             className="flex-1 py-3 rounded-xl bg-surface-3 border border-card-border text-sm text-muted-foreground hover:text-foreground transition-colors"
           >
-            Cancel
+            Renunță
           </button>
           <a
             href={connectUrl}
             className="flex-1 py-3 rounded-xl bg-accent text-black font-semibold text-sm text-center hover:bg-accent-bright transition-colors"
           >
-            Continue to {providerName}
+            Continuă spre {providerName}
           </a>
         </div>
 
         <p className="text-xs text-muted text-center leading-relaxed">
-          You&apos;ll complete the authorization on {providerName}&apos;s site, then return here automatically.
+          Vei autoriza pe site-ul {providerName}, apoi te întorci aici automat.
         </p>
       </div>
     </div>

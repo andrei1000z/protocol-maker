@@ -5,10 +5,10 @@ export default function PatternsError(props: { error: Error & { digest?: string 
     <RouteError
       {...props}
       scope="patterns"
-      title="Couldn't load the pattern reference"
-      body="The pattern detector data failed to load. Refresh and try again."
+      title="Ghidul tiparelor nu s-a încărcat"
+      body="Datele detectorului de tipare nu au putut fi încărcate. Reîmprospătează și încearcă din nou."
       backHref="/"
-      backLabel="Home"
+      backLabel="Acasă"
     />
   );
 }

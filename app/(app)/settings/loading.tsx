@@ -1,2 +1,2 @@
 import { RouteLoading } from '@/components/layout/RouteLoading';
-export default function SettingsLoading() { return <RouteLoading label="Loading settings…" />; }
+export default function SettingsLoading() { return <RouteLoading label="Încarc setările…" />; }

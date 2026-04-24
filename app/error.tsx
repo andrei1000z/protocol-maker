@@ -36,12 +36,12 @@ export default function GlobalError({ error, reset }: { error: Error & { digest?
           <AlertOctagon className="w-8 h-8" />
         </div>
         <div>
-          <h1 className="text-2xl sm:text-3xl font-semibold tracking-tight">Something broke</h1>
+          <h1 className="text-2xl sm:text-3xl font-semibold tracking-tight">Ceva s-a stricat</h1>
           <p className="text-sm text-muted-foreground mt-3 leading-relaxed">
-            This is on us, not you. Your data is safe. Try once more, and if it persists, refresh the page.
+            E din partea noastră, nu a ta. Datele tale sunt în siguranță. Încearcă din nou, iar dacă persistă, reîmprospătează pagina.
           </p>
           {error?.digest && (
-            <p className="text-xs text-muted mt-3 font-mono">error id: {error.digest}</p>
+            <p className="text-xs text-muted mt-3 font-mono">id eroare: {error.digest}</p>
           )}
         </div>
         <div className="flex items-center justify-center gap-2 flex-wrap">
@@ -50,13 +50,13 @@ export default function GlobalError({ error, reset }: { error: Error & { digest?
             className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl bg-accent text-black text-sm font-semibold hover:bg-accent-bright transition-colors glow-cta"
           >
             <RotateCcw className="w-4 h-4" />
-            Try again
+            Încearcă din nou
           </button>
           <Link
             href="/dashboard"
             className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl bg-surface-2 border border-card-border text-sm text-muted-foreground hover:text-foreground hover:border-card-border-hover transition-colors"
           >
-            Back to dashboard
+            Înapoi la dashboard
           </Link>
         </div>
       </div>

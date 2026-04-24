@@ -15,7 +15,7 @@ export function HabitsTab({ completed, onToggle }: { completed: string[]; onTogg
       {/* Progress header */}
       <div className="flex items-center justify-between px-1">
         <div>
-          <p className="text-xs text-muted uppercase tracking-widest">Today's habits</p>
+          <p className="text-xs text-muted uppercase tracking-widest">Obiceiurile zilei</p>
           <p className="text-lg font-mono font-bold tabular-nums mt-0.5">
             <span className="text-accent">{totalDone}</span><span className="text-muted">/{totalAvailable}</span>
             <span className="text-xs text-muted-foreground ml-2">· {pct}%</span>

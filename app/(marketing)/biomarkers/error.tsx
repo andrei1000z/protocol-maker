@@ -5,10 +5,10 @@ export default function BiomarkersError(props: { error: Error & { digest?: strin
     <RouteError
       {...props}
       scope="biomarkers"
-      title="Couldn't load the biomarker reference"
-      body="The engine data failed to load. Refresh and try again."
+      title="Ghidul biomarkerilor nu s-a încărcat"
+      body="Datele engine-ului nu au putut fi încărcate. Reîmprospătează și încearcă din nou."
       backHref="/"
-      backLabel="Home"
+      backLabel="Acasă"
     />
   );
 }

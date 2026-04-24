@@ -12,9 +12,9 @@ import clsx from 'clsx';
 import { getThemeMode, setThemeMode, watchSystemTheme, type ThemeMode } from '@/lib/theme';
 
 const OPTIONS: Array<{ id: ThemeMode; label: string; hint: string; icon: React.ElementType }> = [
-  { id: 'system', label: 'Auto',  hint: 'Follow my phone / OS',  icon: Monitor },
-  { id: 'light',  label: 'Light', hint: 'Bright white',          icon: Sun },
-  { id: 'dark',   label: 'Dark',  hint: 'Easier on the eyes',    icon: Moon },
+  { id: 'system', label: 'Auto',       hint: 'Urmează telefonul',   icon: Monitor },
+  { id: 'light',  label: 'Luminos',    hint: 'Alb strălucitor',     icon: Sun },
+  { id: 'dark',   label: 'Întunecat',  hint: 'Mai odihnitor',       icon: Moon },
 ];
 
 export function ThemePicker() {
@@ -39,9 +39,9 @@ export function ThemePicker() {
   return (
     <div className="glass-card rounded-2xl p-5 space-y-3 animate-fade-in-up">
       <div>
-        <p className="text-sm font-semibold">Theme</p>
+        <p className="text-sm font-semibold">Temă</p>
         <p className="text-[11px] text-muted-foreground leading-relaxed mt-0.5">
-          Dark by default. Auto switches when your phone does.
+          Întunecat în mod implicit. Auto se schimbă când se schimbă și telefonul tău.
         </p>
       </div>
       <div className="grid grid-cols-3 gap-2">

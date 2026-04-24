@@ -54,7 +54,7 @@ export function RouteError({
           <h1 className="text-2xl sm:text-3xl font-semibold tracking-tight">{title}</h1>
           <p className="text-sm text-muted-foreground mt-3 leading-relaxed">{body}</p>
           {error?.digest && (
-            <p className="text-xs text-muted mt-3 font-mono">error id: {error.digest}</p>
+            <p className="text-xs text-muted mt-3 font-mono">id eroare: {error.digest}</p>
           )}
         </div>
         <div className="flex items-center justify-center gap-2 flex-wrap">
@@ -63,7 +63,7 @@ export function RouteError({
             className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl bg-accent text-black text-sm font-semibold hover:bg-accent-bright transition-colors glow-cta"
           >
             <RotateCcw className="w-4 h-4" />
-            Try again
+            Încearcă din nou
           </button>
           <Link
             href={backHref}

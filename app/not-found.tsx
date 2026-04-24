@@ -2,8 +2,8 @@ import Link from 'next/link';
 import { ArrowLeft } from 'lucide-react';
 
 export const metadata = {
-  title: 'Not found — Protocol',
-  description: 'The page you\'re looking for doesn\'t exist.',
+  title: 'Pagină negăsită — Protocol',
+  description: 'Pagina pe care o cauți nu există.',
 };
 
 export default function NotFound() {
@@ -14,10 +14,10 @@ export default function NotFound() {
           404
         </div>
         <div>
-          <h1 className="text-2xl sm:text-3xl font-semibold tracking-tight">Page not found</h1>
+          <h1 className="text-2xl sm:text-3xl font-semibold tracking-tight">Pagină negăsită</h1>
           <p className="text-sm text-muted-foreground mt-3 leading-relaxed">
-            The page you&apos;re looking for moved, got renamed, or never existed. That&apos;s OK —
-            your protocol is still right where you left it.
+            Pagina pe care o cauți s-a mutat, a fost redenumită sau nu a existat niciodată. E OK —
+            protocolul tău e exact unde l-ai lăsat.
           </p>
         </div>
         <div className="flex items-center justify-center gap-2 flex-wrap">
@@ -26,13 +26,13 @@ export default function NotFound() {
             className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl bg-accent text-black text-sm font-semibold hover:bg-accent-bright transition-colors glow-cta"
           >
             <ArrowLeft className="w-4 h-4" />
-            Back to dashboard
+            Înapoi la dashboard
           </Link>
           <Link
             href="/"
             className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl bg-surface-2 border border-card-border text-sm text-muted-foreground hover:text-foreground hover:border-card-border-hover transition-colors"
           >
-            Home
+            Acasă
           </Link>
         </div>
       </div>

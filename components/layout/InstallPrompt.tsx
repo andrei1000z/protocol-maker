@@ -101,17 +101,17 @@ export function InstallPrompt() {
         </div>
         <div className="flex-1 min-w-0 space-y-2">
           <p id="install-prompt-title" className="text-sm font-semibold">
-            Install Protocol
+            Instalează Protocol
           </p>
           <p className="text-[11px] text-muted-foreground leading-relaxed">
             {iosHint
-              ? 'Tap the Share icon, then Add to Home Screen to install as an app.'
-              : 'One tap — then Protocol opens like a native app, even offline.'}
+              ? 'Apasă Share, apoi "Adaugă pe ecran Home" ca să o instalezi ca aplicație.'
+              : 'Un tap — apoi Protocol se deschide ca o aplicație nativă, chiar și offline.'}
           </p>
           <div className="flex gap-2 items-center pt-0.5">
             {iosHint ? (
               <span className="inline-flex items-center gap-1 text-xs text-accent">
-                <Share className="w-3 h-3" /> Safari &gt; Share &gt; Add to Home Screen
+                <Share className="w-3 h-3" /> Safari &gt; Share &gt; Adaugă pe ecran Home
               </span>
             ) : (
               <button
@@ -119,20 +119,20 @@ export function InstallPrompt() {
                 disabled={!deferred}
                 className="inline-flex items-center gap-1.5 text-[11px] font-semibold px-3 py-1.5 rounded-lg bg-accent text-black hover:bg-accent-bright disabled:opacity-50 transition-colors"
               >
-                <Download className="w-3 h-3" /> Install
+                <Download className="w-3 h-3" /> Instalează
               </button>
             )}
             <button
               onClick={dismiss}
               className="text-[11px] text-muted-foreground hover:text-foreground transition-colors px-2 py-1.5"
             >
-              Not now
+              Mai târziu
             </button>
           </div>
         </div>
         <button
           onClick={dismiss}
-          aria-label="Dismiss install prompt"
+          aria-label="Închide promptul de instalare"
           className="p-1 rounded-lg text-muted-foreground hover:text-foreground transition-colors shrink-0"
         >
           <X className="w-4 h-4" />

@@ -5,11 +5,11 @@ export default function OnboardingError({ error, reset }: { error: Error; reset:
     <div className="flex items-center justify-center min-h-[60vh] px-6">
       <div className="text-center space-y-4 max-w-sm">
         <p className="text-4xl">⚠️</p>
-        <h2 className="text-xl font-bold">Onboarding hit a snag</h2>
-        <p className="text-sm text-muted-foreground">{error.message || 'Something went wrong while saving your progress. Your answers are cached locally — try again.'}</p>
+        <h2 className="text-xl font-bold">Onboarding-ul s-a împiedicat</h2>
+        <p className="text-sm text-muted-foreground">{error.message || 'Ceva nu a mers la salvarea progresului. Răspunsurile tale sunt salvate local — încearcă din nou.'}</p>
         <div className="flex gap-3 justify-center">
-          <button onClick={reset} className="px-4 py-2 bg-accent text-black rounded-xl text-sm font-medium">Try again</button>
-          <a href="/dashboard" className="px-4 py-2 bg-card border border-card-border rounded-xl text-sm text-muted-foreground">Back to dashboard</a>
+          <button onClick={reset} className="px-4 py-2 bg-accent text-black rounded-xl text-sm font-medium">Încearcă din nou</button>
+          <a href="/dashboard" className="px-4 py-2 bg-card border border-card-border rounded-xl text-sm text-muted-foreground">Înapoi la dashboard</a>
         </div>
       </div>
     </div>
