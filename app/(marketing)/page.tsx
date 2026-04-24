@@ -26,13 +26,13 @@ function BiomarkerDemo() {
             className={`flex items-center justify-between p-4 rounded-xl bg-card border border-card-border hover:border-accent/30 transition-all group animate-fade-in-up stagger-${(i % 5) + 1}`}>
             <div>
               <p className="text-sm font-medium group-hover:text-accent transition-colors">{b.shortName}</p>
-              <p className="text-xs text-muted mt-0.5">Optimal: {b.longevityOptimalLow}-{b.longevityOptimalHigh} {b.unit}</p>
+              <p className="text-xs text-muted mt-0.5">Optim: {b.longevityOptimalLow}-{b.longevityOptimalHigh} {b.unit}</p>
             </div>
             <div className="flex items-center gap-2">
               <span className="text-xl font-bold font-mono text-accent">{val}</span>
               <span className="text-xs text-muted">{b.unit}</span>
               <span className={`text-xs font-mono px-2 py-0.5 rounded-full ${isOptimal ? 'bg-accent/20 text-accent' : 'bg-amber-500/20 text-amber-400'}`}>
-                {isOptimal ? 'OPTIMAL' : 'SUBOPTIMAL'}
+                {isOptimal ? 'OPTIM' : 'SUBOPTIM'}
               </span>
             </div>
           </div>
@@ -52,11 +52,11 @@ export default function LandingPage() {
             <span className="text-accent">Protocol</span>
           </span>
           <div className="flex items-center gap-3 sm:gap-5 text-sm">
-            <a href="#how" className="text-muted-foreground hover:text-foreground hidden sm:block">How it works</a>
+            <a href="#how" className="text-muted-foreground hover:text-foreground hidden sm:block">Cum funcționează</a>
             <a href="#demo" className="text-muted-foreground hover:text-foreground hidden sm:block">Demo</a>
-            <Link href="/changelog" className="text-muted-foreground hover:text-foreground hidden sm:block">Changelog</Link>
+            <Link href="/changelog" className="text-muted-foreground hover:text-foreground hidden sm:block">Noutăți</Link>
             <Link href="/login" className="px-3 sm:px-4 py-1.5 rounded-lg bg-accent text-black font-semibold text-xs sm:text-sm hover:bg-accent-dim transition-colors">
-              Sign in
+              Conectare
             </Link>
             <MobileNavToggle />
           </div>
@@ -68,36 +68,36 @@ export default function LandingPage() {
         <div className="max-w-5xl mx-auto px-6 pt-20 sm:pt-28 pb-20 text-center relative">
           <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-accent/10 border border-accent/20 text-accent text-xs font-medium mb-8 animate-fade-in">
             <span className="w-1.5 h-1.5 rounded-full bg-accent animate-pulse" />
-            Free while in beta
+            Gratuit în perioada beta
           </div>
 
           <h1 className="text-5xl sm:text-7xl font-bold leading-[1.05] tracking-tight animate-fade-in-up stagger-1">
-            Your blood work.<br />
-            <span className="gradient-text">A real plan.</span><br />
-            <span className="text-muted-foreground">Built for you.</span>
+            Analizele tale.<br />
+            <span className="gradient-text">Un plan real.</span><br />
+            <span className="text-muted-foreground">Făcut pentru tine.</span>
           </h1>
 
           <p className="text-lg sm:text-xl text-muted-foreground mt-8 max-w-2xl mx-auto leading-relaxed animate-fade-in-up stagger-2">
-            Upload your lab panel. In 60 seconds, get a plan calibrated to <strong className="text-foreground">your</strong> biomarkers —
-            what to eat, what to take, how to train, how to sleep. No generic advice, no $2M Bryan Johnson budget.
+            Urcă buletinul de analize. În 60 de secunde primești un plan calibrat pe biomarkerii <strong className="text-foreground">tăi</strong> —
+            ce să mănânci, ce să iei, cum să te antrenezi, cum să dormi. Fără sfaturi generice, fără bugetul de $2M al lui Bryan Johnson.
           </p>
 
           <div className="flex flex-col sm:flex-row items-center justify-center gap-3 mt-10 animate-fade-in-up stagger-3">
             <Link href="/login"
               className="inline-flex items-center gap-2 px-8 py-4 bg-accent text-black rounded-xl font-bold text-sm hover:bg-accent-bright transition-all active:scale-[0.98] glow-cta">
-              Get my plan
+              Vreau planul meu
               <ArrowRight className="w-4 h-4" />
             </Link>
             <Link
               href="/dashboard?demo=1"
               className="px-6 py-4 rounded-xl border border-accent/40 bg-accent/[0.04] text-sm text-accent hover:bg-accent/[0.08] hover:border-accent/60 transition-all flex items-center gap-2"
             >
-              See a sample first
+              Vezi întâi un exemplu
             </Link>
           </div>
 
           <p className="text-xs text-muted mt-6 animate-fade-in-up stagger-4">
-            3-minute signup · No card required · {BIOMARKER_COUNT} biomarkers · {PATTERN_COUNT} patterns
+            Înregistrare 3 minute · Fără card · {BIOMARKER_COUNT} biomarkeri · {PATTERN_COUNT} tipare clinice
           </p>
 
           {/* Trust microcopy strip — surfaces the three things that turn a
@@ -107,22 +107,22 @@ export default function LandingPage() {
             <div className="rounded-xl bg-card/60 border border-card-border px-4 py-3 flex items-start gap-3 text-left">
               <Shield className="w-4 h-4 text-accent shrink-0 mt-0.5" />
               <div>
-                <p className="text-[11px] font-semibold text-foreground">Your data stays yours</p>
-                <p className="text-xs text-muted-foreground leading-snug mt-0.5">Only you can read your blood panel. Delete the account, everything goes.</p>
+                <p className="text-[11px] font-semibold text-foreground">Datele tale rămân ale tale</p>
+                <p className="text-xs text-muted-foreground leading-snug mt-0.5">Doar tu poți citi buletinul de analize. Ștergi contul — dispare tot.</p>
               </div>
             </div>
             <div className="rounded-xl bg-card/60 border border-card-border px-4 py-3 flex items-start gap-3 text-left">
               <Activity className="w-4 h-4 text-accent shrink-0 mt-0.5" />
               <div>
-                <p className="text-[11px] font-semibold text-foreground">Updates every night</p>
-                <p className="text-xs text-muted-foreground leading-snug mt-0.5">Your plan re-runs against your latest wearable and tracking data — no button to press.</p>
+                <p className="text-[11px] font-semibold text-foreground">Se actualizează în fiecare noapte</p>
+                <p className="text-xs text-muted-foreground leading-snug mt-0.5">Planul tău se regenerează pe baza datelor de la wearable și tracking — fără buton de apăsat.</p>
               </div>
             </div>
             <div className="rounded-xl bg-card/60 border border-card-border px-4 py-3 flex items-start gap-3 text-left">
               <Sparkles className="w-4 h-4 text-accent shrink-0 mt-0.5" />
               <div>
-                <p className="text-[11px] font-semibold text-foreground">Never broken</p>
-                <p className="text-xs text-muted-foreground leading-snug mt-0.5">Claude is primary. If it's down, Groq takes over. If both fail, a rule-based engine still gives you a plan.</p>
+                <p className="text-[11px] font-semibold text-foreground">Niciodată blocat</p>
+                <p className="text-xs text-muted-foreground leading-snug mt-0.5">Claude e primar. Dacă pică, Groq preia. Dacă ambele pică, un engine bazat pe reguli îți dă un plan.</p>
               </div>
             </div>
           </div>
@@ -133,10 +133,10 @@ export default function LandingPage() {
       <section className="border-y border-card-border bg-card/30">
         <div className="max-w-6xl mx-auto px-6 py-8 grid grid-cols-2 sm:grid-cols-4 gap-6 text-center">
           {[
-            { num: String(BIOMARKER_COUNT), label: 'Biomarkers analyzed' },
-            { num: String(PATTERN_COUNT), label: 'Health patterns detected' },
-            { num: '<60s', label: 'Protocol generation' },
-            { num: String(HABIT_COUNT), label: 'Daily habits tracked' },
+            { num: String(BIOMARKER_COUNT), label: 'Biomarkeri analizați' },
+            { num: String(PATTERN_COUNT), label: 'Tipare clinice detectate' },
+            { num: '<60s', label: 'Generare protocol' },
+            { num: String(HABIT_COUNT), label: 'Obiceiuri zilnice' },
           ].map((s, i) => (
             <div key={i} className={`animate-fade-in-up stagger-${i + 1}`}>
               <p className="text-3xl sm:text-4xl font-bold font-mono text-accent">{s.num}</p>
@@ -152,7 +152,7 @@ export default function LandingPage() {
       <section className="border-b border-card-border bg-gradient-to-b from-card/10 to-transparent">
         <div className="max-w-6xl mx-auto px-6 py-10">
           <p className="text-center text-xs uppercase tracking-widest text-muted mb-6">
-            Auto-syncs with your wearables
+            Sincronizare automată cu wearable-urile tale
           </p>
           <div className="grid grid-cols-3 sm:grid-cols-5 gap-3 sm:gap-4 max-w-3xl mx-auto">
             {[
@@ -173,7 +173,7 @@ export default function LandingPage() {
             ))}
           </div>
           <p className="text-center text-xs text-muted mt-5">
-            Samsung Galaxy Watch + Apple Watch coming with the native mobile app.
+            Samsung Galaxy Watch și Apple Watch vin odată cu aplicația mobilă nativă.
           </p>
         </div>
       </section>
@@ -181,25 +181,25 @@ export default function LandingPage() {
       {/* How it works */}
       <section id="how" className="max-w-5xl mx-auto px-6 py-24">
         <div className="text-center mb-16">
-          <p className="text-xs uppercase tracking-wider text-accent mb-3">How it works</p>
-          <h2 className="text-3xl sm:text-4xl font-bold">From blood panel to protocol<br /> in three steps.</h2>
+          <p className="text-xs uppercase tracking-wider text-accent mb-3">Cum funcționează</p>
+          <h2 className="text-3xl sm:text-4xl font-bold">De la buletinul de analize la protocol<br />în trei pași.</h2>
         </div>
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
           {[
             {
               step: '01', icon: FileText,
-              title: 'Enter your blood work',
-              desc: 'Upload a PDF or type values manually. We support Synevo, Regina Maria, MedLife, LabCorp, Quest, and most lab formats.',
+              title: 'Adaugă buletinul de analize',
+              desc: 'Urcă un PDF sau scrie valorile manual. Suportăm Synevo, Regina Maria, MedLife, LabCorp, Quest și majoritatea formatelor de laborator.',
             },
             {
               step: '02', icon: Activity,
-              title: 'AI analyzes your data',
-              desc: `Your ${BIOMARKER_COUNT} biomarkers are classified against longevity-optimal ranges. ${PATTERN_COUNT} health patterns scanned. Biological age estimated via PhenoAge algorithm.`,
+              title: 'AI-ul analizează datele',
+              desc: `Cei ${BIOMARKER_COUNT} biomarkeri ai tăi sunt clasificați față de intervale optime pentru longevitate. ${PATTERN_COUNT} tipare clinice scanate. Vârstă biologică estimată prin algoritmul PhenoAge.`,
             },
             {
               step: '03', icon: Target,
-              title: 'Get your protocol',
-              desc: 'Personalized supplement stack with dosing, nutrition plan with macros, exercise split, sleep protocol, 12-week roadmap — all justified by YOUR specific biomarker values.',
+              title: 'Primești protocolul',
+              desc: 'Stack de suplimente personalizat cu dozaj, plan de nutriție cu macros, antrenament, protocol de somn, roadmap 12 săptămâni — toate justificate de valorile TALE specifice.',
             },
           ].map((item, i) => (
             <div key={item.step}
@@ -219,10 +219,10 @@ export default function LandingPage() {
       <section id="demo" className="max-w-6xl mx-auto px-6 py-24">
         <div className="rounded-3xl bg-card border border-card-border p-6 sm:p-10">
           <div className="text-center mb-10">
-            <p className="text-xs uppercase tracking-wider text-accent mb-3">Live sample protocol</p>
-            <h2 className="text-3xl sm:text-4xl font-bold mb-3">Don&apos;t take our word — see the actual output</h2>
+            <p className="text-xs uppercase tracking-wider text-accent mb-3">Protocol exemplu live</p>
+            <h2 className="text-3xl sm:text-4xl font-bold mb-3">Nu ne crede pe cuvânt — vezi rezultatul real</h2>
             <p className="text-sm text-muted-foreground max-w-xl mx-auto">
-              A fully-rendered dashboard for a fictional 35-year-old man — same UI, real engine, no signup. Click around, scroll the supplements, check the meal options, see how your protocol would actually look.
+              Un dashboard complet pentru un bărbat fictiv de 35 de ani — același UI, același engine, fără înregistrare. Apasă, scrollează suplimentele, vezi opțiunile de masă, cum ar arăta protocolul tău în realitate.
             </p>
           </div>
 
@@ -230,15 +230,15 @@ export default function LandingPage() {
           <div className="grid grid-cols-3 gap-3 max-w-2xl mx-auto mb-8">
             <div className="metric-tile text-center">
               <p className="text-3xl font-bold font-mono text-accent">78</p>
-              <p className="text-xs text-muted uppercase tracking-widest mt-1">Longevity</p>
+              <p className="text-xs text-muted uppercase tracking-widest mt-1">Longevitate</p>
             </div>
             <div className="metric-tile text-center">
-              <p className="text-3xl font-bold font-mono text-accent">32y 5m</p>
-              <p className="text-xs text-muted uppercase tracking-widest mt-1">Bio age (vs 35)</p>
+              <p className="text-3xl font-bold font-mono text-accent">32a 5l</p>
+              <p className="text-xs text-muted uppercase tracking-widest mt-1">Vârstă bio (din 35)</p>
             </div>
             <div className="metric-tile text-center">
               <p className="text-3xl font-bold font-mono text-accent">0.84×</p>
-              <p className="text-xs text-muted uppercase tracking-widest mt-1">Aging speed</p>
+              <p className="text-xs text-muted uppercase tracking-widest mt-1">Ritm îmbătrânire</p>
             </div>
           </div>
 
@@ -247,18 +247,18 @@ export default function LandingPage() {
               href="/dashboard?demo=1"
               className="inline-flex items-center gap-2 px-8 py-4 bg-accent text-black rounded-xl font-bold text-sm hover:bg-accent-bright transition-all glow-cta"
             >
-              👀 Open the sample dashboard <ArrowRight className="w-4 h-4" />
+              👀 Deschide dashboard-ul exemplu <ArrowRight className="w-4 h-4" />
             </Link>
-            <p className="text-[11px] text-muted">Opens in this tab · Sign up button at the top to get yours</p>
+            <p className="text-xs text-muted">Se deschide în acest tab · Butonul de înregistrare e sus pentru a-l avea pe al tău</p>
           </div>
 
           {/* Mini feature strip */}
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mt-10 pt-10 border-t border-card-border">
             {[
-              { e: '🧬', l: 'Bio age + aging speed' },
-              { e: '🍽️', l: '12 meal options personalized' },
-              { e: '💊', l: 'Supplement stack with how-to' },
-              { e: '🏆', l: 'Bryan Johnson side-by-side' },
+              { e: '🧬', l: 'Vârstă biologică + ritm' },
+              { e: '🍽️', l: '12 opțiuni de masă personalizate' },
+              { e: '💊', l: 'Stack suplimente cu how-to' },
+              { e: '🏆', l: 'Comparat cu Bryan Johnson' },
             ].map(f => (
               <div key={f.l} className="text-center p-3 rounded-xl bg-background border border-card-border">
                 <p className="text-2xl">{f.e}</p>
@@ -284,17 +284,17 @@ export default function LandingPage() {
       {/* Features grid */}
       <section className="max-w-6xl mx-auto px-6 py-24">
         <div className="text-center mb-16">
-          <p className="text-xs uppercase tracking-wider text-accent mb-3">Complete stack</p>
-          <h2 className="text-3xl sm:text-4xl font-bold">Everything you need to<br /> optimize your biology.</h2>
+          <p className="text-xs uppercase tracking-wider text-accent mb-3">Stack complet</p>
+          <h2 className="text-3xl sm:text-4xl font-bold">Tot ce îți trebuie<br />să-ți optimizezi biologia.</h2>
         </div>
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
           {[
-            { icon: Zap, title: 'Groq + Claude AI', desc: 'Fast PDF parsing with Groq, deep protocol synthesis. 16K token outputs.' },
-            { icon: Brain, title: 'PhenoAge algorithm', desc: 'Biological age estimated with 9-marker clinical algorithm from Levine 2018.' },
-            { icon: Heart, title: 'Bryan comparison', desc: 'Every biomarker shows your value vs Bryan Johnson\'s actual lab results.' },
-            { icon: Activity, title: 'Daily tracking', desc: '14 universal habits + supplement compliance + metrics logging. Streaks, heatmap, achievements.' },
-            { icon: Shield, title: 'Drug interaction DB', desc: '25+ drug-supplement interactions checked against your current medications.' },
-            { icon: Sparkles, title: 'AI chat coach', desc: 'Ask anything. The assistant knows your full profile, protocol, and biomarkers.' },
+            { icon: Zap, title: 'Groq + Claude AI', desc: 'Parsare PDF rapidă cu Groq, sinteză de protocol profundă. Output de 16K tokens.' },
+            { icon: Brain, title: 'Algoritm PhenoAge', desc: 'Vârstă biologică estimată cu algoritmul clinic pe 9 markeri (Levine 2018).' },
+            { icon: Heart, title: 'Comparație Bryan', desc: 'Fiecare biomarker arată valoarea ta vs rezultatele reale ale lui Bryan Johnson.' },
+            { icon: Activity, title: 'Tracking zilnic', desc: '14 obiceiuri universale + complianță suplimente + metrici. Streak-uri, heatmap, achievements.' },
+            { icon: Shield, title: 'DB interacțiuni medicamente', desc: '25+ interacțiuni medicament-supliment verificate față de medicația ta curentă.' },
+            { icon: Sparkles, title: 'Chat AI coach', desc: 'Întreabă orice. Asistentul cunoaște profilul, protocolul și biomarkerii tăi complet.' },
           ].map((item, i) => (
             <div key={item.title}
               className={`rounded-2xl bg-card border border-card-border p-5 hover:border-accent/30 transition-colors animate-fade-in-up stagger-${(i % 5) + 1}`}>
@@ -309,25 +309,25 @@ export default function LandingPage() {
       {/* Comparison */}
       <section className="max-w-5xl mx-auto px-6 py-24">
         <div className="text-center mb-12">
-          <p className="text-xs uppercase tracking-wider text-accent mb-3">Comparison</p>
-          <h2 className="text-3xl sm:text-4xl font-bold">Your protocol vs Bryan&apos;s Blueprint</h2>
+          <p className="text-xs uppercase tracking-wider text-accent mb-3">Comparație</p>
+          <h2 className="text-3xl sm:text-4xl font-bold">Protocolul tău vs Blueprint-ul lui Bryan</h2>
         </div>
         <div className="rounded-2xl bg-card border border-card-border overflow-hidden">
           <div className="grid grid-cols-3 text-center text-xs font-semibold py-4 border-b border-card-border bg-black/20">
-            <span className="text-muted-foreground">Category</span>
+            <span className="text-muted-foreground">Categorie</span>
             <span className="text-muted-foreground">Bryan Johnson</span>
-            <span className="text-accent">Your Protocol</span>
+            <span className="text-accent">Protocolul tău</span>
           </div>
           {[
-            { cat: 'Diet', bryan: 'Vegan · 2,250 kcal · strict', yours: 'Adapted to YOUR diet + goals' },
-            { cat: 'Supplements', bryan: '100+ pills daily', yours: '8-15 based on YOUR biomarker gaps' },
-            { cat: 'Cost', bryan: '$2M / year', yours: 'Free · fits YOUR budget (RON)' },
-            { cat: 'Exercise', bryan: '6 hrs/week rigid', yours: 'Fits YOUR schedule' },
-            { cat: 'Sleep', bryan: '8:30 PM sharp every night', yours: 'Optimized to YOUR chronotype' },
-            { cat: 'Tracking', bryan: '30-person medical team', yours: 'AI coach in your pocket' },
-            { cat: 'Bio age', bryan: '-5.1 years (age 47)', yours: 'Calculated from YOUR bloodwork' },
-            { cat: 'Genetics', bryan: 'Full-genome · $10K+', yours: 'Integrates your 23andMe / Nebula results' },
-            { cat: 'Drug safety', bryan: 'Physician-supervised', yours: '25+ drug-supplement interactions checked' },
+            { cat: 'Dietă', bryan: 'Vegan · 2.250 kcal · strict', yours: 'Adaptat la dieta + obiectivele TALE' },
+            { cat: 'Suplimente', bryan: '100+ pastile zilnic', yours: '8-15 pe baza lipsurilor TALE de biomarkeri' },
+            { cat: 'Cost', bryan: '$2M / an', yours: 'Gratuit · se încadrează în bugetul TĂU (RON)' },
+            { cat: 'Exercițiu', bryan: '6 ore/săpt. rigid', yours: 'Se potrivește programului TĂU' },
+            { cat: 'Somn', bryan: '20:30 fix în fiecare seară', yours: 'Optimizat pe cronotipul TĂU' },
+            { cat: 'Tracking', bryan: 'Echipă medicală de 30 persoane', yours: 'Coach AI în buzunar' },
+            { cat: 'Vârstă bio', bryan: '-5,1 ani (la 47 ani)', yours: 'Calculat din analizele TALE' },
+            { cat: 'Genetică', bryan: 'Genom integral · $10K+', yours: 'Integrează rezultatele tale 23andMe / Nebula' },
+            { cat: 'Siguranță medicamente', bryan: 'Supravegheat de medic', yours: '25+ interacțiuni medicament-supliment verificate' },
           ].map((row) => (
             <div key={row.cat} className="grid grid-cols-3 text-center text-sm py-4 border-b border-card-border last:border-0 hover:bg-card-hover transition-colors">
               <span className="font-medium">{row.cat}</span>
@@ -341,43 +341,43 @@ export default function LandingPage() {
       {/* Why not ChatGPT */}
       <section className="max-w-5xl mx-auto px-6 py-24">
         <div className="text-center mb-12">
-          <p className="text-xs uppercase tracking-wider text-accent mb-3">Why not just ChatGPT?</p>
-          <h2 className="text-3xl sm:text-4xl font-bold">A chatbot can&apos;t replace a <span className="gradient-text">longevity engine</span>.</h2>
+          <p className="text-xs uppercase tracking-wider text-accent mb-3">De ce nu doar ChatGPT?</p>
+          <h2 className="text-3xl sm:text-4xl font-bold">Un chatbot nu înlocuiește un <span className="gradient-text">engine de longevitate</span>.</h2>
           <p className="text-sm text-muted-foreground mt-4 max-w-2xl mx-auto">
-            ChatGPT is a great generalist. But longevity protocols need structure, reproducibility, and a grounding in the biomarker data — not &ldquo;general healthy advice&rdquo;.
+            ChatGPT e un generalist bun. Dar protocoalele de longevitate au nevoie de structură, reproducibilitate și rădăcină în datele tale de biomarkeri — nu &bdquo;sfaturi sănătoase generale&rdquo;.
           </p>
         </div>
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           {[
             {
-              title: 'Deterministic engine + AI',
-              chatgpt: 'Pure LLM — answers can shift every conversation. No reproducibility.',
-              protocol: `Rule-based engine scores ${BIOMARKER_COUNT} biomarkers, detects ${PATTERN_COUNT}+ clinical patterns, then the AI writes the coaching layer on top. Same biomarkers → same protocol.`,
+              title: 'Engine determinist + AI',
+              chatgpt: 'LLM pur — răspunsurile variază la fiecare conversație. Fără reproducibilitate.',
+              protocol: `Engine-ul bazat pe reguli scorează ${BIOMARKER_COUNT} biomarkeri, detectează ${PATTERN_COUNT}+ tipare clinice, apoi AI-ul scrie stratul de coaching deasupra. Aceiași biomarkeri → același protocol.`,
             },
             {
-              title: 'Drug × supplement safety',
-              chatgpt: 'No structured check. May recommend St John&apos;s Wort while you&apos;re on SSRIs.',
-              protocol: 'Every supplement cross-checked against your Rx + conditions from a 25+ interaction database. Contraindications shown inline.',
+              title: 'Siguranță medicament × supliment',
+              chatgpt: 'Fără verificare structurată. Poate recomanda Sunătoare când iei SSRI.',
+              protocol: 'Fiecare supliment e verificat față de Rx-ul și condițiile tale într-o bază cu 25+ interacțiuni. Contraindicațiile apar inline.',
             },
             {
-              title: 'Longevity-calibrated ranges',
-              chatgpt: 'Uses population-average &ldquo;in-range&rdquo; values. Your doctor&apos;s lab-normal is not longevity-optimal.',
-              protocol: 'Each biomarker has a longevity-optimal band (calibrated to Bryan Johnson, Inflammaging, CR studies) — not the lab &ldquo;normal range&rdquo;.',
+              title: 'Intervale calibrate pe longevitate',
+              chatgpt: 'Folosește valori &bdquo;în interval&rdquo; medii populaționale. &bdquo;Normal de laborator&rdquo; ≠ optim pentru longevitate.',
+              protocol: 'Fiecare biomarker are o bandă optimă pentru longevitate (calibrat pe Bryan Johnson, Inflammaging, studii CR) — nu &bdquo;intervalul normal&rdquo; de laborator.',
             },
             {
-              title: 'PhenoAge + aging velocity',
-              chatgpt: 'Cannot compute. No memory of your prior labs.',
-              protocol: 'Implements Levine 2018 PhenoAge (9 markers) + DunedinPACE-style aging velocity. Tracked across protocols v1 → v2 → v3.',
+              title: 'PhenoAge + ritm de îmbătrânire',
+              chatgpt: 'Nu poate calcula. Fără memorie a analizelor tale precedente.',
+              protocol: 'Implementează PhenoAge Levine 2018 (9 markeri) + ritm de îmbătrânire tip DunedinPACE. Urmărit pe versiuni v1 → v2 → v3.',
             },
             {
-              title: 'Bryan Johnson benchmark',
-              chatgpt: 'Mentions Bryan vaguely. No side-by-side of your actual numbers.',
-              protocol: 'Every biomarker in your protocol shows your value vs Bryan&apos;s actual lab result. You see exactly where the gap is.',
+              title: 'Benchmark Bryan Johnson',
+              chatgpt: 'Menționează Bryan vag. Fără comparație cap-la-cap cu valorile tale.',
+              protocol: 'Fiecare biomarker din protocolul tău arată valoarea ta vs rezultatul real al lui Bryan. Vezi exact unde e diferența.',
             },
             {
-              title: 'Daily follow-through',
-              chatgpt: 'Stateless — forgets what it told you yesterday.',
-              protocol: 'Tracks your habit + supplement + metric compliance daily. Weekly adherence score. Auto-regenerates protocol at 3 AM.',
+              title: 'Urmărire zilnică',
+              chatgpt: 'Stateless — uită ce ți-a zis ieri.',
+              protocol: 'Urmărește zilnic obiceiurile + suplimentele + metricile. Scor de complianță săptămânal. Auto-regenerează protocolul la 3 AM.',
             },
           ].map((r, i) => (
             <div key={r.title} className={`rounded-2xl bg-card border border-card-border p-5 hover:border-accent/30 transition-colors animate-fade-in-up stagger-${(i % 5) + 1}`}>
@@ -402,19 +402,19 @@ export default function LandingPage() {
         <div className="rounded-3xl bg-gradient-to-br from-accent/10 via-card to-card border border-accent/20 p-10 sm:p-16 relative overflow-hidden">
           <div className="relative z-10">
             <h2 className="text-3xl sm:text-5xl font-bold leading-tight">
-              Stop guessing.<br />
-              <span className="gradient-text">Start measuring.</span>
+              Nu mai ghici.<br />
+              <span className="gradient-text">Începe să măsori.</span>
             </h2>
             <p className="text-muted-foreground mt-6 max-w-xl mx-auto text-base">
-              Enter your biomarkers. Get a protocol engineered for YOUR biology.
-              Not Bryan&apos;s. Not generic. Yours.
+              Introdu biomarkerii tăi. Primești un protocol făcut pentru biologia TA.
+              Nu al lui Bryan. Nu generic. Al tău.
             </p>
             <Link href="/login"
               className="inline-flex items-center gap-2 mt-10 px-10 py-4 bg-accent text-black rounded-xl font-bold text-base hover:bg-accent-bright transition-all active:scale-[0.98] glow-cta">
-              Get my protocol
+              Vreau protocolul meu
               <ArrowRight className="w-5 h-5" />
             </Link>
-            <p className="text-xs text-muted mt-5">Takes 3 minutes · No credit card required</p>
+            <p className="text-xs text-muted mt-5">Durează 3 minute · Fără card necesar</p>
           </div>
         </div>
       </section>
@@ -424,36 +424,36 @@ export default function LandingPage() {
         <div className="max-w-6xl mx-auto px-6 py-12 grid grid-cols-2 sm:grid-cols-4 gap-8 text-sm">
           <div>
             <p className="font-bold text-accent mb-2">Protocol</p>
-            <p className="text-xs text-muted-foreground">AI-powered longevity protocols calibrated to your biomarkers.</p>
+            <p className="text-xs text-muted-foreground">Protocoale de longevitate cu AI, calibrate pe biomarkerii tăi.</p>
           </div>
           <div>
-            <p className="font-semibold text-xs text-muted uppercase tracking-wider mb-3">Product</p>
+            <p className="font-semibold text-xs text-muted uppercase tracking-wider mb-3">Produs</p>
             <div className="space-y-2 text-xs">
-              <Link href="/login" className="block text-muted-foreground hover:text-accent">Get started</Link>
-              <a href="#how" className="block text-muted-foreground hover:text-accent">How it works</a>
+              <Link href="/login" className="block text-muted-foreground hover:text-accent">Începe</Link>
+              <a href="#how" className="block text-muted-foreground hover:text-accent">Cum funcționează</a>
               <a href="#demo" className="block text-muted-foreground hover:text-accent">Demo</a>
             </div>
           </div>
           <div>
             <p className="font-semibold text-xs text-muted uppercase tracking-wider mb-3">Legal</p>
             <div className="space-y-2 text-xs">
-              <Link href="/privacy" className="block text-muted-foreground hover:text-accent">Privacy</Link>
-              <Link href="/terms" className="block text-muted-foreground hover:text-accent">Terms</Link>
+              <Link href="/privacy" className="block text-muted-foreground hover:text-accent">Confidențialitate</Link>
+              <Link href="/terms" className="block text-muted-foreground hover:text-accent">Termeni</Link>
             </div>
           </div>
           <div>
-            <p className="font-semibold text-xs text-muted uppercase tracking-wider mb-3">Resources</p>
+            <p className="font-semibold text-xs text-muted uppercase tracking-wider mb-3">Resurse</p>
             <div className="space-y-2 text-xs">
-              <Link href="/biomarkers" className="block text-muted-foreground hover:text-accent">Biomarker guides</Link>
-              <Link href="/patterns" className="block text-muted-foreground hover:text-accent">Clinical patterns</Link>
-              <Link href="/changelog" className="block text-muted-foreground hover:text-accent">Changelog</Link>
-              <a href="https://www.blueprint.bryanjohnson.com" target="_blank" rel="noopener noreferrer" className="block text-muted-foreground hover:text-accent">Bryan&apos;s Blueprint</a>
+              <Link href="/biomarkers" className="block text-muted-foreground hover:text-accent">Ghiduri biomarkeri</Link>
+              <Link href="/patterns" className="block text-muted-foreground hover:text-accent">Tipare clinice</Link>
+              <Link href="/changelog" className="block text-muted-foreground hover:text-accent">Noutăți</Link>
+              <a href="https://www.blueprint.bryanjohnson.com" target="_blank" rel="noopener noreferrer" className="block text-muted-foreground hover:text-accent">Blueprint Bryan</a>
             </div>
           </div>
         </div>
         <div className="border-t border-card-border py-6 text-center space-y-1">
-          <p className="text-xs text-muted">Not medical advice. Consult your doctor before making changes.</p>
-          <p className="text-xs text-muted">Built with Groq AI · Next.js · Supabase · © {new Date().getFullYear()}</p>
+          <p className="text-sm text-muted">Nu este sfat medical. Consultă medicul înainte să faci schimbări.</p>
+          <p className="text-xs text-muted">Construit cu Groq AI · Next.js · Supabase · © {new Date().getFullYear()}</p>
         </div>
       </footer>
     </div>

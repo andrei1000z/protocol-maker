@@ -4,6 +4,44 @@ Append-only log of shipped work. Newest entries at top.
 
 ---
 
+## Phase 6 (partial) — Landing + login RO · 2026-04-24
+
+### Shipped (F6.1 scope: landing + login + nav)
+
+- `<html lang>` flipped from `en` → `ro` as the default locale for the document tree. SEO signal + screen-reader pronunciation both align with the user base.
+- `app/(marketing)/page.tsx` — **full RO rewrite in place**. Hero ("Analizele tale. Un plan real. Făcut pentru tine."), eyebrow ("Gratuit în perioada beta"), CTAs ("Vreau planul meu" / "Vezi întâi un exemplu"), microcopy strip ("Datele tale rămân ale tale", "Se actualizează în fiecare noapte", "Niciodată blocat"), stats bar, wearables strip, how-it-works 3 steps, sample protocol tiles ("Longevitate / Vârstă bio / Ritm îmbătrânire"), feature grid, comparison table (9 rows), vs-ChatGPT grid (6 cards), final CTA ("Nu mai ghici. Începe să măsori."), footer sections.
+- `components/ui/MobileNavToggle.tsx` — mobile hamburger links + aria-labels RO.
+- `app/(auth)/login/page.tsx` — full RO rewrite. Tabs (Conectare / Înregistrare), Google CTA, divider ("sau cu email"), field labels, password hints, terms checkbox, submit button, forgot-password flow, error + success messages, all internal copy.
+
+### Deferred (still scoped within Phase 6, queued for next session)
+
+- **Dashboard section headers + button copy** — the dashboard reads `myData.protocol.protocol_json` which is AI-generated EN text. Section titles ("Today's agenda", "Biomarkers", etc.) can be RO'd without touching the AI content — queued for alongside Phase 3.1 section extraction.
+- **Onboarding** — 2274-line file, queued for the same dedicated session as Phase 2.1 reducer migration so we don't touch it twice.
+- **Tracking / Statistics / History / Settings / Chat page-chrome copy** — mechanical find-and-replace work, ~150 strings. Fine to do in a focused 1h session.
+- **Locale picker in Settings + footer** — needs a client-persisting `<LanguagePicker>` wired to a React context; the existing dictionaries infrastructure + `lookup()` will then just flip based on user choice. Follow-up session.
+- **`/biomarkers` + `/patterns` marketing pages** — these have substantial informational copy (10-20 sections each). Worth batching in a single session with a human-in-the-loop pass for tone consistency.
+
+### Dictionary coverage note
+
+The 72 entries in `lib/i18n/dictionaries.ts` remain intact; where they're referenced via `useTranslation()`, RO flips automatically once the picker lands. The hardcoded-string rewrites in landing + login are in-place because those pages don't yet consume `t()` — refactoring them to would be a separate move that doesn't block user-visible value.
+
+### Verification
+
+```bash
+$ npx tsc --noEmit     # clean
+$ npm test             # 323/323
+$ grep -E "Get my plan|Sign in|How it works|Free while in beta" 'app/(marketing)/page.tsx'
+# 0 hits (all rewritten)
+```
+
+Manual QA:
+1. Incognito → load `/` → page is 100% RO except for code-level labels (`Groq`, `Claude`, `PhenoAge` which are product names).
+2. Mobile hamburger → "Cum funcționează / Demo / Noutăți / Biomarkeri / Tipare".
+3. Click any CTA → lands on `/login` → UI is 100% RO (Conectare / Înregistrare / Parolă / Continuă cu Google / Ai uitat parola? …).
+4. `<html lang="ro">` in page source — Google Translate no longer asks "translate to Romanian?".
+
+---
+
 ## Phase 5.5 — Supplement side-effect reporting · 2026-04-24
 
 Full vertical slice: DB → API → UI → master prompt wiring.

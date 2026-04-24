@@ -117,7 +117,7 @@ const jsonLd = {
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
-    <html lang="en" className={`${inter.variable} ${jetbrains.variable}`} suppressHydrationWarning>
+    <html lang="ro" className={`${inter.variable} ${jetbrains.variable}`} suppressHydrationWarning>
       <head>
         {/* Theme boot — runs synchronously before React hydrates so the
             user's saved theme (or OS preference) is applied to <html>

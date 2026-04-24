@@ -39,7 +39,7 @@ export function MobileNavToggle() {
     <div ref={rootRef} className="relative sm:hidden">
       <button
         onClick={() => setOpen(o => !o)}
-        aria-label={open ? 'Close menu' : 'Open menu'}
+        aria-label={open ? 'Închide meniul' : 'Deschide meniul'}
         aria-expanded={open}
         className="w-9 h-9 rounded-lg border border-card-border bg-surface-2 flex items-center justify-center text-muted-foreground hover:text-foreground transition-colors"
       >
@@ -50,11 +50,11 @@ export function MobileNavToggle() {
           role="menu"
           className="absolute right-0 top-full mt-2 w-52 rounded-xl bg-surface-1 border border-card-border shadow-xl p-2 z-50 animate-fade-in-up"
         >
-          <a href="#how" onClick={() => setOpen(false)} className="block px-3 py-2 text-sm text-muted-foreground hover:text-foreground hover:bg-surface-2 rounded-lg transition-colors">How it works</a>
+          <a href="#how" onClick={() => setOpen(false)} className="block px-3 py-2 text-sm text-muted-foreground hover:text-foreground hover:bg-surface-2 rounded-lg transition-colors">Cum funcționează</a>
           <a href="#demo" onClick={() => setOpen(false)} className="block px-3 py-2 text-sm text-muted-foreground hover:text-foreground hover:bg-surface-2 rounded-lg transition-colors">Demo</a>
-          <Link href="/changelog" onClick={() => setOpen(false)} className="block px-3 py-2 text-sm text-muted-foreground hover:text-foreground hover:bg-surface-2 rounded-lg transition-colors">Changelog</Link>
-          <Link href="/biomarkers" onClick={() => setOpen(false)} className="block px-3 py-2 text-sm text-muted-foreground hover:text-foreground hover:bg-surface-2 rounded-lg transition-colors">Biomarkers</Link>
-          <Link href="/patterns" onClick={() => setOpen(false)} className="block px-3 py-2 text-sm text-muted-foreground hover:text-foreground hover:bg-surface-2 rounded-lg transition-colors">Patterns</Link>
+          <Link href="/changelog" onClick={() => setOpen(false)} className="block px-3 py-2 text-sm text-muted-foreground hover:text-foreground hover:bg-surface-2 rounded-lg transition-colors">Noutăți</Link>
+          <Link href="/biomarkers" onClick={() => setOpen(false)} className="block px-3 py-2 text-sm text-muted-foreground hover:text-foreground hover:bg-surface-2 rounded-lg transition-colors">Biomarkeri</Link>
+          <Link href="/patterns" onClick={() => setOpen(false)} className="block px-3 py-2 text-sm text-muted-foreground hover:text-foreground hover:bg-surface-2 rounded-lg transition-colors">Tipare</Link>
         </div>
       )}
     </div>

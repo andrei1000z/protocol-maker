@@ -47,25 +47,25 @@ export default function LoginPage() {
           redirectTo: `${window.location.origin}/api/auth/callback?next=/settings`,
         });
         if (err) setError(err.message);
-        else setMessage('Check your email for a reset link.');
+        else setMessage('Verifică emailul pentru linkul de resetare.');
       } else if (mode === 'register') {
         const pwIssue = passwordIssues(password);
         if (pwIssue) { setError(pwIssue); setLoading(false); return; }
-        if (!acceptedTerms) { setError('Please accept the Terms + Privacy to continue'); setLoading(false); return; }
+        if (!acceptedTerms) { setError('Acceptă Termenii și Confidențialitatea pentru a continua'); setLoading(false); return; }
         const { error: err } = await supabase.auth.signUp({
           email,
           password,
           options: { emailRedirectTo: `${window.location.origin}/api/auth/callback` },
         });
         if (err) setError(err.message);
-        else setMessage('Check your email for confirmation.');
+        else setMessage('Verifică emailul pentru confirmare.');
       } else {
         const { error: err } = await supabase.auth.signInWithPassword({ email, password });
         if (err) setError(err.message);
         else router.replace('/dashboard');
       }
     } catch (e) {
-      setError(e instanceof Error ? e.message : 'Something went wrong. Try again.');
+      setError(e instanceof Error ? e.message : 'Ceva nu a mers. Încearcă din nou.');
     }
     setLoading(false);
   };
@@ -79,7 +79,7 @@ export default function LoginPage() {
     // auto-clearing the loading state after 10s so the button is usable again.
     const timeoutId = window.setTimeout(() => {
       setOauthLoading(false);
-      setError('Google took too long to respond. Try again or use email + password.');
+      setError('Google nu a răspuns. Verifică conexiunea și încearcă din nou.');
     }, 10000);
     try {
       const { error: err } = await supabase.auth.signInWithOAuth({
@@ -120,14 +120,14 @@ export default function LoginPage() {
             </p>
           </Link>
           <p className="text-sm text-muted-foreground max-w-xs mx-auto">
-            AI-powered longevity protocols calibrated to <span className="text-foreground">your</span> biomarkers.
+            Protocoale de longevitate cu AI, calibrate pe biomarkerii <span className="text-foreground">tăi</span>.
           </p>
           <div className="flex items-center justify-center gap-3 text-xs text-muted">
-            <span>🔬 {BIOMARKER_COUNT} biomarkers</span>
+            <span>🔬 {BIOMARKER_COUNT} biomarkeri</span>
             <span>•</span>
-            <span>🧬 {PATTERN_COUNT} patterns</span>
+            <span>🧬 {PATTERN_COUNT} tipare</span>
             <span>•</span>
-            <span>⚡ 60 seconds</span>
+            <span>⚡ 60 secunde</span>
           </div>
         </div>
 
@@ -138,15 +138,15 @@ export default function LoginPage() {
               {(['login', 'register'] as const).map((m) => (
                 <button key={m} onClick={() => { setMode(m); setError(''); setMessage(''); }}
                   className={`flex-1 py-2 text-sm font-medium rounded-lg transition-colors ${mode === m ? 'bg-accent text-black' : 'text-muted-foreground'}`}>
-                  {m === 'login' ? 'Sign In' : 'Sign Up'}
+                  {m === 'login' ? 'Conectare' : 'Înregistrare'}
                 </button>
               ))}
             </div>
           )}
           {mode === 'forgot' && (
             <div className="text-center pb-1">
-              <h2 className="text-base font-semibold tracking-tight">Reset password</h2>
-              <p className="text-xs text-muted-foreground mt-1">We&apos;ll email you a magic link to set a new one.</p>
+              <h2 className="text-base font-semibold tracking-tight">Resetează parola</h2>
+              <p className="text-xs text-muted-foreground mt-1">Îți trimitem un link magic pentru a seta una nouă.</p>
             </div>
           )}
 
@@ -168,11 +168,11 @@ export default function LoginPage() {
                     <path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"/>
                   </svg>
                 )}
-                Continue with Google
+                Continuă cu Google
               </button>
               <div className="flex items-center gap-3 text-xs text-muted">
                 <div className="flex-1 h-px bg-card-border" />
-                <span>or with email</span>
+                <span>sau cu email</span>
                 <div className="flex-1 h-px bg-card-border" />
               </div>
             </>
@@ -181,20 +181,20 @@ export default function LoginPage() {
           <div className="space-y-3">
             <div>
               <label className="text-xs text-muted-foreground mb-1 block">Email</label>
-              <input type="email" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="you@example.com"
+              <input type="email" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="tu@exemplu.com"
                 className="w-full rounded-xl bg-background border border-card-border px-4 py-2.5 text-sm outline-none focus:border-accent transition-colors" />
             </div>
             {mode !== 'forgot' && (
               <div>
                 <div className="flex items-center justify-between mb-1">
-                  <label className="text-xs text-muted-foreground">Password</label>
+                  <label className="text-xs text-muted-foreground">Parolă</label>
                   {mode === 'login' && (
                     <button
                       type="button"
                       onClick={() => { setMode('forgot'); setError(''); setMessage(''); setPassword(''); }}
-                      className="text-[11px] text-accent hover:underline"
+                      className="text-xs text-accent hover:underline"
                     >
-                      Forgot password?
+                      Ai uitat parola?
                     </button>
                   )}
                 </div>
@@ -202,13 +202,13 @@ export default function LoginPage() {
                   type="password"
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
-                  placeholder={mode === 'register' ? 'min 8 chars, letter + digit' : '••••••••'}
+                  placeholder={mode === 'register' ? 'min 8 caractere, literă + cifră' : '••••••••'}
                   autoComplete={mode === 'register' ? 'new-password' : 'current-password'}
                   className="w-full rounded-xl bg-background border border-card-border px-4 py-2.5 text-sm outline-none focus:border-accent transition-colors font-mono"
                 />
                 {mode === 'register' && password.length > 0 && (
                   <p className={`text-xs mt-1 ${passwordIssues(password) ? 'text-amber-400' : 'text-accent'}`}>
-                    {passwordIssues(password) || '✓ Strong enough'}
+                    {passwordIssues(password) || '✓ Suficient de puternică'}
                   </p>
                 )}
               </div>
@@ -222,10 +222,10 @@ export default function LoginPage() {
                   onChange={(e) => setAcceptedTerms(e.target.checked)}
                   className="mt-0.5 w-4 h-4 rounded border-card-border accent-accent shrink-0"
                 />
-                <span className="text-[11px] text-muted-foreground leading-snug">
-                  I agree to the <Link href="/terms" target="_blank" className="text-accent hover:underline">Terms</Link>
-                  {' '}and <Link href="/privacy" target="_blank" className="text-accent hover:underline">Privacy Policy</Link>.
-                  This is not medical advice — always consult a doctor.
+                <span className="text-xs text-muted-foreground leading-snug">
+                  Accept <Link href="/terms" target="_blank" className="text-accent hover:underline">Termenii</Link>
+                  {' '}și <Link href="/privacy" target="_blank" className="text-accent hover:underline">Confidențialitatea</Link>.
+                  Acesta nu e sfat medical — consultă întotdeauna medicul.
                 </span>
               </label>
             )}
@@ -236,7 +236,7 @@ export default function LoginPage() {
 
           <button onClick={handleSubmit} disabled={submitDisabled}
             className="w-full py-3 rounded-xl bg-accent text-black font-semibold text-sm transition-all hover:bg-accent-bright active:scale-[0.98] disabled:opacity-40 disabled:cursor-not-allowed">
-            {loading ? 'Working…' : mode === 'login' ? 'Sign In' : mode === 'register' ? 'Create Account' : 'Send reset link'}
+            {loading ? 'Procesez…' : mode === 'login' ? 'Conectare' : mode === 'register' ? 'Creează cont' : 'Trimite link de resetare'}
           </button>
 
           {mode === 'forgot' && (
@@ -245,13 +245,13 @@ export default function LoginPage() {
               onClick={() => { setMode('login'); setError(''); setMessage(''); }}
               className="w-full text-xs text-muted-foreground hover:text-accent"
             >
-              ← Back to sign in
+              ← Înapoi la conectare
             </button>
           )}
         </div>
 
         <p className="text-xs text-center text-muted">
-          <Link href="/" className="text-accent hover:underline">Back to home</Link>
+          <Link href="/" className="text-accent hover:underline">Înapoi la pagina principală</Link>
         </p>
       </div>
     </div>
