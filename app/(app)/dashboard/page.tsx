@@ -23,6 +23,7 @@ import { pickTodaysFocus, type ScheduleEntry, type FocusPick } from '@/lib/engin
 import { ProgressRing } from '@/components/ui/SectionCard';
 import { MedicalDisclaimer } from '@/components/dashboard/MedicalDisclaimer';
 import { FirstVisitTour } from '@/components/dashboard/FirstVisitTour';
+import { FallbackBanner } from '@/components/dashboard/FallbackBanner';
 import clsx from 'clsx';
 import dynamic from 'next/dynamic';
 
@@ -518,6 +519,15 @@ export default function DashboardPage() {
   const cronBannerInfo = !demoMode && myData?.protocol?.generation_source === 'cron' && myData.protocol.created_at
     ? { createdAt: myData.protocol.created_at, protocolId: myData.protocol.id }
     : null;
+  // Fallback transparency — if the current protocol was produced by Groq or
+  // the deterministic fallback (i.e. not Claude), surface a thin band that
+  // tells the user + offers a free regen on Claude. Hidden in demo mode.
+  const fallbackBannerInfo = !demoMode
+    && myData?.protocol?.generation_source
+    && myData.protocol.generation_source !== 'claude'
+    && myData.protocol.generation_source !== 'cron'   // cron uses Claude primarily; filter
+    ? { source: myData.protocol.generation_source as 'groq' | 'fallback' }
+    : null;
   // Prefer the live organ scores when present — re-computes on every tracking
   // save so the radar reflects new data without waiting for a regen. Falls
   // back to the snapshot saved at last generation.
@@ -593,6 +603,12 @@ export default function DashboardPage() {
 
       {/* ═══════════════ CRON REGEN BANNER — overnight auto-refresh notice ═══════════════ */}
       {cronBannerInfo && <CronRegenBanner createdAt={cronBannerInfo.createdAt} protocolId={cronBannerInfo.protocolId} />}
+
+      {/* ═══════════════ FALLBACK TRANSPARENCY BANNER ═══════════════
+          Shown when Claude was unavailable and a lower-tier engine (Groq or
+          deterministic) produced the current protocol. Gives the user a free
+          regen CTA — no stealth downgrades. */}
+      {fallbackBannerInfo && <FallbackBanner source={fallbackBannerInfo.source} />}
 
       {/* ═══════════════ INCOMPLETE-PROTOCOL BANNER ═══════════════
           Detects the "AI returned only {diagnostic:{...}}" failure mode that used

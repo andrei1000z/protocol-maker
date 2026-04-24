@@ -56,10 +56,20 @@ export async function POST(request: Request) {
     const limiter = getProtocolRateLimit();
     const { allowed, remaining, reset } = await checkRateLimit(limiter, user.id, user.email);
     if (!allowed) {
-      const resetIn = reset ? Math.ceil((reset - Date.now()) / 3600000) : 24;
+      // Return a precise reset timestamp + hours/minutes breakdown so the
+      // client can render "Revine la 00:00 (7h 23m)" instead of a vague
+      // "try again in 24h" (which is never actually 24h).
+      const msLeft = reset ? Math.max(0, reset - Date.now()) : 24 * 3600_000;
+      const hours = Math.floor(msLeft / 3600_000);
+      const minutes = Math.floor((msLeft % 3600_000) / 60_000);
+      const humanResetIn = hours > 0 ? `${hours}h ${minutes}m` : `${minutes}m`;
       return NextResponse.json({
-        error: `Rate limit: 3 protocols per day. Try again in ${resetIn}h.`,
+        error: `Ai regenerat 3/3 protocoale azi — limită zilnică pentru a proteja bugetul AI. Revine în ${humanResetIn}.`,
         rateLimited: true,
+        limit: 3,
+        used: 3,
+        resetAt: reset ?? (Date.now() + msLeft),
+        resetIn: humanResetIn,
       }, { status: 429 });
     }
 

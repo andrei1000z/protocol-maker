@@ -4,6 +4,45 @@ Append-only log of shipped work. Newest entries at top.
 
 ---
 
+## Phase 7 — Rage-proofing (F9.1 + F9.2) · 2026-04-24
+
+### Shipped
+
+**F9.1 — Precise rate-limit messaging on generate-protocol**
+- API response body now carries `{ limit, used, resetAt, resetIn }` alongside the existing `error` / `rateLimited` fields.
+- Human copy in RO: "Ai regenerat 3/3 protocoale azi — limită zilnică pentru a proteja bugetul AI. Revine în Xh Ym." Replaces the generic "Rate limit: 3 protocols per day" which gave the user zero sense of when they could actually retry.
+- `resetIn` formatted as "7h 23m" / "42m" depending on how far the window has moved.
+
+**F9.2 — Fallback transparency band**
+- `components/dashboard/FallbackBanner.tsx` NEW. Surfaces when the current protocol was produced by Groq (Claude unavailable) or the deterministic engine (both AI paths failed). Two tone variants (accent for Groq, amber for fallback) + always offers a "Regenerează" button that fires the standard regen flow.
+- Wired into dashboard between the demo/cron banners and the hero. Hidden in demo mode. Hidden when `generation_source === 'claude'` (happy path) or `'cron'` (overnight regen, already shown by CronRegenBanner).
+- Users are no longer getting stealth-downgraded AI without knowing.
+
+### Already shipped
+
+**F9.3 — EmptyState CTA**
+- `components/ui/EmptyState.tsx` already exposes `primary` + `secondary` with either `href` or `onClick`. No work needed.
+
+### Not shipped this session
+
+**F9.4 — PendingBadge + "Protocol last refreshed Xm ago"** — deferred. Cleanest when Phase 3.1 section extraction ships (header surface is a natural place for the badge).
+
+**F9.5 — Undo toast pattern** — deferred. `lib/toast.ts` needs an `action.undo?` shape and every save path (meals, metrics, workouts, compliance flips) needs an undo DELETE call. Touches ~6 files + API contracts — right to scope as its own session.
+
+### Verification
+
+```bash
+$ npx tsc --noEmit      # clean
+$ npm test              # 315/315
+```
+
+Manual QA:
+1. Hit 3 regens in a day → try 4th → toast shows "Revine în Xh Ym" not "try again in 24h".
+2. Turn off Anthropic key, let a regen fall through to Groq → refresh dashboard → banner appears: "Modelul premium era ocupat…" with Regenerează button.
+3. Click Regenerează with working Claude → banner disappears, protocol updates, toast "Protocol regenerat".
+
+---
+
 ## Phase 4 — Tracking frictionless · 2026-04-24
 
 ### Shipped
