@@ -4,6 +4,36 @@ Append-only log of shipped work. Newest entries at top.
 
 ---
 
+## Phase 3 (partial) — Dashboard UX wins · 2026-04-24
+
+**Shipped (F3.2 + F3.3 + F3.4):**
+
+- `components/dashboard/MedicalDisclaimer.tsx` NEW. Amber-toned band sitting above the hero — "Asta e optimizare de lifestyle, nu diagnostic medical. Dacă ai simptome acute sună la 112." Dismissible per session (NOT permanent), so a doctor who opens a shared dashboard always sees the disclaimer fresh. "Citește mai mult" expands inline (no navigation away from the page mid-flow).
+- `components/dashboard/FirstVisitTour.tsx` NEW. 4-step modal that fires once, 900ms after mount, on a real user's first dashboard visit. Explains the 4 most-confusing things: longevity score semantics, biological vs chronological age, organ radar, "keep scrolling for the full plan". LocalStorage flag = permanent dismiss. Escape / outside-click closes. **Skipped in demo mode** so tire-kickers don't burn through the tour before they sign up. Copy is 100% RO.
+- `app/(app)/dashboard/page.tsx` wires both components above the existing demo/cron banners.
+
+**Already shipped previously (F3.2 — Mobile TOC FAB):**
+- `components/layout/DashboardTOC.tsx` already contains a floating-action button below `lg:` breakpoint with a slide-up sheet + scroll-spy highlighting. No rework needed — feature is live.
+
+**Deferred to a dedicated session (F3.1 — Section extraction):**
+- Reason: 2360-line dashboard → 12 section components is the same class of freehand-mechanical refactor as onboarding's 205-useState → reducer. A codemod + one-PR-per-section is the right move. Attempting it in this session risks silently changing render order or memo boundaries on the dashboard that renders 17 subsystems and 6 banner states.
+
+### Verification
+
+```bash
+$ npx tsc --noEmit     # clean
+$ npm test             # 310/310
+```
+
+Manual QA:
+1. Fresh user (no localStorage flag) → tour modal pops up ~900ms after dashboard renders. 4 steps. "Am înțeles" dismisses permanently.
+2. Existing user → no tour.
+3. `/dashboard?demo=1` → no tour (even on fresh session).
+4. Disclaimer band visible on every scroll-top revisit until the X is clicked (once per session).
+5. After disclaimer dismiss, a browser refresh re-renders it — by design.
+
+---
+
 ## Phase 2 — Onboarding (F2.2 + F2.3 delivered, F2.1 + F2.4 deferred) · 2026-04-24
 
 **Context:** Onboarding file is 2274 lines with 205 useState. Full reducer migration + step extraction is the spec target but carries serious regression risk on the flagship data-capture flow (any typo in a setter rename breaks protocol generation). This commit ships the user-facing UX wins (validation + real-% progress) on top of the existing state shape. The 205-useState cleanup is queued for a dedicated session with a codemod + full QA rather than a freehand refactor.

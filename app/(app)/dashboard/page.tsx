@@ -21,6 +21,8 @@ import { SAMPLE_PROTOCOL, SAMPLE_LONGEVITY_SCORE, SAMPLE_BIO_AGE } from '@/lib/e
 import { BRYAN } from '@/lib/engine/bryan-constants';
 import { pickTodaysFocus, type ScheduleEntry, type FocusPick } from '@/lib/engine/todays-focus';
 import { ProgressRing } from '@/components/ui/SectionCard';
+import { MedicalDisclaimer } from '@/components/dashboard/MedicalDisclaimer';
+import { FirstVisitTour } from '@/components/dashboard/FirstVisitTour';
 import clsx from 'clsx';
 import dynamic from 'next/dynamic';
 
@@ -565,6 +567,14 @@ export default function DashboardPage() {
       <DashboardTOC items={TOC_ITEMS} />
 
       <div className="flex-1 min-w-0 space-y-5 max-w-3xl">
+      {/* Medical-disclaimer band — first thing in the scroll. Dismissible
+          per session (not permanent) so every doctor who opens a shared
+          dashboard sees it fresh. */}
+      <MedicalDisclaimer />
+
+      {/* First-visit tour — one-shot, skipped in demo mode. */}
+      <FirstVisitTour demoMode={demoMode} />
+
       {/* ═══════════════ DEMO MODE BANNER ═══════════════ */}
       {demoMode && (
         <div className="rounded-2xl bg-gradient-to-r from-accent/[0.08] to-blue-500/[0.05] border border-accent/30 p-4 flex items-center gap-3 animate-fade-in-up">
