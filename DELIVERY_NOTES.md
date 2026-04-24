@@ -4,6 +4,42 @@ Append-only log of shipped work. Newest entries at top.
 
 ---
 
+## Phase 4 — Tracking frictionless · 2026-04-24
+
+### Shipped
+
+**F4.3 — Grace-day streak (forgiving)**
+- `lib/utils/streak.ts` → `calculateStreakForgiving(history, threshold)` returns `{ days, graceUsed }`. Tolerates ONE missed day per 7-day window; the chain continues and the flag flips `graceUsed: true`. A second missed day in the same window breaks the streak.
+- Stops when it walks past the end of logged history (that's "never logged", not "forgiven").
+- `calculateStreak` now delegates to the forgiving variant (same public API as before).
+- `StreakWidget` accepts `graceUsed` prop and renders "· 1 grace day used" in amber alongside "Current streak" when active. Gives the user a gentle heads-up that one more miss will break it, without punishing them for a single off day.
+- 5 new unit tests cover: empty history, 5+grace+more = continues, 2 consecutive miss = break, clean 3 days = no grace, delegation.
+
+**F4.4 — Pending-count discriminator already correct**
+- Verified `countPending` in `components/tracking/SmartLogSheet.tsx` already uses strict `!== null && !== undefined && !== ''`. A legit `0` (e.g. `awake_min: 0`) is kept, not mis-flagged as missing. Spec claim of `!value` truthy-check was wrong — no fix needed.
+
+**F4.1 — Yesterday-missed CTA already shipped**
+- Verified at `app/(app)/tracking/page.tsx:758`. No fix needed.
+
+### Not shipped this session
+
+**F4.2 — Critical-fields chip** above each bucket ("✨ 3 fields critical for the protocol"). Deferred — requires adding a field-importance metadata layer to `lib/engine/metric-catalog.ts` (which doesn't exist yet — would need to be created as part of the work). Clean to pick up in the same session as Phase 2's full reducer.
+
+### Verification
+
+```bash
+$ npx tsc --noEmit     # clean
+$ npm test             # 315/315 (was 310, +5 streak tests)
+```
+
+Manual QA:
+1. User with 28 consecutive met days → "28 days · Current streak" (no grace hint).
+2. User misses a day → "28 days · 1 grace day used" in amber.
+3. User misses 2 days in a row → streak resets to 0.
+4. User with `awake_min: 0` logged → bucket doesn't flag that field as pending.
+
+---
+
 ## Phase 3 (partial) — Dashboard UX wins · 2026-04-24
 
 **Shipped (F3.2 + F3.3 + F3.4):**

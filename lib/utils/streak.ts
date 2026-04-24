@@ -6,12 +6,36 @@ export interface ComplianceEntry {
 }
 
 export function calculateStreak(history: ComplianceEntry[], threshold = 50): number {
-  if (history.length === 0) return 0;
+  return calculateStreakForgiving(history, threshold).days;
+}
+
+/**
+ * Forgiving streak — tolerates up to 1 missed day per 7-day window so a user
+ * at day 28 who catches a flu and misses one day doesn't see their streak
+ * reset to 0. The second miss within the same 7-day window breaks it.
+ *
+ * Returns both the day count and whether the grace day is "in use" so the UI
+ * can render "28 days · 1 grace day used" and remind the user that another
+ * miss will break the streak.
+ *
+ * Rationale: strict consecutive-day streaks drive anxiety and punishment
+ * dynamics. Research on habit formation (Wood 2016, Clear 2018) shows a
+ * single missed day is noise, not a signal of failure — but two misses in
+ * a row IS a behavior-change signal worth flagging.
+ */
+export function calculateStreakForgiving(
+  history: ComplianceEntry[],
+  threshold = 50
+): { days: number; graceUsed: boolean } {
+  if (history.length === 0) return { days: 0, graceUsed: false };
 
   const byDate = new Map(history.map(h => [h.date, h]));
   const today = new Date();
   let streak = 0;
+  let graceUsed = false;
+  let consecutiveMisses = 0;
 
+  // If today isn't logged yet, start counting from yesterday.
   const todayStr = today.toISOString().split('T')[0];
   if (!byDate.has(todayStr)) {
     today.setDate(today.getDate() - 1);
@@ -20,12 +44,33 @@ export function calculateStreak(history: ComplianceEntry[], threshold = 50): num
   for (let i = 0; i < 365; i++) {
     const dateStr = today.toISOString().split('T')[0];
     const entry = byDate.get(dateStr);
-    if (!entry || entry.pct < threshold) break;
-    streak++;
+
+    // No entry for this date = we've walked past the user's logged history.
+    // Stop without burning grace; grace is for EXPLICITLY missed days (entry
+    // exists but pct below threshold), not for "never logged".
+    if (!entry) break;
+
+    if (entry.pct >= threshold) {
+      streak++;
+      consecutiveMisses = 0;
+    } else {
+      consecutiveMisses++;
+      // Two explicit misses in a row = break. Real behavior change.
+      if (consecutiveMisses >= 2) break;
+      // First explicit miss — burn grace if available, otherwise break.
+      if (!graceUsed) {
+        graceUsed = true;
+        // Don't count the grace-forgiven day in the streak total; it's
+        // forgiven, not earned. The chain continues past it.
+      } else {
+        break;
+      }
+    }
+
     today.setDate(today.getDate() - 1);
   }
 
-  return streak;
+  return { days: streak, graceUsed };
 }
 
 export function calculateLongestStreak(history: ComplianceEntry[], threshold = 50): number {

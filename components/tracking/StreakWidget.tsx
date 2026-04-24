@@ -19,9 +19,13 @@ export interface StreakWidgetProps {
   longestStreak: number;
   perfectDays: number;
   userId: string;
+  /** When true, the current streak is being sustained by the forgiveness
+   *  rule: one missed day has been bridged. UI shows a subtle "1 grace day
+   *  used" hint so the user knows another miss will break the chain. */
+  graceUsed?: boolean;
 }
 
-export function StreakWidget({ streak, longestStreak, perfectDays, userId }: StreakWidgetProps) {
+export function StreakWidget({ streak, longestStreak, perfectDays, userId, graceUsed = false }: StreakWidgetProps) {
   // Celebration toast — fires once per milestone per user per browser.
   // Keeps the ID so we only mark "celebrated" when the toast actually closes;
   // a closed-before-paint race would otherwise lose the marker.
@@ -51,7 +55,14 @@ export function StreakWidget({ streak, longestStreak, perfectDays, userId }: Str
             </div>
             <div>
               <p className="text-2xl font-bold font-mono tabular-nums leading-none">{streak}<span className="text-sm text-muted ml-1 font-normal">day{streak === 1 ? '' : 's'}</span></p>
-              <p className="text-xs text-muted uppercase tracking-widest mt-1">Current streak</p>
+              <p className="text-xs text-muted uppercase tracking-widest mt-1">
+                Current streak
+                {graceUsed && (
+                  <span className="ml-2 text-amber-400 normal-case tracking-normal font-medium">
+                    · 1 grace day used
+                  </span>
+                )}
+              </p>
             </div>
           </div>
           <div className="text-right">

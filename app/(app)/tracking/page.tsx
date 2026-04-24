@@ -9,7 +9,7 @@ import {
 } from 'lucide-react';
 import { ACHIEVEMENTS, checkAchievements } from '@/lib/engine/achievements';
 import {
-  calculateStreak, calculateLongestStreak, countPerfectDays,
+  calculateStreakForgiving, calculateLongestStreak, countPerfectDays,
   getWeeklyData, getMonthlyHeatmap, calculateMonthlyAverage,
   ComplianceEntry,
 } from '@/lib/utils/streak';
@@ -638,7 +638,7 @@ export default function TrackingPage() {
   const completed = items.filter(i => i.completed).length;
   const total = items.length;
   const pct = total > 0 ? Math.round((completed / total) * 100) : 0;
-  const streak = calculateStreak(history);
+  const { days: streak, graceUsed } = calculateStreakForgiving(history);
   const longestStreak = calculateLongestStreak(history);
   const perfectDays = countPerfectDays(history);
   const weekData = getWeeklyData(history);
@@ -878,6 +878,7 @@ export default function TrackingPage() {
               longestStreak={longestStreak}
               perfectDays={perfectDays}
               userId={myData.profile.id}
+              graceUsed={graceUsed}
             />
           )}
           <Section icon={Check} title="Daily habits" subtitle="Longevity habits beyond the protocol checklist">

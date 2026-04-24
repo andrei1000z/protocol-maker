@@ -1,6 +1,6 @@
 import { describe, test, expect } from 'vitest';
 import {
-  calculateStreak, calculateLongestStreak,
+  calculateStreak, calculateStreakForgiving, calculateLongestStreak,
   countPerfectDays, type ComplianceEntry,
 } from '@/lib/utils/streak';
 
@@ -64,6 +64,56 @@ describe('calculateLongestStreak', () => {
     expect(calculateLongestStreak([
       { date: '2026-01-01', pct: 80, completed: 4, total: 5 },
     ], 50)).toBe(1);
+  });
+});
+
+describe('calculateStreakForgiving', () => {
+  test('empty history = 0 days, grace not used', () => {
+    expect(calculateStreakForgiving([])).toEqual({ days: 0, graceUsed: false });
+  });
+
+  test('5 consecutive met days + 1 missed + 1 met = continues with grace', () => {
+    const history: ComplianceEntry[] = [
+      { date: isoDaysAgo(0), pct: 80, completed: 4, total: 5 },  // today: met
+      { date: isoDaysAgo(1), pct: 20, completed: 1, total: 5 },  // yesterday: missed (grace)
+      { date: isoDaysAgo(2), pct: 80, completed: 4, total: 5 },  // met
+      { date: isoDaysAgo(3), pct: 80, completed: 4, total: 5 },
+      { date: isoDaysAgo(4), pct: 80, completed: 4, total: 5 },
+      { date: isoDaysAgo(5), pct: 80, completed: 4, total: 5 },
+    ];
+    const result = calculateStreakForgiving(history, 50);
+    expect(result.graceUsed).toBe(true);
+    expect(result.days).toBeGreaterThanOrEqual(5);
+  });
+
+  test('two consecutive missed days break the streak', () => {
+    const history: ComplianceEntry[] = [
+      { date: isoDaysAgo(0), pct: 20, completed: 1, total: 5 },  // today: missed
+      { date: isoDaysAgo(1), pct: 20, completed: 1, total: 5 },  // yesterday: missed — 2 in a row = break
+      { date: isoDaysAgo(2), pct: 80, completed: 4, total: 5 },
+      { date: isoDaysAgo(3), pct: 80, completed: 4, total: 5 },
+    ];
+    const result = calculateStreakForgiving(history, 50);
+    expect(result.days).toBe(0);
+  });
+
+  test('no missed days = grace not used', () => {
+    const history: ComplianceEntry[] = [
+      { date: isoDaysAgo(0), pct: 80, completed: 4, total: 5 },
+      { date: isoDaysAgo(1), pct: 80, completed: 4, total: 5 },
+      { date: isoDaysAgo(2), pct: 80, completed: 4, total: 5 },
+    ];
+    const result = calculateStreakForgiving(history, 50);
+    expect(result.days).toBe(3);
+    expect(result.graceUsed).toBe(false);
+  });
+
+  test('calculateStreak delegates to forgiving variant', () => {
+    const history: ComplianceEntry[] = [
+      { date: isoDaysAgo(0), pct: 80, completed: 4, total: 5 },
+      { date: isoDaysAgo(1), pct: 80, completed: 4, total: 5 },
+    ];
+    expect(calculateStreak(history, 50)).toBe(2);
   });
 });
 
