@@ -12,6 +12,8 @@ import { NotificationPrefs } from '@/components/settings/NotificationPrefs';
 import { PrivacyControls } from '@/components/settings/PrivacyControls';
 import { AnthropicByokCard } from '@/components/settings/AnthropicByokCard';
 import { PushNotificationsCard } from '@/components/settings/PushNotificationsCard';
+import { SubscriptionCard } from '@/components/settings/SubscriptionCard';
+import { HouseholdCard } from '@/components/settings/HouseholdCard';
 import { ThemePicker } from '@/components/settings/ThemePicker';
 import { LanguagePicker } from '@/components/settings/LanguagePicker';
 import {
@@ -1257,6 +1259,16 @@ export default function SettingsPage() {
           dictionary lookup; new strings flow through `t()` in components. */}
       <LanguagePicker />
 
+      {/* Subscription status + portal link. Reads through profile fields
+          populated by /api/stripe/webhook. Gracefully shows "Free" + a
+          link to /pricing when Stripe isn't yet wired. */}
+      <SubscriptionCard
+        status={(profile as Record<string, unknown>).subscription_status as string | null | undefined}
+        tier={(profile as Record<string, unknown>).subscription_tier as string | null | undefined}
+        periodEnd={(profile as Record<string, unknown>).subscription_current_period_end as string | null | undefined}
+        hasCustomerId={!!(profile as Record<string, unknown>).subscription_customer_id}
+      />
+
       {/* Privacy — reset of cookie consent (the banner re-appears so the user
           can revisit their analytics opt-in/out without clearing site data). */}
       <PrivacyControls />
@@ -1269,6 +1281,10 @@ export default function SettingsPage() {
           NEXT_PUBLIC_VAPID_PUBLIC_KEY is missing — feature degrades
           gracefully until the owner generates a VAPID pair. */}
       <PushNotificationsCard />
+
+      {/* Household / family mode (F8) — backed by /api/household. Renders
+          a "migration not applied" state until 0006_household.sql is run. */}
+      <HouseholdCard />
 
       {/* Notification preferences — writes through /api/save-profile with
           a partial payload so toggling a switch doesn't null unrelated

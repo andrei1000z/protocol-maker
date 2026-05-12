@@ -166,7 +166,8 @@ function isBypassed(userId: string, email?: string | null): boolean {
 export async function checkRateLimit(
   limiter: Ratelimit | null,
   identifier: string,
-  email?: string | null
+  email?: string | null,
+  options?: { isPaidTier?: boolean }
 ): Promise<{ allowed: boolean; limit?: number; remaining?: number; reset?: number; bypassed?: boolean }> {
   // GLOBAL KILL SWITCH: set RATE_LIMIT_DISABLED=true to disable all rate limiting.
   // Also disabled by default (unset env var is treated as "disabled" during dev/founder mode).
@@ -176,6 +177,11 @@ export async function checkRateLimit(
   }
   if (!limiter) return { allowed: true };
   if (isBypassed(identifier, email)) return { allowed: true, bypassed: true };
+  // Paid-tier bypass: subscribers skip the free-tier ceilings entirely. The
+  // intent is that Pro users see a more generous limit (see lib/subscription.ts
+  // TIER_LIMITS). Concrete enforcement of the Pro-specific limit comes when
+  // we wire per-tier limiters; until then, full bypass is the right default.
+  if (options?.isPaidTier) return { allowed: true, bypassed: true };
   const result = await limiter.limit(identifier);
   return {
     allowed: result.success,

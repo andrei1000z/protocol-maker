@@ -16,6 +16,7 @@ import { getProtocolRateLimit, checkRateLimit } from '@/lib/rate-limit';
 import { logger, describeError } from '@/lib/logger';
 import { logAiTokens, usageFromAnthropic, usageFromGroq, type AiTokenUsage } from '@/lib/ai-costs';
 import { getAnthropicKey } from '@/lib/anthropic-key';
+import { isPaid } from '@/lib/subscription';
 import { trackServer } from '@/lib/analytics';
 import { inspectProtocolShape } from '@/lib/engine/schemas';
 import { describeMealsForPrompt, type MealRow } from '@/lib/engine/meals';
@@ -55,8 +56,17 @@ export async function POST(request: Request) {
 
     // Rate limiting: 3 protocol generations per day per user (no-op if Upstash not configured).
     // Bypassed for founders/admins in RATE_LIMIT_BYPASS_USER_IDS / _EMAILS env vars.
+    // Pro subscribers also bypass — they get the higher tier ceilings from
+    // lib/subscription.ts TIER_LIMITS. A small pre-fetch of subscription
+    // fields keeps the rate-limit check tier-aware without a full profile load.
     const limiter = getProtocolRateLimit();
-    const { allowed, remaining, reset } = await checkRateLimit(limiter, user.id, user.email);
+    const { data: subRow } = await supabase
+      .from('profiles')
+      .select('subscription_status, subscription_tier, subscription_current_period_end')
+      .eq('id', user.id)
+      .maybeSingle();
+    const userIsPaid = isPaid(subRow);
+    const { allowed, remaining, reset } = await checkRateLimit(limiter, user.id, user.email, { isPaidTier: userIsPaid });
     if (!allowed) {
       // Return a precise reset timestamp + hours/minutes breakdown so the
       // client can render "Revine la 00:00 (7h 23m)" instead of a vague

@@ -54,6 +54,7 @@ export default function LandingPage() {
           <div className="flex items-center gap-3 sm:gap-5 text-sm">
             <a href="#how" className="text-muted-foreground hover:text-foreground hidden sm:block">Cum funcționează</a>
             <a href="#demo" className="text-muted-foreground hover:text-foreground hidden sm:block">Demo</a>
+            <Link href="/pricing" className="text-muted-foreground hover:text-foreground hidden sm:block">Tarife</Link>
             <Link href="/changelog" className="text-muted-foreground hover:text-foreground hidden sm:block">Noutăți</Link>
             <Link href="/login" className="px-3 sm:px-4 py-1.5 rounded-lg bg-accent text-black font-semibold text-xs sm:text-sm hover:bg-accent-dim transition-colors">
               Conectare
@@ -444,6 +445,7 @@ export default function LandingPage() {
           <div>
             <p className="font-semibold text-xs text-muted uppercase tracking-wider mb-3">Resurse</p>
             <div className="space-y-2 text-xs">
+              <Link href="/pricing" className="block text-muted-foreground hover:text-accent">Tarife</Link>
               <Link href="/biomarkers" className="block text-muted-foreground hover:text-accent">Ghiduri biomarkeri</Link>
               <Link href="/patterns" className="block text-muted-foreground hover:text-accent">Tipare clinice</Link>
               <Link href="/changelog" className="block text-muted-foreground hover:text-accent">Noutăți</Link>

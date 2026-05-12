@@ -67,6 +67,30 @@ function redact(value: unknown, depth = 0): unknown {
   return value;
 }
 
+// Optional webhook sink for errors + warnings — point at any HTTP endpoint
+// (Logtail / Datadog ingest / a Slack webhook / your own server). Sentry-lite
+// without the 2MB SDK. POSTs the same JSON we already log, fire-and-forget.
+//
+// Set LOG_WEBHOOK_URL in env to activate. Optional LOG_WEBHOOK_LEVEL filters
+// (default 'warn' = warn + error only; set to 'error' to forward only errors).
+function forwardToWebhook(payload: Record<string, unknown>, level: LogLevel): void {
+  const url = process.env.LOG_WEBHOOK_URL;
+  if (!url) return;
+  const minLevel = (process.env.LOG_WEBHOOK_LEVEL || 'warn').toLowerCase();
+  const levelRank: Record<LogLevel, number> = { debug: 0, info: 1, warn: 2, error: 3 };
+  const min = levelRank[(minLevel as LogLevel)] ?? 2;
+  if (levelRank[level] < min) return;
+  try {
+    // Fire-and-forget. We don't await — log forwarding must never block
+    // request handling, and we already have the local console.* line.
+    fetch(url, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload),
+    }).catch(() => undefined);
+  } catch { /* ignore */ }
+}
+
 function emit(level: LogLevel, event: string, ctx?: Record<string, unknown>) {
   const payload = {
     ts: new Date().toISOString(),
@@ -80,6 +104,8 @@ function emit(level: LogLevel, event: string, ctx?: Record<string, unknown>) {
   if (level === 'error') console.error(line);
   else if (level === 'warn') console.warn(line);
   else console.log(line);
+  // Optional cloud sink — no-op unless LOG_WEBHOOK_URL is configured.
+  forwardToWebhook(payload, level);
 }
 
 export const logger = {
