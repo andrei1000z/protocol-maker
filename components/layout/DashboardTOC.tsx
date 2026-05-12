@@ -69,7 +69,7 @@ export function DashboardTOC({ items }: { items: TOCItem[] }) {
       {/* Desktop sidebar — unchanged behavior, sticky left column */}
       <aside className="hidden lg:block sticky top-20 h-[calc(100dvh-6rem)] w-56 shrink-0 no-print">
         <div className="rounded-2xl bg-card border border-card-border p-3 space-y-0.5 max-h-full overflow-y-auto">
-          <p className="text-xs text-muted uppercase tracking-wider px-3 py-2">On this page</p>
+          <p className="text-xs text-muted uppercase tracking-wider px-3 py-2">Pe pagină</p>
           {items.map((item) => (
             <button key={item.id} onClick={() => scrollTo(item.id)}
               className={clsx('w-full flex items-center gap-2 px-3 py-2 rounded-lg text-xs text-left transition-all',
@@ -84,7 +84,7 @@ export function DashboardTOC({ items }: { items: TOCItem[] }) {
       {/* Mobile: floating action button — always accessible on long pages */}
       <button
         onClick={() => setMobileOpen(true)}
-        aria-label="Jump to section"
+        aria-label="Sări la o secțiune"
         className="lg:hidden fixed bottom-5 right-5 z-40 w-12 h-12 rounded-full bg-accent text-black shadow-xl flex items-center justify-center hover:bg-accent-bright active:scale-95 transition-all no-print"
       >
         <List className="w-5 h-5" strokeWidth={2.5} />
@@ -102,10 +102,10 @@ export function DashboardTOC({ items }: { items: TOCItem[] }) {
             onClick={e => e.stopPropagation()}
           >
             <div className="flex items-center justify-between p-4 border-b border-card-border shrink-0">
-              <p className="text-sm font-semibold">Jump to section</p>
+              <p className="text-sm font-semibold">Sări la secțiune</p>
               <button
                 onClick={() => setMobileOpen(false)}
-                aria-label="Close"
+                aria-label="Închide"
                 className="p-1.5 rounded-lg hover:bg-surface-3 text-muted-foreground hover:text-foreground transition-colors"
               >
                 <X className="w-5 h-5" />
@@ -121,7 +121,7 @@ export function DashboardTOC({ items }: { items: TOCItem[] }) {
                 >
                   <span className="text-lg shrink-0">{item.icon}</span>
                   <span className="flex-1 truncate">{item.label}</span>
-                  {active === item.id && <span className="text-xs text-accent">current</span>}
+                  {active === item.id && <span className="text-xs text-accent">aici</span>}
                 </button>
               ))}
             </div>

@@ -9,6 +9,7 @@ import {
 } from 'lucide-react';
 import { OAuthPermissionsModal } from '@/components/settings/OAuthPermissionsModal';
 import { NotificationPrefs } from '@/components/settings/NotificationPrefs';
+import { PrivacyControls } from '@/components/settings/PrivacyControls';
 import { ThemePicker } from '@/components/settings/ThemePicker';
 import { LanguagePicker } from '@/components/settings/LanguagePicker';
 import {
@@ -790,8 +791,9 @@ export default function SettingsPage() {
     refreshShareLinks();
   };
 
-  const handleCopyLinkSlug = (slug: string) => {
-    navigator.clipboard.writeText(`${window.location.origin}/share/${slug}`);
+  const handleCopyLinkSlug = (slug: string, kind: 'public' | 'clinical' = 'public') => {
+    const path = kind === 'clinical' ? `/share/clinical/${slug}` : `/share/${slug}`;
+    navigator.clipboard.writeText(`${window.location.origin}${path}`);
   };
 
   const handleExport = async () => {
@@ -1185,7 +1187,7 @@ export default function SettingsPage() {
                       /share/{link.slug}
                     </span>
                     <span className="text-xs font-mono text-muted shrink-0">
-                      {link.view_count} {link.view_count === 1 ? 'view' : 'views'}
+                      {link.view_count} {link.view_count === 1 ? 'vizualizare' : 'vizualizări'}
                     </span>
                   </div>
                   <div className="flex items-center gap-2 flex-wrap">
@@ -1195,15 +1197,23 @@ export default function SettingsPage() {
                       : 'bg-surface-3 text-muted border-card-border'
                     )}>
                       <Clock className="w-2.5 h-2.5" />
-                      {expired ? 'Expired'
-                        : expiresIn !== null ? `Expires in ${expiresIn}d`
-                        : 'No expiry'}
+                      {expired ? 'Expirat'
+                        : expiresIn !== null ? `Expiră în ${expiresIn} ${expiresIn === 1 ? 'zi' : 'zile'}`
+                        : 'Fără expirare'}
                     </span>
                     <button
                       onClick={() => handleCopyLinkSlug(link.slug)}
                       className="text-xs px-2 py-1 rounded-lg bg-surface-3 hover:bg-accent/10 text-muted-foreground hover:text-accent transition-colors"
+                      title="Copiază link-ul public (vedere marketing)"
                     >
-                      Copy URL
+                      Copiază link
+                    </button>
+                    <button
+                      onClick={() => handleCopyLinkSlug(link.slug, 'clinical')}
+                      className="text-xs px-2 py-1 rounded-lg bg-surface-3 hover:bg-accent/10 text-muted-foreground hover:text-accent transition-colors"
+                      title="Copiază link-ul de vedere clinică pentru medic"
+                    >
+                      Pentru medic
                     </button>
                     <select
                       value=""
@@ -1216,17 +1226,17 @@ export default function SettingsPage() {
                       }}
                       className="text-xs px-2 py-1 rounded-lg bg-surface-3 border border-card-border text-muted-foreground"
                     >
-                      <option value="">Set expiry…</option>
-                      <option value="7">7 days</option>
-                      <option value="30">30 days</option>
-                      <option value="90">90 days</option>
-                      <option value="none">Never</option>
+                      <option value="">Setează expirare…</option>
+                      <option value="7">7 zile</option>
+                      <option value="30">30 de zile</option>
+                      <option value="90">90 de zile</option>
+                      <option value="none">Niciodată</option>
                     </select>
                     <button
                       onClick={() => handleRevokeLink(link.slug)}
                       className="ml-auto inline-flex items-center gap-1 text-xs px-2 py-1 rounded-lg bg-red-500/10 text-danger border border-red-500/25 hover:bg-red-500/15 transition-colors"
                     >
-                      <X className="w-3 h-3" /> Revoke
+                      <X className="w-3 h-3" /> Revocă
                     </button>
                   </div>
                 </div>
@@ -1244,6 +1254,10 @@ export default function SettingsPage() {
       {/* Language picker — EN / RO scaffolded. Uses the i18n module's
           dictionary lookup; new strings flow through `t()` in components. */}
       <LanguagePicker />
+
+      {/* Privacy — reset of cookie consent (the banner re-appears so the user
+          can revisit their analytics opt-in/out without clearing site data). */}
+      <PrivacyControls />
 
       {/* Notification preferences — writes through /api/save-profile with
           a partial payload so toggling a switch doesn't null unrelated
@@ -1264,15 +1278,15 @@ export default function SettingsPage() {
           /api/my-data?full=1 endpoint — transforms happen client-side. */}
       <div className="glass-card rounded-2xl p-5 space-y-3 animate-fade-in-up">
         <div>
-          <p className="text-sm font-semibold">Download your data</p>
-          <p className="text-[11px] text-muted-foreground leading-relaxed mt-0.5">Everything here comes from your own records, unredacted. Open the CSVs in Excel or Sheets.</p>
+          <p className="text-sm font-semibold">Descarcă-ți datele</p>
+          <p className="text-xs text-muted-foreground leading-relaxed mt-0.5">Toate datele provin din înregistrările tale, fără filtrare. CSV-urile se deschid direct în Excel sau Sheets.</p>
         </div>
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
           {[
-            { label: 'Biomarkers (CSV)',       desc: 'Every lab value you\'ve uploaded.', onClick: handleExportBiomarkersCsv },
-            { label: 'Daily metrics (CSV)',    desc: 'Sleep, HRV, steps — last month.',    onClick: handleExportMetricsCsv },
-            { label: 'Protocol history (CSV)', desc: 'Every regeneration with scores.',    onClick: handleExportProtocolHistoryCsv },
-            { label: 'Doctor summary (.md)',   desc: 'One-pager to show your GP.',         onClick: handleExportDoctorMd },
+            { label: 'Biomarkeri (CSV)',         desc: 'Toate valorile din analize.',         onClick: handleExportBiomarkersCsv },
+            { label: 'Metrici zilnice (CSV)',    desc: 'Somn, HRV, pași — ultima lună.',     onClick: handleExportMetricsCsv },
+            { label: 'Istoric protocol (CSV)',   desc: 'Fiecare regenerare cu scorurile ei.', onClick: handleExportProtocolHistoryCsv },
+            { label: 'Rezumat pentru medic (.md)', desc: 'Document de o pagină pentru GP.',  onClick: handleExportDoctorMd },
             { label: 'Agenda în calendar (.ics)', desc: 'Importă în Google / Apple / Outlook.', onClick: handleExportCalendar },
           ].map(x => (
             <button
