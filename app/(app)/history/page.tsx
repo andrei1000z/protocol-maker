@@ -406,12 +406,12 @@ export default function HistoryPage() {
       {tests.length === 0 && protocols.length > 0 && (
         <Section icon={FileText} title="Analize de sânge" subtitle="Adaugă un buletin de analize ca să primești sfaturi la nivel de biomarker">
           <div className="rounded-2xl border border-dashed border-card-border bg-surface-2/40 p-6 text-center space-y-3">
-            <p className="text-sm font-medium">No labs uploaded yet</p>
-            <p className="text-[11px] text-muted-foreground max-w-sm mx-auto leading-relaxed">
-              Right now your protocol runs on lifestyle answers only. Add a panel from Synevo, Regina Maria, MedLife, or Bioclinica and get 20-30 extra adjustments keyed to your actual numbers.
+            <p className="text-sm font-medium">Nicio analiză încărcată încă</p>
+            <p className="text-xs text-muted-foreground max-w-sm mx-auto leading-relaxed">
+              Acum protocolul tău rulează doar pe răspunsurile de stil de viață. Adaugă un buletin de la Synevo, Regina Maria, MedLife sau Bioclinica și primești 20–30 de ajustări extra bazate pe valorile tale reale.
             </p>
             <a href="/settings" className="inline-block px-4 py-2 rounded-xl bg-accent text-black text-xs font-semibold hover:bg-accent-bright transition-colors">
-              Upload a PDF
+              Încarcă un PDF
             </a>
           </div>
         </Section>

@@ -326,21 +326,21 @@ function CronRegenBanner({ createdAt, protocolId }: { createdAt: string; protoco
     setDismissed(true);
   };
 
-  const when = hoursOld < 12 ? 'overnight' : hoursOld < 24 ? 'earlier today' : 'yesterday';
+  const when = hoursOld < 12 ? 'azi-noapte' : hoursOld < 24 ? 'mai devreme azi' : 'ieri';
   return (
     <div className="rounded-2xl bg-gradient-to-r from-blue-500/[0.08] to-accent/[0.05] border border-blue-500/25 p-4 flex items-center gap-3 animate-fade-in-up">
       <div className="w-10 h-10 rounded-xl bg-blue-500/15 border border-blue-500/30 flex items-center justify-center shrink-0">
         <span className="text-base">🌙</span>
       </div>
       <div className="flex-1 min-w-0">
-        <p className="text-sm font-semibold text-blue-400">Your protocol was refreshed {when}</p>
-        <p className="text-[11px] text-muted-foreground mt-0.5">Fresh analysis based on your latest tracked data. Scroll down to see what changed vs the previous version.</p>
+        <p className="text-sm font-semibold text-blue-400">Protocolul tău s-a actualizat {when}</p>
+        <p className="text-xs text-muted-foreground mt-0.5">Analiză proaspătă pe baza datelor tale recente. Derulează mai jos să vezi ce s-a schimbat față de versiunea precedentă.</p>
       </div>
       <button
         onClick={dismiss}
         className="shrink-0 px-3 py-1.5 rounded-lg bg-surface-2 border border-card-border text-xs font-medium text-muted-foreground hover:text-foreground hover:border-accent/30 transition-colors"
       >
-        Dismiss
+        Închide
       </button>
     </div>
   );

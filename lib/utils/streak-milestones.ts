@@ -14,16 +14,18 @@
 
 /** The milestone ladder — each entry is a "worth celebrating" streak count
  *  along with the copy we use in the toast. Kept in one place so the UI,
- *  analytics, and any future email drip all see the same definitions. */
+ *  analytics, and any future email drip all see the same definitions.
+ *  Copy is intentionally non-shaming and process-focused (not outcome-
+ *  focused), aligned with the F12 brief — no guilt, no pressure. */
 export const STREAK_MILESTONES = [
-  { days: 3,   label: '3-day start',   blurb: 'Momentum is the whole game. Keep going.' },
-  { days: 7,   label: 'One-week streak', blurb: 'A full week. Research says behaviour change clicks here.' },
-  { days: 14,  label: 'Two-week streak', blurb: 'Past the novelty phase — this is becoming automatic.' },
-  { days: 30,  label: '30-day streak',   blurb: 'Habit-formation threshold cleared. Keep it loose, keep it long.' },
-  { days: 60,  label: '60-day streak',   blurb: 'You\'ve held this longer than most people try. Notice what changed.' },
-  { days: 100, label: '100 days',        blurb: 'Triple-digit streak. Your body is wearing new defaults now.' },
-  { days: 180, label: 'Half-year streak',blurb: 'Six months is the point where identity catches up with action.' },
-  { days: 365, label: 'One full year',   blurb: 'A year. The frame you wake up in has changed.' },
+  { days: 3,   label: 'Început de 3 zile',  blurb: 'Bravo. Primele trei zile sunt cele mai grele — restul vine mai ușor.' },
+  { days: 7,   label: 'O săptămână întreagă', blurb: 'Șapte zile. Cercetările arată că aici începe schimbarea reală.' },
+  { days: 14,  label: 'Două săptămâni',     blurb: 'Ai trecut de etapa de noutate — acum e ceva natural.' },
+  { days: 30,  label: '30 de zile',          blurb: 'Pragul formării obiceiului. Continuă ușor, nu te grăbi.' },
+  { days: 60,  label: '60 de zile',          blurb: 'Ai dus-o mai departe decât majoritatea. Observă ce s-a schimbat.' },
+  { days: 100, label: '100 de zile',         blurb: 'Trei cifre. Corpul tău are deja noi obiceiuri de bază.' },
+  { days: 180, label: 'Jumătate de an',      blurb: 'Șase luni — momentul în care identitatea prinde din urmă acțiunea.' },
+  { days: 365, label: 'Un an întreg',        blurb: 'Un an. Lumea în care te trezești dimineața s-a schimbat.' },
 ] as const;
 
 export type StreakMilestone = (typeof STREAK_MILESTONES)[number];

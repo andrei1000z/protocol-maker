@@ -141,6 +141,185 @@ export function buildDoctorMarkdown(exp: FullExport): string {
   return lines.join('\n');
 }
 
+// ─────────────────────────────────────────────────────────────────────────────
+// iCalendar (.ics) — daily schedule + supplements as a subscribable calendar.
+// ─────────────────────────────────────────────────────────────────────────────
+// Strategy: emit one VEVENT per daily-schedule entry, repeating daily with
+// RRULE:FREQ=DAILY so the user just imports once. Times are "floating local"
+// (no TZID) — that way Apple/Google/Outlook all interpret them in whatever
+// timezone the user's device is in, which matches what they expect when a
+// protocol says "take Mg at 22:00".
+//
+// Supplements are derived from `supplementsHowTo` entries that have a clear
+// time on the supplement card; agenda items come from `dailySchedule`. We
+// emit only entries with a parseable HH:MM start.
+
+interface ProtocolJsonForIcs {
+  dailySchedule?: Array<{
+    time?: string;
+    activity?: string;
+    category?: string;
+    duration?: string;
+    notes?: string;
+    anchorRef?: string;
+  }>;
+  supplements?: Array<{
+    name?: string;
+    timing?: string;
+    dose?: string;
+    form?: string;
+    howToTake?: string;
+    justification?: string;
+  }>;
+}
+
+// Pull "07:00" or "22:30" out of strings like "22:00", "08:00 - 14:00", "with breakfast 08:00".
+// Returns [hh, mm] for the *start* time; null when nothing usable is found.
+function parseHHMM(s: string | undefined): [number, number] | null {
+  if (!s) return null;
+  const m = s.match(/\b(\d{1,2}):(\d{2})\b/);
+  if (!m) return null;
+  const hh = Number(m[1]);
+  const mm = Number(m[2]);
+  if (hh < 0 || hh > 23 || mm < 0 || mm > 59) return null;
+  return [hh, mm];
+}
+
+// Parse a duration string ("30 min", "1 h", "20m") to minutes. Defaults to 15.
+function parseDurationMin(s: string | undefined): number {
+  if (!s) return 15;
+  const trimmed = s.toLowerCase();
+  const hourMatch = trimmed.match(/(\d+(?:\.\d+)?)\s*h/);
+  if (hourMatch) return Math.round(Number(hourMatch[1]) * 60);
+  const minMatch = trimmed.match(/(\d+)\s*m/);
+  if (minMatch) return Number(minMatch[1]);
+  return 15;
+}
+
+// RFC5545 line folding — fields can't exceed 75 octets per line; longer lines
+// must be split with CRLF + a single space. We approximate by char count.
+function foldLine(line: string): string {
+  if (line.length <= 73) return line;
+  const chunks: string[] = [];
+  let i = 0;
+  while (i < line.length) {
+    chunks.push(line.slice(i, i + 73));
+    i += 73;
+  }
+  return chunks.join('\r\n ');
+}
+
+// Escape per RFC5545 — commas, semicolons, backslashes, newlines.
+function escIcs(s: string | undefined | null): string {
+  if (!s) return '';
+  return s
+    .replace(/\\/g, '\\\\')
+    .replace(/;/g, '\\;')
+    .replace(/,/g, '\\,')
+    .replace(/\r?\n/g, '\\n');
+}
+
+function pad2(n: number): string { return n.toString().padStart(2, '0'); }
+
+// Format a Date as iCalendar UTC timestamp "YYYYMMDDTHHMMSSZ" — used for DTSTAMP only.
+function icsUtc(d: Date): string {
+  return `${d.getUTCFullYear()}${pad2(d.getUTCMonth() + 1)}${pad2(d.getUTCDate())}T${pad2(d.getUTCHours())}${pad2(d.getUTCMinutes())}${pad2(d.getUTCSeconds())}Z`;
+}
+
+// Format a floating-local date+time "YYYYMMDDTHHMMSS" (no Z, no TZID).
+// startDate is the calendar date the recurring rule anchors to.
+function icsFloating(date: Date, hh: number, mm: number): string {
+  return `${date.getFullYear()}${pad2(date.getMonth() + 1)}${pad2(date.getDate())}T${pad2(hh)}${pad2(mm)}00`;
+}
+
+export function buildIcsCalendar(protocolJson: ProtocolJsonForIcs, opts?: { calName?: string; anchorDate?: Date }): string {
+  const calName = opts?.calName || 'Protocol — agenda zilnică';
+  const anchor = opts?.anchorDate || new Date();
+  // Anchor on today; events repeat indefinitely until the user updates the
+  // calendar feed. Calendar apps cap recurring expansion (Apple: 2 years,
+  // Google: ~2 years), so users will re-import after a major protocol change.
+  const dtstamp = icsUtc(new Date());
+  const lines: string[] = [];
+  lines.push('BEGIN:VCALENDAR');
+  lines.push('VERSION:2.0');
+  lines.push('PRODID:-//Protocol//Longevity Agenda//RO');
+  lines.push('CALSCALE:GREGORIAN');
+  lines.push('METHOD:PUBLISH');
+  lines.push(`X-WR-CALNAME:${escIcs(calName)}`);
+  lines.push('X-WR-TIMEZONE:Europe/Bucharest');
+
+  let eventCount = 0;
+  const seenUids = new Set<string>();
+
+  const pushEvent = (params: {
+    uid: string; hh: number; mm: number; durationMin: number;
+    summary: string; description?: string;
+  }) => {
+    // Dedupe in case the schedule has duplicates with the same time + activity.
+    if (seenUids.has(params.uid)) return;
+    seenUids.add(params.uid);
+    const startMin = params.hh * 60 + params.mm;
+    const endMin = startMin + params.durationMin;
+    const endHH = Math.floor(endMin / 60) % 24;
+    const endMM = endMin % 60;
+    const crossesMidnight = endMin >= 1440;
+    const endDate = crossesMidnight
+      ? new Date(anchor.getFullYear(), anchor.getMonth(), anchor.getDate() + 1)
+      : anchor;
+    lines.push('BEGIN:VEVENT');
+    lines.push(`UID:${params.uid}`);
+    lines.push(`DTSTAMP:${dtstamp}`);
+    lines.push(`DTSTART:${icsFloating(anchor, params.hh, params.mm)}`);
+    lines.push(`DTEND:${icsFloating(endDate, endHH, endMM)}`);
+    lines.push('RRULE:FREQ=DAILY');
+    lines.push(foldLine(`SUMMARY:${escIcs(params.summary)}`));
+    if (params.description) lines.push(foldLine(`DESCRIPTION:${escIcs(params.description)}`));
+    lines.push('END:VEVENT');
+    eventCount++;
+  };
+
+  // Daily schedule items first — they're the user's full day plan.
+  for (const item of protocolJson.dailySchedule || []) {
+    const t = parseHHMM(item.time);
+    if (!t) continue;
+    const summary = item.activity || item.category || 'Protocol';
+    const description = [item.notes, item.anchorRef ? `Supliment: ${item.anchorRef}` : null].filter(Boolean).join(' · ');
+    const slug = (item.activity || item.category || 'event').toLowerCase().replace(/[^a-z0-9]+/g, '-').slice(0, 40);
+    // UID is deterministic (time + slug) so identical entries dedupe via seenUids.
+    const uid = `${pad2(t[0])}${pad2(t[1])}-${slug}@protocol`;
+    pushEvent({
+      uid,
+      hh: t[0], mm: t[1],
+      durationMin: parseDurationMin(item.duration),
+      summary,
+      description,
+    });
+  }
+
+  // Supplements whose card carries a parseable timing — adds a separate reminder
+  // event so the user gets a notification, not just a passing schedule entry.
+  for (const sup of protocolJson.supplements || []) {
+    if (!sup.name) continue;
+    const t = parseHHMM(sup.timing);
+    if (!t) continue;
+    const summary = `💊 ${sup.name}${sup.dose ? ` (${sup.dose})` : ''}`;
+    const description = [sup.howToTake, sup.justification, sup.form].filter(Boolean).join(' · ');
+    const slug = sup.name.toLowerCase().replace(/[^a-z0-9]+/g, '-').slice(0, 40);
+    const uid = `sup-${pad2(t[0])}${pad2(t[1])}-${slug}@protocol`;
+    pushEvent({
+      uid,
+      hh: t[0], mm: t[1],
+      durationMin: 5,
+      summary,
+      description,
+    });
+  }
+
+  lines.push('END:VCALENDAR');
+  // RFC5545 requires CRLF line endings; calendar parsers are strict.
+  return lines.join('\r\n');
+}
+
 /** Download a blob to the user's device without opening a new tab. Safe
  *  to call from a click handler. */
 export function downloadBlob(content: string, filename: string, mime: string) {

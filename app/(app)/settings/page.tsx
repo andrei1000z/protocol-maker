@@ -837,6 +837,19 @@ export default function SettingsPage() {
       'text/markdown;charset=utf-8');
   };
 
+  // Subscribable .ics for Google / Apple / Outlook. Server builds the file
+  // from the latest protocol on every request so the calendar always reflects
+  // the freshest agenda. Falls back to a friendly toast on 404/etc.
+  const handleExportCalendar = async () => {
+    const res = await fetch('/api/calendar.ics');
+    if (!res.ok) {
+      const j = await res.json().catch(() => ({ error: `HTTP ${res.status}` }));
+      throw new Error(j.error || 'Calendar export failed');
+    }
+    const ics = await res.text();
+    downloadBlob(ics, 'protocol.ics', 'text/calendar;charset=utf-8');
+  };
+
   const handleLogout = async () => {
     await fetch('/api/logout', { method: 'POST' });
     invalidate.all();
@@ -1260,6 +1273,7 @@ export default function SettingsPage() {
             { label: 'Daily metrics (CSV)',    desc: 'Sleep, HRV, steps — last month.',    onClick: handleExportMetricsCsv },
             { label: 'Protocol history (CSV)', desc: 'Every regeneration with scores.',    onClick: handleExportProtocolHistoryCsv },
             { label: 'Doctor summary (.md)',   desc: 'One-pager to show your GP.',         onClick: handleExportDoctorMd },
+            { label: 'Agenda în calendar (.ics)', desc: 'Importă în Google / Apple / Outlook.', onClick: handleExportCalendar },
           ].map(x => (
             <button
               key={x.label}

@@ -45,6 +45,10 @@ export function StreakWidget({ streak, longestStreak, perfectDays, userId, grace
   const next = nextMilestone(streak);
   const pct = Math.round(progressToNext(streak) * 100);
 
+  // Non-shaming framing when the user has broken a previous streak. Pairs with
+  // the F12 brief: explicit "start fresh" copy, no guilt, no judgement.
+  const brokenStreak = streak === 0 && longestStreak > 0;
+
   return (
     <>
       <div className="rounded-2xl bg-surface-2 border border-card-border p-5 space-y-4">
@@ -54,48 +58,55 @@ export function StreakWidget({ streak, longestStreak, perfectDays, userId, grace
               <Flame className="w-5 h-5 text-accent" />
             </div>
             <div>
-              <p className="text-2xl font-bold font-mono tabular-nums leading-none">{streak}<span className="text-sm text-muted ml-1 font-normal">day{streak === 1 ? '' : 's'}</span></p>
+              <p className="text-2xl font-bold font-mono tabular-nums leading-none">{streak}<span className="text-sm text-muted ml-1 font-normal">{streak === 1 ? 'zi' : 'zile'}</span></p>
               <p className="text-xs text-muted uppercase tracking-widest mt-1">
-                Current streak
+                Streak curent
                 {graceUsed && (
                   <span className="ml-2 text-amber-400 normal-case tracking-normal font-medium">
-                    · 1 grace day used
+                    · 1 zi de grație folosită
                   </span>
                 )}
               </p>
             </div>
           </div>
           <div className="text-right">
-            <p className="text-xs text-muted uppercase tracking-widest">Best</p>
+            <p className="text-xs text-muted uppercase tracking-widest">Cel mai bun</p>
             <p className="text-lg font-bold font-mono tabular-nums">{longestStreak}</p>
           </div>
         </div>
+
+        {brokenStreak && (
+          <div className="rounded-xl bg-blue-500/6 border border-blue-500/20 px-3 py-2.5 text-xs text-foreground/85 leading-relaxed">
+            Streak-ul s-a oprit, dar tot ce ai construit până aici contează.
+            Zilele perfecte rămân pe statistici, iar mâine începi proaspăt — fără presiune.
+          </div>
+        )}
 
         {/* Progress bar toward next milestone. When user has passed the top
             of the ladder, render a static "365+" chip instead. */}
         {next ? (
           <div className="space-y-1.5">
-            <div className="flex items-center justify-between text-[11px] text-muted-foreground">
-              <span>{current ? `${current.label} cleared` : 'Working toward first milestone'}</span>
+            <div className="flex items-center justify-between text-xs text-muted-foreground">
+              <span>{current ? `${current.label} ✓` : 'Lucrezi spre primul prag'}</span>
               <span className="font-mono">{streak} / {next.days}</span>
             </div>
             <div className="h-1.5 rounded-full bg-surface-3 overflow-hidden">
               <div className="h-full bg-accent transition-all duration-500" style={{ width: `${pct}%` }} />
             </div>
             <p className="text-xs text-muted">
-              <span className="text-accent font-medium">{next.days - streak}</span> days to <span className="text-foreground">{next.label}</span>
+              <span className="text-accent font-medium">{next.days - streak}</span> zile până la <span className="text-foreground">{next.label}</span>
             </p>
           </div>
         ) : (
           <div className="flex items-center gap-2 text-accent">
             <Trophy className="w-4 h-4" />
-            <p className="text-xs font-semibold">You&apos;ve cleared every streak milestone. Remarkable.</p>
+            <p className="text-xs font-semibold">Ai trecut prin toate pragurile de streak. Remarcabil.</p>
           </div>
         )}
 
         {perfectDays > 0 && (
           <div className="flex items-center justify-between pt-2 border-t border-card-border">
-            <p className="text-[11px] text-muted-foreground">Perfect days (100% compliance)</p>
+            <p className="text-xs text-muted-foreground">Zile perfecte (100% aderență)</p>
             <p className="text-sm font-mono font-semibold text-accent">{perfectDays}</p>
           </div>
         )}
@@ -113,16 +124,16 @@ export function StreakWidget({ streak, longestStreak, perfectDays, userId, grace
                 <Trophy className="w-5 h-5 text-accent" />
               </div>
               <div className="flex-1 min-w-0">
-                <p className="text-xs font-mono uppercase tracking-widest text-accent">Milestone</p>
+                <p className="text-xs font-mono uppercase tracking-widest text-accent">Prag atins</p>
                 <h3 id="streak-celebration-title" className="text-base font-semibold mt-0.5">{celebrating.label}</h3>
-                <p className="text-[12px] text-muted-foreground mt-1 leading-relaxed">{celebrating.blurb}</p>
+                <p className="text-xs text-muted-foreground mt-1 leading-relaxed">{celebrating.blurb}</p>
               </div>
             </div>
             <button
               onClick={dismissCelebration}
               className="w-full py-2 rounded-xl bg-accent text-black text-sm font-semibold hover:bg-accent-bright transition-colors"
             >
-              Keep going
+              Continuă
             </button>
           </div>
         </div>

@@ -167,6 +167,95 @@ export async function markSynced(
     .eq('user_id', userId).eq('provider', provider);
 }
 
+// ─────────────────────────────────────────────────────────────────────────────
+// Best-effort token revoke on account deletion.
+// ─────────────────────────────────────────────────────────────────────────────
+// Each provider has a different revoke endpoint and auth style. We use the
+// shape that matches RFC 7009 where possible (POST + token in body). Errors
+// are swallowed — the user's account deletion must complete even if the
+// provider is down or the revoke endpoint moved.
+//
+// Returns true on a 2xx response, false otherwise. Caller decides whether
+// to surface the failure in audit metadata.
+export async function revokeProviderToken(
+  provider: ProviderKey,
+  accessToken: string,
+  refreshToken: string | null,
+): Promise<{ ok: boolean; status?: number; error?: string }> {
+  if (!accessToken) return { ok: false, error: 'no_token' };
+  const tokenToRevoke = refreshToken || accessToken;
+
+  try {
+    // ── Fitbit — Basic auth with client_id:secret, token in body ──
+    if (provider === 'fitbit') {
+      const id = process.env.FITBIT_CLIENT_ID;
+      const secret = process.env.FITBIT_CLIENT_SECRET;
+      if (!id || !secret) return { ok: false, error: 'not_configured' };
+      const basic = Buffer.from(`${id}:${secret}`).toString('base64');
+      const r = await fetch('https://api.fitbit.com/oauth2/revoke', {
+        method: 'POST',
+        headers: {
+          Authorization: `Basic ${basic}`,
+          'Content-Type': 'application/x-www-form-urlencoded',
+        },
+        body: new URLSearchParams({ token: tokenToRevoke }).toString(),
+      });
+      return { ok: r.ok, status: r.status };
+    }
+
+    // ── Google Fit — query param, no auth needed ──
+    if (provider === 'google_fit') {
+      const r = await fetch(
+        `https://oauth2.googleapis.com/revoke?token=${encodeURIComponent(tokenToRevoke)}`,
+        { method: 'POST', headers: { 'Content-Type': 'application/x-www-form-urlencoded' } },
+      );
+      return { ok: r.ok, status: r.status };
+    }
+
+    // ── Oura — DELETE on the personal-access endpoint, Bearer access token ──
+    if (provider === 'oura') {
+      const r = await fetch('https://api.ouraring.com/oauth/revoke', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+        body: new URLSearchParams({ token: tokenToRevoke }).toString(),
+      });
+      return { ok: r.ok, status: r.status };
+    }
+
+    // ── WHOOP — POST with token, Basic auth optional ──
+    if (provider === 'whoop') {
+      const r = await fetch('https://api.prod.whoop.com/oauth/oauth2/revoke', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+        body: new URLSearchParams({ token: tokenToRevoke }).toString(),
+      });
+      return { ok: r.ok, status: r.status };
+    }
+
+    // ── Withings — action=revoke on the OAuth2 endpoint ──
+    if (provider === 'withings') {
+      const id = process.env.WITHINGS_CLIENT_ID;
+      const secret = process.env.WITHINGS_CLIENT_SECRET;
+      if (!id || !secret) return { ok: false, error: 'not_configured' };
+      const r = await fetch('https://wbsapi.withings.net/v2/oauth2', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+        body: new URLSearchParams({
+          action: 'revoke',
+          client_id: id,
+          client_secret: secret,
+          userid: tokenToRevoke,
+        }).toString(),
+      });
+      return { ok: r.ok, status: r.status };
+    }
+
+    return { ok: false, error: `unknown_provider:${provider}` };
+  } catch (err) {
+    return { ok: false, error: err instanceof Error ? err.message : String(err) };
+  }
+}
+
 // Mark a failed sync (for the Settings UI banner).
 export async function markSyncError(
   admin: SupabaseClient,
