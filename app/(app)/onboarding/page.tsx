@@ -9,6 +9,9 @@ import { GeneratingScreen } from '@/components/protocol/GeneratingScreen';
 import { DevicePicker } from '@/components/onboarding/DevicePicker';
 import { EquipmentRow } from '@/components/onboarding/EquipmentRow';
 import { CollapseSection } from '@/components/onboarding/CollapseSection';
+import { Step2Biomarkers } from '@/components/onboarding/Step2Biomarkers';
+import { Step4Schedule } from '@/components/onboarding/Step4Schedule';
+import { Step5Goals } from '@/components/onboarding/Step5Goals';
 import { Upload, FileText, ChevronDown, ChevronUp, Plus, X } from 'lucide-react';
 import clsx from 'clsx';
 
@@ -1210,60 +1213,19 @@ export default function OnboardingPage() {
 
         {/* STEP 1 — Blood Work */}
         {step === 1 && (
-          <div className="space-y-5">
-            <div>
-              <h1 className="text-2xl font-bold">Your Blood Work</h1>
-              <p className="text-muted-foreground text-sm mt-1">Upload a PDF or enter manually.</p>
-            </div>
-            <div className={clsx('border-2 border-dashed rounded-2xl p-8 text-center transition-all cursor-pointer hover:border-accent/50', pdfParsed ? 'border-accent/50 bg-accent/5' : 'border-card-border')} onClick={() => fileInputRef.current?.click()}>
-              <input ref={fileInputRef} type="file" accept=".pdf" className="hidden" onChange={e => e.target.files?.[0] && handlePdfUpload(e.target.files[0])} />
-              {pdfParsing ? <div className="space-y-3"><div className="w-8 h-8 border-2 border-accent border-t-transparent rounded-full animate-spin mx-auto" /><p className="text-sm text-accent">Parsing with AI...</p></div>
-                : pdfParsed ? <div className="space-y-2"><FileText className="w-10 h-10 text-accent mx-auto" /><p className="text-sm text-accent font-medium">{filledCount} biomarkers detected</p></div>
-                : <div className="space-y-3"><Upload className="w-10 h-10 text-muted-foreground mx-auto" /><p className="text-sm font-medium">Drop lab report PDF</p><p className="text-xs text-muted-foreground">Synevo, Regina Maria, MedLife, LabCorp, Quest</p></div>}
-            </div>
-            <p className="text-xs text-accent uppercase tracking-wider">Core markers (Big 11)</p>
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-              {markersToShowBig11.map(b => {
-                const cls = getLiveClassification(b.code, biomarkers[b.code] || '');
-                return (
-                  <div key={b.code} className="flex items-center gap-2 rounded-xl border border-card-border p-2.5">
-                    <div className="flex-1 min-w-0">
-                      <p className="text-xs font-medium truncate">{b.shortName}</p>
-                      <p className="text-xs text-muted">Optimal: {b.longevityOptimalLow}-{b.longevityOptimalHigh}</p>
-                    </div>
-                    <input type="number" value={biomarkers[b.code] || ''} onChange={e => updateBiomarker(b.code, e.target.value)} placeholder={b.bryanJohnsonValue ? String(b.bryanJohnsonValue) : ''} step="0.1" className="w-20 rounded-lg bg-background border border-card-border px-2 py-1.5 text-sm text-right outline-none focus:border-accent font-mono" />
-                    <span className="text-xs text-muted w-14">{b.unit}</span>
-                    {cls && <span className={clsx('w-2 h-2 rounded-full', cls === 'OPTIMAL' ? 'bg-accent' : cls.includes('SUBOPTIMAL') ? 'bg-amber-400' : 'bg-red-400')} />}
-                  </div>
-                );
-              })}
-            </div>
-            <button onClick={() => setShowAllMarkers(!showAllMarkers)} className="flex items-center gap-1 text-xs text-accent hover:underline mx-auto">
-              {showAllMarkers ? <ChevronUp className="w-3 h-3" /> : <ChevronDown className="w-3 h-3" />}{showAllMarkers ? 'Show less' : `Show all ${BIOMARKER_DB.length} markers`}
-            </button>
-            {showAllMarkers && BIOMARKER_CATEGORIES.map(cat => {
-              const catMarkers = BIOMARKER_DB.filter(b => b.category === cat && !BIG_11_CODES.includes(b.code));
-              if (catMarkers.length === 0) return null;
-              return (
-                <div key={cat} className="space-y-2">
-                  <p className="text-xs text-accent uppercase tracking-wider">{CATEGORY_LABELS[cat] || cat}</p>
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-                    {catMarkers.map(b => {
-                      const cls = getLiveClassification(b.code, biomarkers[b.code] || '');
-                      return (
-                        <div key={b.code} className="flex items-center gap-2 bg-card rounded-xl border border-card-border p-2.5">
-                          <div className="flex-1 min-w-0"><p className="text-xs font-medium truncate">{b.shortName}</p><p className="text-xs text-muted">{b.longevityOptimalLow}-{b.longevityOptimalHigh} {b.unit}</p></div>
-                          <input type="number" value={biomarkers[b.code] || ''} onChange={e => updateBiomarker(b.code, e.target.value)} step="0.1" className="w-20 rounded-lg bg-background border border-card-border px-2 py-1.5 text-sm text-right outline-none focus:border-accent font-mono" />
-                          <span className="text-xs text-muted w-12">{b.unit}</span>
-                          {cls && <span className={clsx('w-2 h-2 rounded-full', cls === 'OPTIMAL' ? 'bg-accent' : cls.includes('SUBOPTIMAL') ? 'bg-amber-400' : 'bg-red-400')} />}
-                        </div>
-                      );
-                    })}
-                  </div>
-                </div>
-              );
-            })}
-          </div>
+          <Step2Biomarkers
+            biomarkers={biomarkers}
+            showAllMarkers={showAllMarkers}
+            setShowAllMarkers={setShowAllMarkers}
+            pdfParsing={pdfParsing}
+            pdfParsed={pdfParsed}
+            filledCount={filledCount}
+            markersToShowBig11={markersToShowBig11}
+            fileInputRef={fileInputRef}
+            handlePdfUpload={handlePdfUpload}
+            updateBiomarker={updateBiomarker}
+            getLiveClassification={getLiveClassification}
+          />
         )}
 
         {/* STEP 2 — Lifestyle */}
@@ -1803,196 +1765,53 @@ export default function OnboardingPage() {
 
         {/* STEP 3 — Day-to-Day */}
         {step === 3 && (
-          <div className="space-y-5">
-            <div>
-              <h1 className="text-2xl font-bold">Your Day-to-Day</h1>
-              <p className="text-muted-foreground text-sm mt-1">Helps us build a protocol that fits your actual life.</p>
-            </div>
-
-            {/* School / work / both / freelance / none */}
-            <div>
-              <label className="text-xs text-muted-foreground mb-2 block">What does your weekday look like?</label>
-              <div className="grid grid-cols-5 gap-2">
-                {([
-                  { v: 'school',    l: '🎓 School' },
-                  { v: 'work',      l: '💼 Work' },
-                  { v: 'both',      l: 'Both' },
-                  { v: 'freelance', l: 'Freelance' },
-                  { v: 'none',      l: 'None' },
-                ] as const).map(({ v, l }) => (
-                  <button key={v} onClick={() => setScheduleType(v)} className={clsx('py-2 rounded-xl text-[11px] font-medium transition-all',
-                    scheduleType === v ? 'bg-accent text-black' : 'bg-card border border-card-border text-muted-foreground')}>{l}</button>
-                ))}
-              </div>
-            </div>
-
-            {/* Hours + days */}
-            {scheduleType !== 'none' && (
-              <>
-                <div className="grid grid-cols-2 gap-3">
-                  <div>
-                    <label className="text-xs text-muted-foreground">{scheduleType === 'school' ? 'School' : 'Work'} starts</label>
-                    <input type="time" value={workStart} onChange={e => setWorkStart(e.target.value)} className="w-full mt-1 rounded-xl bg-card border border-card-border px-3 py-2.5 text-sm outline-none focus:border-accent font-mono" />
-                  </div>
-                  <div>
-                    <label className="text-xs text-muted-foreground">{scheduleType === 'school' ? 'School' : 'Work'} ends</label>
-                    <input type="time" value={workEnd} onChange={e => setWorkEnd(e.target.value)} className="w-full mt-1 rounded-xl bg-card border border-card-border px-3 py-2.5 text-sm outline-none focus:border-accent font-mono" />
-                  </div>
-                </div>
-
-                <div>
-                  <label className="text-xs text-muted-foreground mb-2 block">Active days (tap days you have {scheduleType === 'school' ? 'school' : 'work'})</label>
-                  <div className="grid grid-cols-7 gap-1.5">
-                    {['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'].map(d => {
-                      const on = activeDays.includes(d);
-                      return (
-                        <button key={d} type="button"
-                          onClick={() => setActiveDays(prev => prev.includes(d) ? prev.filter(x => x !== d) : [...prev, d])}
-                          className={clsx('py-2 rounded-xl text-[11px] font-medium transition-all',
-                            on ? 'bg-accent text-black' : 'bg-card border border-card-border text-muted-foreground hover:border-accent/30')}>
-                          {d}
-                        </button>
-                      );
-                    })}
-                  </div>
-                  <p className="text-xs text-muted mt-1.5">{activeDays.length === 7 ? 'All week' : activeDays.length === 0 ? 'No active days — fully free' : `Free: ${['Mon','Tue','Wed','Thu','Fri','Sat','Sun'].filter(d => !activeDays.includes(d)).join(', ')}`}</p>
-                </div>
-
-                {scheduleType !== 'school' && (
-                  <div>
-                    <label className="text-xs text-muted-foreground mb-2 block">Work location</label>
-                    <div className="flex gap-2">
-                      {(['home', 'office', 'hybrid'] as const).map(v => (
-                        <button key={v} onClick={() => setWorkLocation(v)} className={clsx('flex-1 py-2 rounded-xl text-xs font-medium capitalize transition-all',
-                          workLocation === v ? 'bg-accent text-black' : 'bg-card border border-card-border text-muted-foreground')}>{v}</button>
-                      ))}
-                    </div>
-                  </div>
-                )}
-              </>
-            )}
-
-            {/* Gym access */}
-            <div>
-              <label className="text-xs text-muted-foreground mb-2 block">Do you have gym access?</label>
-              <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
-                {([
-                  { v: 'full_gym',  l: '🏋️ Full gym',          d: 'Barbells, racks, machines' },
-                  { v: 'home_gym',  l: '🏠 Home gym',          d: 'Some weights, bands' },
-                  { v: 'minimal',   l: '🤸 Calisthenics only', d: 'Bodyweight + bands' },
-                  { v: 'none',      l: 'None',                d: 'Walking + bodyweight' },
-                ] as const).map(({ v, l, d }) => (
-                  <button key={v} onClick={() => setGymAccess(v)} className={clsx('py-3 px-3 rounded-xl text-xs font-medium transition-all text-left',
-                    gymAccess === v ? 'bg-accent/10 border border-accent/50 text-accent' : 'bg-card border border-card-border text-muted-foreground hover:border-accent/30')}>
-                    <p className="font-semibold">{l}</p>
-                    <p className="text-xs text-muted mt-0.5 normal-case">{d}</p>
-                  </button>
-                ))}
-              </div>
-              {(gymAccess === 'home_gym' || gymAccess === 'minimal') && (
-                <div className="mt-2">
-                  <p className="text-xs text-muted-foreground mb-1.5">What equipment do you have?</p>
-                  <div className="flex flex-wrap gap-1.5">
-                    {['dumbbells', 'barbell', 'kettlebell', 'pull-up bar', 'resistance bands', 'bench', 'bike/treadmill', 'TRX/rings'].map(e => {
-                      const on = gymEquipment.includes(e);
-                      return (
-                        <button key={e} type="button" onClick={() => setGymEquipment(prev => prev.includes(e) ? prev.filter(x => x !== e) : [...prev, e])}
-                          className={clsx('px-3 py-1 rounded-lg text-[11px] capitalize transition-all',
-                            on ? 'bg-accent/15 text-accent border border-accent/30' : 'bg-card border border-card-border text-muted-foreground hover:border-accent/30')}>
-                          {e}
-                        </button>
-                      );
-                    })}
-                  </div>
-                </div>
-              )}
-            </div>
-
-            <div className="grid grid-cols-2 gap-3">
-              <div><label className="text-xs text-muted-foreground">Sitting hours/day: <span className="text-accent">{sittingHours}</span></label><input type="range" min={0} max={16} value={sittingHours} onChange={e => setSittingHours(parseInt(e.target.value))} className="w-full mt-2 h-2 bg-card-border rounded-lg appearance-none cursor-pointer accent-[#34d399]" /></div>
-              <div><label className="text-xs text-muted-foreground">Screen time/day: <span className="text-accent">{screenTime}h</span></label><input type="range" min={1} max={16} value={screenTime} onChange={e => setScreenTime(parseInt(e.target.value))} className="w-full mt-2 h-2 bg-card-border rounded-lg appearance-none cursor-pointer accent-[#34d399]" /></div>
-            </div>
-            <div><label className="text-xs text-muted-foreground mb-2 block">Best time for exercise</label>
-              <div className="grid grid-cols-5 gap-2">
-                {(['morning', 'lunch', 'evening', 'weekends', 'inconsistent'] as const).map(v => (
-                  <button key={v} onClick={() => setExerciseWindow(v)} className={clsx('py-2 rounded-xl text-xs font-medium capitalize transition-all', exerciseWindow === v ? 'bg-accent text-black' : 'bg-card border border-card-border text-muted-foreground')}>{v}</button>
-                ))}
-              </div>
-            </div>
-            <div>
-              <label className="text-xs text-muted-foreground mb-1 block">Biggest pain points (what bothers you most?)</label>
-              <textarea value={painPoints} onChange={e => setPainPoints(e.target.value)} rows={3} placeholder="e.g. Afternoon energy crash at 2 PM, brain fog in meetings, lower back stiffness, can't fall asleep..." className="w-full rounded-xl bg-card border border-card-border px-3 py-2.5 text-sm outline-none focus:border-accent resize-none" />
-            </div>
-            <div>
-              <label className="text-xs text-muted-foreground mb-1 block">Non-negotiables (things you won&apos;t give up)</label>
-              <textarea value={nonNegotiables} onChange={e => setNonNegotiables(e.target.value)} rows={2} placeholder="e.g. Friday pizza night, morning coffee, weekend drinks..." className="w-full rounded-xl bg-card border border-card-border px-3 py-2.5 text-sm outline-none focus:border-accent resize-none" />
-            </div>
-          </div>
+          <Step4Schedule
+            scheduleType={scheduleType}
+            setScheduleType={setScheduleType}
+            workStart={workStart}
+            setWorkStart={setWorkStart}
+            workEnd={workEnd}
+            setWorkEnd={setWorkEnd}
+            workLocation={workLocation}
+            setWorkLocation={setWorkLocation}
+            activeDays={activeDays}
+            setActiveDays={setActiveDays}
+            gymAccess={gymAccess}
+            setGymAccess={setGymAccess}
+            gymEquipment={gymEquipment}
+            setGymEquipment={setGymEquipment}
+            sittingHours={sittingHours}
+            setSittingHours={setSittingHours}
+            exerciseWindow={exerciseWindow}
+            setExerciseWindow={setExerciseWindow}
+            screenTime={screenTime}
+            setScreenTime={setScreenTime}
+            painPoints={painPoints}
+            setPainPoints={setPainPoints}
+            nonNegotiables={nonNegotiables}
+            setNonNegotiables={setNonNegotiables}
+          />
         )}
 
         {/* STEP 4 — Goals */}
         {step === 4 && (
-          <div className="space-y-5">
-            <div>
-              <h1 className="text-2xl font-bold">Your Goals</h1>
-              <p className="text-muted-foreground text-sm mt-1">What matters most?</p>
-            </div>
-            <div>
-              <label className="text-xs text-muted-foreground mb-2 block">Primary goal (pick ONE)</label>
-              <div className="grid grid-cols-2 gap-2">
-                {GOALS.map(g => (
-                  <button key={g} onClick={() => setPrimaryGoal(g)} className={clsx('p-3 rounded-xl text-sm text-left transition-all', primaryGoal === g ? 'bg-accent/10 border border-accent/50 text-accent' : 'bg-card border border-card-border text-muted-foreground')}>{g}</button>
-                ))}
-              </div>
-            </div>
-            <div>
-              <label className="text-xs text-muted-foreground mb-2 block">Secondary goals (up to 3)</label>
-              <div className="grid grid-cols-2 gap-2">
-                {GOALS.filter(g => g !== primaryGoal).map(g => (
-                  <button key={g} onClick={() => {
-                    if (secondaryGoals.includes(g)) setSecondaryGoals(p => p.filter(x => x !== g));
-                    else if (secondaryGoals.length < 3) setSecondaryGoals(p => [...p, g]);
-                  }} className={clsx('p-2 rounded-xl text-xs text-left transition-all', secondaryGoals.includes(g) ? 'bg-accent/10 border border-accent/50 text-accent' : 'bg-card border border-card-border text-muted-foreground')}>{g}</button>
-                ))}
-              </div>
-            </div>
-            <div>
-              <label className="text-xs text-muted-foreground">Specific target (optional)</label>
-              <input type="text" value={specificTarget} onChange={e => setSpecificTarget(e.target.value)} placeholder="e.g. Lose 10kg by summer, HbA1c < 5.3" className="w-full mt-1 rounded-xl bg-card border border-card-border px-3 py-2.5 text-sm outline-none focus:border-accent" />
-            </div>
-            <div><label className="text-xs text-muted-foreground mb-2 block">Commitment horizon</label>
-              <div className="grid grid-cols-5 gap-2">
-                {[{ v: 1, l: '1 mo' }, { v: 3, l: '3 mo' }, { v: 6, l: '6 mo' }, { v: 12, l: '1 yr' }, { v: 120, l: 'ongoing' }].map(({ v, l }) => (
-                  <button key={v} onClick={() => setTimelineMonths(v)} className={clsx('py-2 rounded-xl text-xs font-medium transition-all', timelineMonths === v ? 'bg-accent text-black' : 'bg-card border border-card-border text-muted-foreground')}>{l}</button>
-                ))}
-              </div>
-            </div>
-            <div><label className="text-xs text-muted-foreground mb-2 block">Time available per day</label>
-              <div className="flex gap-2">
-                {[{ v: 30, l: '<30 min' }, { v: 60, l: '30-60' }, { v: 120, l: '1-2h' }, { v: 180, l: '2+h' }].map(({ v, l }) => (
-                  <button key={v} onClick={() => setTimeBudget(v)} className={clsx('flex-1 py-2 rounded-xl text-xs font-medium transition-all', timeBudget === v ? 'bg-accent text-black' : 'bg-card border border-card-border text-muted-foreground')}>{l}</button>
-                ))}
-              </div>
-            </div>
-            <div><label className="text-xs text-muted-foreground mb-2 block">Monthly budget (RON)</label>
-              <div className="flex gap-2">
-                {[{ v: 200, l: '<200' }, { v: 500, l: '200-500' }, { v: 1500, l: '500-1500' }, { v: 5000, l: '1500+' }].map(({ v, l }) => (
-                  <button key={v} onClick={() => setMonthlyBudget(v)} className={clsx('flex-1 py-2 rounded-xl text-xs font-medium transition-all', monthlyBudget === v ? 'bg-accent text-black' : 'bg-card border border-card-border text-muted-foreground')}>{l} RON</button>
-                ))}
-              </div>
-            </div>
-            <div><label className="text-xs text-muted-foreground mb-2 block">Experimental openness</label>
-              <div className="space-y-2">
-                {[{ v: 'otc_only', l: 'OTC Only', d: 'Over-the-counter supplements only' }, { v: 'open_rx', l: 'Open to Rx', d: 'Including prescription medication discussion' }, { v: 'open_experimental', l: 'Experimental', d: 'Peptides, advanced therapies, off-label' }].map(({ v, l, d }) => (
-                  <button key={v} onClick={() => setExperimental(v)} className={clsx('w-full p-3 rounded-xl text-left transition-all', experimental === v ? 'bg-accent/10 border border-accent/50' : 'bg-card border border-card-border')}>
-                    <span className={clsx('text-sm font-medium', experimental === v ? 'text-accent' : '')}>{l}</span>
-                    <span className="text-xs text-muted-foreground ml-2">{d}</span>
-                  </button>
-                ))}
-              </div>
-            </div>
-            {error && <p className="text-sm text-danger">{error}</p>}
-          </div>
+          <Step5Goals
+            primaryGoal={primaryGoal}
+            setPrimaryGoal={setPrimaryGoal}
+            secondaryGoals={secondaryGoals}
+            setSecondaryGoals={setSecondaryGoals}
+            specificTarget={specificTarget}
+            setSpecificTarget={setSpecificTarget}
+            timelineMonths={timelineMonths}
+            setTimelineMonths={setTimelineMonths}
+            timeBudget={timeBudget}
+            setTimeBudget={setTimeBudget}
+            monthlyBudget={monthlyBudget}
+            setMonthlyBudget={setMonthlyBudget}
+            experimental={experimental}
+            setExperimental={setExperimental}
+            error={error}
+          />
         )}
       </div>
 
