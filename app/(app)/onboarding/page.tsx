@@ -9,7 +9,9 @@ import { GeneratingScreen } from '@/components/protocol/GeneratingScreen';
 import { DevicePicker } from '@/components/onboarding/DevicePicker';
 import { EquipmentRow } from '@/components/onboarding/EquipmentRow';
 import { CollapseSection } from '@/components/onboarding/CollapseSection';
+import { Step1Basics } from '@/components/onboarding/Step1Basics';
 import { Step2Biomarkers } from '@/components/onboarding/Step2Biomarkers';
+import { Step3Lifestyle } from '@/components/onboarding/Step3Lifestyle';
 import { Step4Schedule } from '@/components/onboarding/Step4Schedule';
 import { Step5Goals } from '@/components/onboarding/Step5Goals';
 import { Upload, FileText, ChevronDown, ChevronUp, Plus, X } from 'lucide-react';
@@ -864,351 +866,72 @@ export default function OnboardingPage() {
       <div className="flex-1 px-6 pb-40 max-w-2xl mx-auto w-full overflow-y-auto">
         {/* STEP 0 — Basics */}
         {step === 0 && (
-          <div className="space-y-4">
-            <div>
-              <h1 className="text-2xl font-bold">The Basics</h1>
-              <p className="text-muted-foreground text-sm mt-1">Only age, height, and weight are required. Everything else is optional — the more you share, the more personalized your protocol.</p>
-            </div>
-
-            {/* Required fields */}
-            <div className="grid grid-cols-2 gap-3">
-              <div>
-                <label className="text-xs text-muted-foreground">Nume (opțional)</label>
-                <input type="text" value={name} onChange={e => setName(e.target.value)} placeholder="Alex" className="w-full mt-1 rounded-xl bg-card border border-card-border px-3 py-2.5 text-sm outline-none focus:border-accent" />
-              </div>
-              <div>
-                <label htmlFor="onb-age" className="text-xs text-muted-foreground">Vârstă <span className="text-accent">*</span></label>
-                <input
-                  id="onb-age"
-                  type="number"
-                  value={age}
-                  onChange={e => { setAge(e.target.value); if (stepErrors['onb-age']) setStepErrors(p => { const { 'onb-age': _removed, ...rest } = p; void _removed; return rest; }); }}
-                  aria-invalid={!!stepErrors['onb-age']}
-                  aria-describedby={stepErrors['onb-age'] ? 'onb-age-err' : undefined}
-                  placeholder="25"
-                  className={clsx('w-full mt-1 rounded-xl bg-card border px-3 py-2.5 text-sm outline-none focus:border-accent font-mono',
-                    stepErrors['onb-age'] ? 'border-danger' : 'border-card-border')}
-                />
-                {stepErrors['onb-age']
-                  ? <p id="onb-age-err" className="text-xs text-danger mt-1">{stepErrors['onb-age']}</p>
-                  : <p className="text-xs text-muted mt-1">Sau alege data nașterii mai jos pentru precizie</p>}
-              </div>
-              <div className="col-span-2">
-                <label className="text-xs text-muted-foreground">Data nașterii (opțional — mai precis decât doar vârsta)</label>
-                <input type="date" value={birthDate} onChange={e => { setBirthDate(e.target.value); if (e.target.value) { const yrs = Math.floor((Date.now() - new Date(e.target.value).getTime()) / (365.25 * 24 * 3600 * 1000)); setAge(String(yrs)); } }} className="w-full mt-1 rounded-xl bg-card border border-card-border px-3 py-2.5 text-sm outline-none focus:border-accent font-mono" />
-              </div>
-              <div>
-                <label htmlFor="onb-height" className="text-xs text-muted-foreground">Înălțime (cm) <span className="text-accent">*</span></label>
-                <input
-                  id="onb-height"
-                  type="number"
-                  value={heightCm}
-                  onChange={e => { setHeightCm(e.target.value); if (stepErrors['onb-height']) setStepErrors(p => { const { 'onb-height': _removed, ...rest } = p; void _removed; return rest; }); }}
-                  aria-invalid={!!stepErrors['onb-height']}
-                  aria-describedby={stepErrors['onb-height'] ? 'onb-height-err' : undefined}
-                  placeholder="180"
-                  className={clsx('w-full mt-1 rounded-xl bg-card border px-3 py-2.5 text-sm outline-none focus:border-accent font-mono',
-                    stepErrors['onb-height'] ? 'border-danger' : 'border-card-border')}
-                />
-                {stepErrors['onb-height']
-                  ? <p id="onb-height-err" className="text-xs text-danger mt-1">{stepErrors['onb-height']}</p>
-                  : <p className="text-xs text-muted mt-1">Măsoară acum pentru acuratețe</p>}
-              </div>
-              <div>
-                <label htmlFor="onb-weight" className="text-xs text-muted-foreground">Greutate (kg) <span className="text-accent">*</span></label>
-                <input
-                  id="onb-weight"
-                  type="number"
-                  step="0.1"
-                  value={weightKg}
-                  onChange={e => { setWeightKg(e.target.value); if (stepErrors['onb-weight']) setStepErrors(p => { const { 'onb-weight': _removed, ...rest } = p; void _removed; return rest; }); }}
-                  aria-invalid={!!stepErrors['onb-weight']}
-                  aria-describedby={stepErrors['onb-weight'] ? 'onb-weight-err' : undefined}
-                  placeholder="80"
-                  className={clsx('w-full mt-1 rounded-xl bg-card border px-3 py-2.5 text-sm outline-none focus:border-accent font-mono',
-                    stepErrors['onb-weight'] ? 'border-danger' : 'border-card-border')}
-                />
-                {stepErrors['onb-weight']
-                  ? <p id="onb-weight-err" className="text-xs text-danger mt-1">{stepErrors['onb-weight']}</p>
-                  : <p className="text-xs text-muted mt-1">Cântărește-te dimineața, pe nemâncate</p>}
-              </div>
-            </div>
-
-            <div>
-              <label className="text-xs text-muted-foreground mb-2 block">Nivel de activitate: <span className="text-accent font-medium">{activityLabels[activityLevel]}</span></label>
-              <input type="range" min={0} max={4} value={activityLevel} onChange={e => setActivityLevel(parseInt(e.target.value))} className="w-full h-2 bg-card-border rounded-lg appearance-none cursor-pointer accent-[#34d399]" />
-              <div className="flex justify-between text-xs text-muted mt-1">{activityLabels.map(l => <span key={l}>{l}</span>)}</div>
-            </div>
-
-            {/* ═══════════ WEARABLES — separate smartwatch + smart ring questions ═══════════ */}
-            <div className="space-y-3">
-              <div className="flex items-center gap-2">
-                <h3 className="text-sm font-semibold">⌚ Wearables</h3>
-                <p className="text-xs text-muted-foreground">The AI uses device capabilities to know what metrics you can track daily.</p>
-              </div>
-              <DevicePicker
-                label="Smartwatch"
-                icon="⌚"
-                brands={SMARTWATCH_BRANDS}
-                brand={smartwatchBrand}
-                model={smartwatchModel}
-                other={smartwatchOther}
-                onBrandChange={v => { setSmartwatchBrand(v); if (v !== 'none') setWearable(v); else if (smartRingBrand === 'none') setWearable('none'); }}
-                onModelChange={setSmartwatchModel}
-                onOtherChange={setSmartwatchOther}
-              />
-              <DevicePicker
-                label="Smart ring"
-                icon="💍"
-                brands={SMART_RING_BRANDS}
-                brand={smartRingBrand}
-                model={smartRingModel}
-                other={smartRingOther}
-                onBrandChange={v => { setSmartRingBrand(v); if (v !== 'none' && smartwatchBrand === 'none') setWearable(v); }}
-                onModelChange={setSmartRingModel}
-                onOtherChange={setSmartRingOther}
-              />
-            </div>
-
-            {/* ═══════════ HOME EQUIPMENT — Yes / No / Will buy per item ═══════════ */}
-            <div className="space-y-3">
-              <div className="flex items-center gap-2">
-                <h3 className="text-sm font-semibold">🏠 Home equipment</h3>
-                <p className="text-xs text-muted-foreground">What can you measure at home? Drives tracking suggestions.</p>
-              </div>
-              <div className="space-y-2">
-                {HOME_EQUIPMENT.map(item => (
-                  <EquipmentRow
-                    key={item.key}
-                    item={item}
-                    status={equipmentOwnership[item.key]}
-                    note={equipmentNotes[item.key] || ''}
-                    onStatus={s => setEquipmentOwnership(p => ({ ...p, [item.key]: s }))}
-                    onNote={n => setEquipmentNotes(p => ({ ...p, [item.key]: n }))}
-                  />
-                ))}
-              </div>
-            </div>
-
-            <div>
-              <label className="text-xs text-muted-foreground mb-2 block">Ai analize de sânge recente?</label>
-              <div className="flex gap-3">
-                {[{ v: true, l: 'Yes, I have results' }, { v: false, l: 'No, skip this' }].map(({ v, l }) => (
-                  <button key={String(v)} onClick={() => setHasBloodWork(v)} className={clsx('flex-1 py-3 rounded-xl text-sm font-medium transition-all', hasBloodWork === v ? 'bg-accent text-black' : 'bg-card border border-card-border text-muted-foreground')}>{l}</button>
-                ))}
-              </div>
-            </div>
-
-            {/* Motivation — always visible, drives AI coaching tone */}
-            <div className="rounded-2xl bg-accent/5 border border-accent/20 p-4 space-y-3">
-              <div className="flex items-center gap-2">
-                <span className="text-lg">🎯</span>
-                <h3 className="text-sm font-semibold">Your &ldquo;why&rdquo; — the most important field</h3>
-              </div>
-              <div>
-                <label className="text-xs text-muted-foreground">Motivele principale + ce te-a determinat ACUM?</label>
-                <textarea value={motivation} onChange={e => setMotivation(e.target.value)} rows={3} placeholder="ex: tata a avut infarct la 67 — vreau să evit asta. Am împlinit 35 și mi-a scăzut energia. Vreau să fiu prezent pentru copii pe termen lung." className="w-full mt-1 rounded-xl bg-card border border-card-border px-3 py-2.5 text-sm outline-none focus:border-accent resize-none" />
-                <p className="text-xs text-muted-foreground mt-1">The AI uses this to calibrate coaching tone + prioritize the right interventions for you.</p>
-              </div>
-              <div>
-                <label className="text-xs text-muted-foreground mb-2 block">Cât de disciplinat ești cu obiceiurile? <span className="text-accent">{discipline}/10</span></label>
-                <input type="range" min={1} max={10} value={discipline} onChange={e => setDiscipline(parseInt(e.target.value))} className="w-full h-2 bg-card-border rounded-lg appearance-none cursor-pointer accent-[#34d399]" />
-              </div>
-              <div className="flex items-center gap-3">
-                <button onClick={() => setSupportSystem(!supportSystem)} className={clsx('w-6 h-6 rounded-lg border-2 flex items-center justify-center shrink-0', supportSystem ? 'bg-accent border-accent' : 'border-card-border')}>{supportSystem && <span className="text-black text-xs">✓</span>}</button>
-                <span className="text-sm">I have support from family/partner</span>
-              </div>
-            </div>
-
-            {/* Identity & sex (collapsible) */}
-            <CollapseSection title="🧬 Identitate și biologie (opțional)" expanded={basicsExpanded.identity} onToggle={() => setBasicsExpanded(p => ({ ...p, identity: !p.identity }))}>
-              <div>
-                <label className="text-xs text-muted-foreground mb-2 block">Sex biologic</label>
-                <div className="grid grid-cols-3 gap-2">
-                  {(['male', 'female', 'intersex'] as const).map(s => (
-                    <button key={s} onClick={() => setSex(s)} className={clsx('py-2.5 rounded-xl text-sm font-medium capitalize transition-all', sex === s ? 'bg-accent text-black' : 'bg-card border border-card-border text-muted-foreground')}>
-                      {s}
-                    </button>
-                  ))}
-                </div>
-              </div>
-              {sex === 'intersex' && (
-                <div>
-                  <label className="text-xs text-muted-foreground">Cromozomi (dacă știi)</label>
-                  <select value={chromosomes} onChange={e => setChromosomes(e.target.value)} className="w-full mt-1 rounded-xl bg-card border border-card-border px-3 py-2.5 text-sm outline-none focus:border-accent">
-                    <option value="">Prefer not to say</option>
-                    <option value="XX">XX</option>
-                    <option value="XY">XY</option>
-                    <option value="XXY">XXY (Klinefelter)</option>
-                    <option value="X0">X0 (Turner)</option>
-                    <option value="XYY">XYY</option>
-                    <option value="mosaic">Mosaic / other</option>
-                    <option value="unknown">Unknown</option>
-                  </select>
-                </div>
-              )}
-              <div>
-                <label className="text-xs text-muted-foreground">Identitate de gen (opțional)</label>
-                <input type="text" value={genderIdentity} onChange={e => setGenderIdentity(e.target.value)} placeholder="ex: bărbat, femeie, non-binar, trans" className="w-full mt-1 rounded-xl bg-card border border-card-border px-3 py-2.5 text-sm outline-none focus:border-accent" />
-              </div>
-              <div className="flex items-center gap-3">
-                <button onClick={() => setTransitioning(!transitioning)} className={clsx('w-6 h-6 rounded-lg border-2 flex items-center justify-center shrink-0', transitioning ? 'bg-accent border-accent' : 'border-card-border')}>{transitioning && <span className="text-black text-xs">✓</span>}</button>
-                <span className="text-sm">Currently transitioning / considering transitioning</span>
-              </div>
-              {transitioning && (
-                <div>
-                  <label className="text-xs text-muted-foreground">În tranziție către (afectează protocolul hormonal)</label>
-                  <select value={transitionTo} onChange={e => setTransitionTo(e.target.value)} className="w-full mt-1 rounded-xl bg-card border border-card-border px-3 py-2.5 text-sm outline-none focus:border-accent">
-                    <option value="">Select...</option>
-                    <option value="male">Masculinizing (HRT → male)</option>
-                    <option value="female">Feminizing (HRT → female)</option>
-                    <option value="non-binary">Non-binary / micro-dosing</option>
-                    <option value="exploring">Exploring options</option>
-                  </select>
-                </div>
-              )}
-              {sex === 'female' && (
-                <>
-                  <div className="flex items-center gap-3">
-                    <button onClick={() => setPregnant(!pregnant)} className={clsx('w-6 h-6 rounded-lg border-2 flex items-center justify-center shrink-0', pregnant ? 'bg-warning border-warning' : 'border-card-border')}>{pregnant && <span className="text-black text-xs">✓</span>}</button>
-                    <span className="text-sm">Pregnant</span>
-                  </div>
-                  {pregnant && (
-                    <div>
-                      <label className="text-xs text-muted-foreground">Câte săptămâni?</label>
-                      <input type="number" value={pregnancyWeeks} onChange={e => setPregnancyWeeks(e.target.value)} placeholder="12" min={0} max={45} className="w-full mt-1 rounded-xl bg-card border border-card-border px-3 py-2.5 text-sm outline-none focus:border-accent font-mono" />
-                    </div>
-                  )}
-                  <div className="flex items-center gap-3">
-                    <button onClick={() => setBreastfeeding(!breastfeeding)} className={clsx('w-6 h-6 rounded-lg border-2 flex items-center justify-center shrink-0', breastfeeding ? 'bg-warning border-warning' : 'border-card-border')}>{breastfeeding && <span className="text-black text-xs">✓</span>}</button>
-                    <span className="text-sm">Breastfeeding</span>
-                  </div>
-                </>
-              )}
-              <div>
-                <label className="text-xs text-muted-foreground">Etnie / moștenire (afectează unele intervale de biomarkeri)</label>
-                <select value={ethnicity} onChange={e => setEthnicity(e.target.value)} className="w-full mt-1 rounded-xl bg-card border border-card-border px-3 py-2.5 text-sm outline-none focus:border-accent">
-                  <option value="">Select...</option>
-                  <option value="european">European</option>
-                  <option value="african">African</option>
-                  <option value="asian_east">East Asian</option>
-                  <option value="asian_south">South Asian</option>
-                  <option value="hispanic">Hispanic/Latino</option>
-                  <option value="middle_eastern">Middle Eastern</option>
-                  <option value="mixed">Mixed / Other</option>
-                </select>
-              </div>
-              <div>
-                <label className="text-xs text-muted-foreground mb-2 block">Tipul de muncă</label>
-                <div className="grid grid-cols-4 gap-2">
-                  {(['desk', 'physical', 'shift', 'mixed'] as const).map(o => (
-                    <button key={o} onClick={() => setOccupation(o)} className={clsx('py-2 rounded-xl text-xs font-medium capitalize transition-all', occupation === o ? 'bg-accent text-black' : 'bg-card border border-card-border text-muted-foreground')}>{o}</button>
-                  ))}
-                </div>
-              </div>
-              <div>
-                <label className="text-xs text-muted-foreground">Puls de repaus (dacă știi, bpm dimineața)</label>
-                <input type="number" value={restingHR} onChange={e => setRestingHR(e.target.value)} placeholder="65" className="w-full mt-1 rounded-xl bg-card border border-card-border px-3 py-2.5 text-sm outline-none focus:border-accent font-mono" />
-              </div>
-            </CollapseSection>
-
-            {/* Location */}
-            <CollapseSection title="🌍 Locație (opțional — afectează clima, poluarea, cultura alimentară)" expanded={basicsExpanded.location} onToggle={() => setBasicsExpanded(p => ({ ...p, location: !p.location }))}>
-              <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <label className="text-xs text-muted-foreground">Țara de reședință</label>
-                  <input type="text" value={country} onChange={e => setCountry(e.target.value)} placeholder="Romania" className="w-full mt-1 rounded-xl bg-card border border-card-border px-3 py-2.5 text-sm outline-none focus:border-accent" />
-                </div>
-                <div>
-                  <label className="text-xs text-muted-foreground">Oraș</label>
-                  <input type="text" value={city} onChange={e => setCity(e.target.value)} placeholder="București" className="w-full mt-1 rounded-xl bg-card border border-card-border px-3 py-2.5 text-sm outline-none focus:border-accent" />
-                </div>
-                <div>
-                  <label className="text-xs text-muted-foreground">Țara nașterii</label>
-                  <input type="text" value={birthCountry} onChange={e => setBirthCountry(e.target.value)} placeholder="Romania" className="w-full mt-1 rounded-xl bg-card border border-card-border px-3 py-2.5 text-sm outline-none focus:border-accent" />
-                </div>
-                <div>
-                  <label className="text-xs text-muted-foreground">City of birth</label>
-                  <input type="text" value={birthCity} onChange={e => setBirthCity(e.target.value)} placeholder="Cluj-Napoca" className="w-full mt-1 rounded-xl bg-card border border-card-border px-3 py-2.5 text-sm outline-none focus:border-accent" />
-                </div>
-              </div>
-            </CollapseSection>
-
-            {/* Body measurements (deep optional) */}
-            <CollapseSection title="📏 Măsurători corporale și teste fitness (toate opționale)" expanded={basicsExpanded.measurements} onToggle={() => setBasicsExpanded(p => ({ ...p, measurements: !p.measurements }))}>
-              <p className="text-xs text-muted-foreground">The more you fill in, the more precise your protocol. Skip anything you don&apos;t have.</p>
-              <p className="text-xs text-accent uppercase tracking-wider mt-2">Circumference (cm)</p>
-              <div className="grid grid-cols-2 gap-2">
-                <div><label className="text-xs text-muted">Waist</label><input type="number" value={waistCm} onChange={e => setWaistCm(e.target.value)} placeholder="85" className="w-full mt-1 rounded-xl bg-card border border-card-border px-3 py-2 text-xs outline-none focus:border-accent font-mono" /></div>
-                <div><label className="text-xs text-muted">Hip</label><input type="number" value={hipCm} onChange={e => setHipCm(e.target.value)} placeholder="95" className="w-full mt-1 rounded-xl bg-card border border-card-border px-3 py-2 text-xs outline-none focus:border-accent font-mono" /></div>
-                <div><label className="text-xs text-muted">Arm</label><input type="number" value={armCm} onChange={e => setArmCm(e.target.value)} placeholder="32" className="w-full mt-1 rounded-xl bg-card border border-card-border px-3 py-2 text-xs outline-none focus:border-accent font-mono" /></div>
-                <div><label className="text-xs text-muted">Thigh</label><input type="number" value={thighCm} onChange={e => setThighCm(e.target.value)} placeholder="55" className="w-full mt-1 rounded-xl bg-card border border-card-border px-3 py-2 text-xs outline-none focus:border-accent font-mono" /></div>
-              </div>
-              <p className="text-xs text-accent uppercase tracking-wider mt-2">Body composition</p>
-              <div className="grid grid-cols-2 gap-2">
-                <div><label className="text-xs text-muted">Body fat %</label><input type="number" step="0.1" value={bodyFatPct} onChange={e => setBodyFatPct(e.target.value)} placeholder="18" className="w-full mt-1 rounded-xl bg-card border border-card-border px-3 py-2 text-xs outline-none focus:border-accent font-mono" /></div>
-                <div><label className="text-xs text-muted">VO2 Max (ml/kg)</label><input type="number" step="0.1" value={vo2Max} onChange={e => setVo2Max(e.target.value)} placeholder="42" className="w-full mt-1 rounded-xl bg-card border border-card-border px-3 py-2 text-xs outline-none focus:border-accent font-mono" /></div>
-              </div>
-              <p className="text-xs text-accent uppercase tracking-wider mt-2">Cardiovascular</p>
-              <div className="grid grid-cols-3 gap-2">
-                <div><label className="text-xs text-muted">BP Sys</label><input type="number" value={bloodPressureSys} onChange={e => setBloodPressureSys(e.target.value)} placeholder="120" className="w-full mt-1 rounded-xl bg-card border border-card-border px-3 py-2 text-xs outline-none focus:border-accent font-mono" /></div>
-                <div><label className="text-xs text-muted">BP Dia</label><input type="number" value={bloodPressureDia} onChange={e => setBloodPressureDia(e.target.value)} placeholder="80" className="w-full mt-1 rounded-xl bg-card border border-card-border px-3 py-2 text-xs outline-none focus:border-accent font-mono" /></div>
-                <div><label className="text-xs text-muted">HRV (ms)</label><input type="number" value={hrv} onChange={e => setHrv(e.target.value)} placeholder="55" className="w-full mt-1 rounded-xl bg-card border border-card-border px-3 py-2 text-xs outline-none focus:border-accent font-mono" /></div>
-              </div>
-              <p className="text-xs text-accent uppercase tracking-wider mt-2">Fitness tests</p>
-              <div className="grid grid-cols-2 gap-2">
-                <div><label className="text-xs text-muted">Grip strength (kg)</label><input type="number" step="0.5" value={gripStrength} onChange={e => setGripStrength(e.target.value)} placeholder="40" className="w-full mt-1 rounded-xl bg-card border border-card-border px-3 py-2 text-xs outline-none focus:border-accent font-mono" /></div>
-                <div><label className="text-xs text-muted">Cooper test (m in 12 min)</label><input type="number" value={cooperTest} onChange={e => setCooperTest(e.target.value)} placeholder="2400" className="w-full mt-1 rounded-xl bg-card border border-card-border px-3 py-2 text-xs outline-none focus:border-accent font-mono" /></div>
-                <div><label className="text-xs text-muted">Max push-ups / 1 min</label><input type="number" value={maxPushups} onChange={e => setMaxPushups(e.target.value)} placeholder="30" className="w-full mt-1 rounded-xl bg-card border border-card-border px-3 py-2 text-xs outline-none focus:border-accent font-mono" /></div>
-                <div><label className="text-xs text-muted">Max plank (sec)</label><input type="number" value={plankSec} onChange={e => setPlankSec(e.target.value)} placeholder="90" className="w-full mt-1 rounded-xl bg-card border border-card-border px-3 py-2 text-xs outline-none focus:border-accent font-mono" /></div>
-                <div><label className="text-xs text-muted">Max squats / 1 min</label><input type="number" value={maxSquats} onChange={e => setMaxSquats(e.target.value)} placeholder="40" className="w-full mt-1 rounded-xl bg-card border border-card-border px-3 py-2 text-xs outline-none focus:border-accent font-mono" /></div>
-                <div><label className="text-xs text-muted">Sit-and-reach (cm)</label><input type="number" value={sitReachCm} onChange={e => setSitReachCm(e.target.value)} placeholder="5" className="w-full mt-1 rounded-xl bg-card border border-card-border px-3 py-2 text-xs outline-none focus:border-accent font-mono" /></div>
-                <div className="col-span-2"><label className="text-xs text-muted">Balance — one-leg stand, eyes closed (sec, &gt;30 = good)</label><input type="number" value={balanceSec} onChange={e => setBalanceSec(e.target.value)} placeholder="45" className="w-full mt-1 rounded-xl bg-card border border-card-border px-3 py-2 text-xs outline-none focus:border-accent font-mono" /></div>
-              </div>
-              <p className="text-xs text-accent uppercase tracking-wider mt-2">Weight history</p>
-              <div className="grid grid-cols-3 gap-2">
-                <div><label className="text-xs text-muted">1 year ago (kg)</label><input type="number" step="0.1" value={weightOneYearAgo} onChange={e => setWeightOneYearAgo(e.target.value)} className="w-full mt-1 rounded-xl bg-card border border-card-border px-3 py-2 text-xs outline-none focus:border-accent font-mono" /></div>
-                <div><label className="text-xs text-muted">Min as adult</label><input type="number" step="0.1" value={weightMinAdult} onChange={e => setWeightMinAdult(e.target.value)} className="w-full mt-1 rounded-xl bg-card border border-card-border px-3 py-2 text-xs outline-none focus:border-accent font-mono" /></div>
-                <div><label className="text-xs text-muted">Max as adult</label><input type="number" step="0.1" value={weightMaxAdult} onChange={e => setWeightMaxAdult(e.target.value)} className="w-full mt-1 rounded-xl bg-card border border-card-border px-3 py-2 text-xs outline-none focus:border-accent font-mono" /></div>
-              </div>
-            </CollapseSection>
-
-            {/* Family history */}
-            <CollapseSection title="🧬 Istoric familial (determină prioritățile preventive)" expanded={basicsExpanded.family} onToggle={() => setBasicsExpanded(p => ({ ...p, family: !p.family }))}>
-              <div>
-                <label className="text-xs text-muted-foreground">Parents & grandparents — alive? If passed, at what age and from what?</label>
-                <textarea value={parentsAlive} onChange={e => setParentsAlive(e.target.value)} rows={3} placeholder="e.g. Dad passed at 67 from heart attack, Mom alive 72. Grandfathers both passed in 80s from cancer." className="w-full mt-1 rounded-xl bg-card border border-card-border px-3 py-2.5 text-xs outline-none focus:border-accent resize-none" />
-              </div>
-              <p className="text-xs text-muted-foreground">Family members (parents, siblings, grandparents) with these conditions:</p>
-              <div className="grid grid-cols-2 gap-2">
-                {[
-                  { val: familyCardio, set: setFamilyCardio, label: '❤️ Heart disease / stroke' },
-                  { val: familyCancer, set: setFamilyCancer, label: '🎗️ Cancer' },
-                  { val: familyDiabetes, set: setFamilyDiabetes, label: '🩸 Diabetes' },
-                  { val: familyAlzheimers, set: setFamilyAlzheimers, label: '🧠 Alzheimer\'s / dementia' },
-                  { val: familyAutoimmune, set: setFamilyAutoimmune, label: '🛡️ Autoimmune' },
-                  { val: familyMental, set: setFamilyMental, label: '💭 Mental illness' },
-                ].map(({ val, set, label }) => (
-                  <button key={label} onClick={() => set(!val)} className={clsx('flex items-center gap-2 px-3 py-2 rounded-xl text-xs text-left transition-all', val ? 'bg-amber-500/20 text-amber-400 border border-amber-500/50' : 'bg-card border border-card-border text-muted-foreground')}>
-                    <div className={clsx('w-4 h-4 rounded border-2 flex items-center justify-center text-xs', val ? 'bg-amber-500 border-amber-500 text-black' : 'border-card-border')}>{val ? '✓' : ''}</div>
-                    {label}
-                  </button>
-                ))}
-              </div>
-              <div>
-                <label className="text-xs text-muted-foreground">Have you done a genetic test?</label>
-                <select value={geneticTestDone} onChange={e => setGeneticTestDone(e.target.value)} className="w-full mt-1 rounded-xl bg-card border border-card-border px-3 py-2.5 text-sm outline-none focus:border-accent">
-                  <option value="">Not yet</option>
-                  <option value="23andme">23andMe</option>
-                  <option value="myheritage">MyHeritage</option>
-                  <option value="nebula">Nebula Genomics</option>
-                  <option value="ancestry">Ancestry DNA</option>
-                  <option value="other">Other</option>
-                </select>
-              </div>
-            </CollapseSection>
-
-          </div>
+          <Step1Basics
+            name={name} setName={setName}
+            age={age} setAge={setAge}
+            birthDate={birthDate} setBirthDate={setBirthDate}
+            heightCm={heightCm} setHeightCm={setHeightCm}
+            weightKg={weightKg} setWeightKg={setWeightKg}
+            stepErrors={stepErrors} setStepErrors={setStepErrors}
+            activityLevel={activityLevel} setActivityLevel={setActivityLevel}
+            activityLabels={activityLabels}
+            wearable={wearable} setWearable={setWearable}
+            smartwatchBrand={smartwatchBrand} setSmartwatchBrand={setSmartwatchBrand}
+            smartwatchModel={smartwatchModel} setSmartwatchModel={setSmartwatchModel}
+            smartwatchOther={smartwatchOther} setSmartwatchOther={setSmartwatchOther}
+            smartRingBrand={smartRingBrand} setSmartRingBrand={setSmartRingBrand}
+            smartRingModel={smartRingModel} setSmartRingModel={setSmartRingModel}
+            smartRingOther={smartRingOther} setSmartRingOther={setSmartRingOther}
+            equipmentOwnership={equipmentOwnership} setEquipmentOwnership={setEquipmentOwnership}
+            equipmentNotes={equipmentNotes} setEquipmentNotes={setEquipmentNotes}
+            hasBloodWork={hasBloodWork} setHasBloodWork={setHasBloodWork}
+            motivation={motivation} setMotivation={setMotivation}
+            discipline={discipline} setDiscipline={setDiscipline}
+            supportSystem={supportSystem} setSupportSystem={setSupportSystem}
+            basicsExpanded={basicsExpanded} setBasicsExpanded={setBasicsExpanded}
+            sex={sex} setSex={setSex}
+            chromosomes={chromosomes} setChromosomes={setChromosomes}
+            genderIdentity={genderIdentity} setGenderIdentity={setGenderIdentity}
+            transitioning={transitioning} setTransitioning={setTransitioning}
+            transitionTo={transitionTo} setTransitionTo={setTransitionTo}
+            pregnant={pregnant} setPregnant={setPregnant}
+            pregnancyWeeks={pregnancyWeeks} setPregnancyWeeks={setPregnancyWeeks}
+            breastfeeding={breastfeeding} setBreastfeeding={setBreastfeeding}
+            ethnicity={ethnicity} setEthnicity={setEthnicity}
+            occupation={occupation} setOccupation={setOccupation}
+            restingHR={restingHR} setRestingHR={setRestingHR}
+            country={country} setCountry={setCountry}
+            city={city} setCity={setCity}
+            birthCountry={birthCountry} setBirthCountry={setBirthCountry}
+            birthCity={birthCity} setBirthCity={setBirthCity}
+            waistCm={waistCm} setWaistCm={setWaistCm}
+            hipCm={hipCm} setHipCm={setHipCm}
+            armCm={armCm} setArmCm={setArmCm}
+            thighCm={thighCm} setThighCm={setThighCm}
+            bodyFatPct={bodyFatPct} setBodyFatPct={setBodyFatPct}
+            vo2Max={vo2Max} setVo2Max={setVo2Max}
+            bloodPressureSys={bloodPressureSys} setBloodPressureSys={setBloodPressureSys}
+            bloodPressureDia={bloodPressureDia} setBloodPressureDia={setBloodPressureDia}
+            hrv={hrv} setHrv={setHrv}
+            gripStrength={gripStrength} setGripStrength={setGripStrength}
+            cooperTest={cooperTest} setCooperTest={setCooperTest}
+            maxPushups={maxPushups} setMaxPushups={setMaxPushups}
+            plankSec={plankSec} setPlankSec={setPlankSec}
+            maxSquats={maxSquats} setMaxSquats={setMaxSquats}
+            sitReachCm={sitReachCm} setSitReachCm={setSitReachCm}
+            balanceSec={balanceSec} setBalanceSec={setBalanceSec}
+            weightOneYearAgo={weightOneYearAgo} setWeightOneYearAgo={setWeightOneYearAgo}
+            weightMinAdult={weightMinAdult} setWeightMinAdult={setWeightMinAdult}
+            weightMaxAdult={weightMaxAdult} setWeightMaxAdult={setWeightMaxAdult}
+            parentsAlive={parentsAlive} setParentsAlive={setParentsAlive}
+            familyCardio={familyCardio} setFamilyCardio={setFamilyCardio}
+            familyCancer={familyCancer} setFamilyCancer={setFamilyCancer}
+            familyDiabetes={familyDiabetes} setFamilyDiabetes={setFamilyDiabetes}
+            familyAlzheimers={familyAlzheimers} setFamilyAlzheimers={setFamilyAlzheimers}
+            familyAutoimmune={familyAutoimmune} setFamilyAutoimmune={setFamilyAutoimmune}
+            familyMental={familyMental} setFamilyMental={setFamilyMental}
+            geneticTestDone={geneticTestDone} setGeneticTestDone={setGeneticTestDone}
+          />
         )}
 
         {/* STEP 1 — Blood Work */}
@@ -1230,537 +953,122 @@ export default function OnboardingPage() {
 
         {/* STEP 2 — Lifestyle */}
         {step === 2 && (
-          <div className="space-y-4">
-            <div>
-              <h1 className="text-2xl font-bold">Your Lifestyle</h1>
-              <p className="text-muted-foreground text-sm mt-1">~90 seconds. Shapes protocol as much as blood work.</p>
-            </div>
-
-            {/* Sleep */}
-            <CollapseSection title="😴 Somn" expanded={lifestyleExpanded.sleep} onToggle={() => setLifestyleExpanded(p => ({ ...p, sleep: !p.sleep }))}>
-              <div className="grid grid-cols-2 gap-3">
-                <div><label className="text-xs text-muted-foreground">Hours/night (avg)</label><input type="number" value={sleepHours} onChange={e => setSleepHours(e.target.value)} step="0.5" className="w-full mt-1 rounded-xl bg-card border border-card-border px-3 py-2.5 text-sm outline-none focus:border-accent font-mono" /></div>
-                <div><label className="text-xs text-muted-foreground">Quality (1-10)</label>
-                  <div className="flex gap-1 mt-1">{[...Array(10)].map((_, i) => (
-                    <button key={i} onClick={() => setSleepQuality(i + 1)} className={clsx('flex-1 h-9 rounded-lg text-xs font-mono transition-all', sleepQuality === i + 1 ? 'bg-accent text-black' : i + 1 <= sleepQuality ? 'bg-accent/20 text-accent' : 'bg-card border border-card-border text-muted')}>{i + 1}</button>
-                  ))}</div>
-                </div>
-                <div><label className="text-xs text-muted-foreground">Typical bedtime</label><input type="time" value={bedtime} onChange={e => setBedtime(e.target.value)} className="w-full mt-1 rounded-xl bg-card border border-card-border px-3 py-2.5 text-sm outline-none focus:border-accent font-mono" /></div>
-                <div><label className="text-xs text-muted-foreground">Typical wake time</label><input type="time" value={wakeTime} onChange={e => setWakeTime(e.target.value)} className="w-full mt-1 rounded-xl bg-card border border-card-border px-3 py-2.5 text-sm outline-none focus:border-accent font-mono" /></div>
-                <div><label className="text-xs text-muted-foreground">Ideal bedtime</label><input type="time" value={idealBedtime} onChange={e => setIdealBedtime(e.target.value)} className="w-full mt-1 rounded-xl bg-card border border-card-border px-3 py-2.5 text-sm outline-none focus:border-accent font-mono" /></div>
-                <div><label className="text-xs text-muted-foreground">Ideal wake time</label><input type="time" value={idealWakeTime} onChange={e => setIdealWakeTime(e.target.value)} className="w-full mt-1 rounded-xl bg-card border border-card-border px-3 py-2.5 text-sm outline-none focus:border-accent font-mono" /></div>
-              </div>
-
-              {wearable && wearable !== 'none' && (
-                <div>
-                  <p className="text-xs text-accent uppercase tracking-wider mt-2">Last 3 nights (from your {wearable})</p>
-                  <div className="grid grid-cols-3 gap-2 mt-2">
-                    {[
-                      { label: 'Last night', h: lastNight1Hours, sH: setLastNight1Hours, sc: lastNight1Score, sSc: setLastNight1Score },
-                      { label: '2 nights ago', h: lastNight2Hours, sH: setLastNight2Hours, sc: lastNight2Score, sSc: setLastNight2Score },
-                      { label: '3 nights ago', h: lastNight3Hours, sH: setLastNight3Hours, sc: lastNight3Score, sSc: setLastNight3Score },
-                    ].map(n => (
-                      <div key={n.label} className="space-y-1">
-                        <p className="text-xs text-muted">{n.label}</p>
-                        <input type="number" step="0.1" value={n.h} onChange={e => n.sH(e.target.value)} placeholder="hrs" className="w-full rounded-lg bg-card border border-card-border px-2 py-1.5 text-xs outline-none focus:border-accent font-mono" />
-                        <input type="number" value={n.sc} onChange={e => n.sSc(e.target.value)} placeholder="score 0-100" className="w-full rounded-lg bg-card border border-card-border px-2 py-1.5 text-xs outline-none focus:border-accent font-mono" />
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              )}
-
-              <div><label className="text-xs text-muted-foreground mb-2 block">Chronotype</label>
-                <div className="flex gap-2">
-                  {([{ v: 'morning', l: '🌅 Morning person' }, { v: 'neutral', l: '😐 Neutral' }, { v: 'night', l: '🌙 Night owl' }] as const).map(({ v, l }) => (
-                    <button key={v} onClick={() => setChronotype(v)} className={clsx('flex-1 py-2 rounded-xl text-xs font-medium transition-all', chronotype === v ? 'bg-accent text-black' : 'bg-card border border-card-border text-muted-foreground')}>{l}</button>
-                  ))}
-                </div>
-              </div>
-
-              <div className="grid grid-cols-2 gap-3">
-                <div><label className="text-xs text-muted-foreground">Time to fall asleep (min)</label><input type="number" value={timeToFallAsleep} onChange={e => setTimeToFallAsleep(e.target.value)} placeholder="15" className="w-full mt-1 rounded-xl bg-card border border-card-border px-3 py-2.5 text-sm outline-none focus:border-accent font-mono" /></div>
-                <div><label className="text-xs text-muted-foreground">Wake-ups per night</label><input type="number" value={wakeUpsPerNight} onChange={e => setWakeUpsPerNight(e.target.value)} placeholder="1" className="w-full mt-1 rounded-xl bg-card border border-card-border px-3 py-2.5 text-sm outline-none focus:border-accent font-mono" /></div>
-                <div><label className="text-xs text-muted-foreground">Naps per day</label><input type="number" value={napsDaily} onChange={e => setNapsDaily(e.target.value)} placeholder="0" className="w-full mt-1 rounded-xl bg-card border border-card-border px-3 py-2.5 text-sm outline-none focus:border-accent font-mono" /></div>
-                <div><label className="text-xs text-muted-foreground">Bedroom temp (°C)</label><input type="number" value={bedroomTemp} onChange={e => setBedroomTemp(e.target.value)} placeholder="19" className="w-full mt-1 rounded-xl bg-card border border-card-border px-3 py-2.5 text-sm outline-none focus:border-accent font-mono" /></div>
-              </div>
-
-              <div>
-                <label className="text-xs text-muted-foreground">Sleep apnea checked?</label>
-                <select value={sleepApneaChecked} onChange={e => setSleepApneaChecked(e.target.value)} className="w-full mt-1 rounded-xl bg-card border border-card-border px-3 py-2.5 text-sm outline-none focus:border-accent">
-                  <option value="">Not sure / prefer not to say</option>
-                  <option value="never">Never tested</option>
-                  <option value="negative">Tested — negative</option>
-                  <option value="positive_cpap">Tested positive, using CPAP</option>
-                  <option value="positive_no_cpap">Tested positive, no CPAP</option>
-                </select>
-              </div>
-
-              <div className="flex items-center gap-3"><button onClick={() => setPhoneInBedroom(!phoneInBedroom)} className={clsx('w-6 h-6 rounded-lg border-2 flex items-center justify-center shrink-0', phoneInBedroom ? 'bg-warning border-warning' : 'border-card-border')}>{phoneInBedroom && <span className="text-black text-xs">✓</span>}</button><span className="text-sm">Phone in bedroom at night</span></div>
-
-              <div><label className="text-xs text-muted-foreground mb-2 block">Sleep issues</label>
-                <div className="flex flex-wrap gap-2">
-                  {SLEEP_ISSUES.map(si => (
-                    <button key={si} onClick={() => toggle<string>(setSleepIssues as (f: (p: string[]) => string[]) => void, si)} className={clsx('px-3 py-1.5 rounded-xl text-xs transition-all', sleepIssues.includes(si) ? 'bg-warning/20 text-warning border border-warning/50' : 'bg-card border border-card-border text-muted-foreground')}>{si}</button>
-                  ))}
-                </div>
-              </div>
-              <div>
-                <label className="text-xs text-muted-foreground">Other sleep issues (describe)</label>
-                <textarea value={sleepIssuesCustom} onChange={e => setSleepIssuesCustom(e.target.value)} rows={2} placeholder="e.g. partner snoring wakes me, noisy street, worried mind, etc." className="w-full mt-1 rounded-xl bg-card border border-card-border px-3 py-2.5 text-xs outline-none focus:border-accent resize-none" />
-              </div>
-            </CollapseSection>
-
-            {/* Diet */}
-            <CollapseSection title="🥗 Dietă și substanțe" expanded={lifestyleExpanded.diet} onToggle={() => setLifestyleExpanded(p => ({ ...p, diet: !p.diet }))}>
-              <div><label className="text-xs text-muted-foreground mb-2 block">Diet type</label>
-                <div className="flex flex-wrap gap-2">
-                  {['omnivore', 'vegetarian', 'vegan', 'keto', 'carnivore', 'mediterranean', 'custom'].map(d => (
-                    <button key={d} onClick={() => setDietType(d)} className={clsx('px-3 py-2 rounded-xl text-xs font-medium transition-all capitalize', dietType === d ? 'bg-accent text-black' : 'bg-card border border-card-border text-muted-foreground')}>{d}</button>
-                  ))}
-                </div>
-              </div>
-              {dietType === 'custom' && (
-                <div>
-                  <label className="text-xs text-muted-foreground">Describe your diet</label>
-                  <input type="text" value={dietTypeCustom} onChange={e => setDietTypeCustom(e.target.value)} placeholder="e.g. pescatarian + gluten-free, paleo, Whole30..." className="w-full mt-1 rounded-xl bg-card border border-card-border px-3 py-2.5 text-sm outline-none focus:border-accent" />
-                </div>
-              )}
-
-              <div className="grid grid-cols-2 gap-3">
-                <div><label className="text-xs text-muted-foreground">Meals/day</label><input type="number" value={mealsPerDay} onChange={e => setMealsPerDay(parseInt(e.target.value) || 3)} min={1} max={6} className="w-full mt-1 rounded-xl bg-card border border-card-border px-3 py-2.5 text-sm outline-none focus:border-accent font-mono" /></div>
-                <div><label className="text-xs text-muted-foreground">Water (glasses/day)</label><input type="number" value={hydration} onChange={e => setHydration(parseInt(e.target.value) || 6)} min={0} max={20} className="w-full mt-1 rounded-xl bg-card border border-card-border px-3 py-2.5 text-sm outline-none focus:border-accent font-mono" /></div>
-                <div><label className="text-xs text-muted-foreground">First meal time</label><input type="time" value={firstMealTime} onChange={e => setFirstMealTime(e.target.value)} className="w-full mt-1 rounded-xl bg-card border border-card-border px-3 py-2.5 text-sm outline-none focus:border-accent font-mono" /></div>
-                <div><label className="text-xs text-muted-foreground">Last meal time</label><input type="time" value={lastMealTime} onChange={e => setLastMealTime(e.target.value)} className="w-full mt-1 rounded-xl bg-card border border-card-border px-3 py-2.5 text-sm outline-none focus:border-accent font-mono" /></div>
-              </div>
-
-              <div>
-                <label className="text-xs text-muted-foreground mb-2 block">Describe a typical day of eating (optional but powerful)</label>
-                <textarea value={typicalDay} onChange={e => setTypicalDay(e.target.value)} rows={3} placeholder="e.g. 8am coffee + oats w/ banana. 1pm chicken salad + rice. 7pm salmon + potatoes + wine." className="w-full rounded-xl bg-card border border-card-border px-3 py-2.5 text-xs outline-none focus:border-accent resize-none" />
-              </div>
-
-              <div>
-                <label className="text-xs text-muted-foreground mb-2 block">% of meals cooked at home: <span className="text-accent font-medium">{cooksAtHome}%</span></label>
-                <input type="range" min={0} max={100} step={5} value={cooksAtHome} onChange={e => setCooksAtHome(parseInt(e.target.value))} className="w-full h-2 bg-card-border rounded-lg appearance-none cursor-pointer accent-[#34d399]" />
-              </div>
-
-              <p className="text-xs text-accent uppercase tracking-wider mt-2">Food frequencies</p>
-              <div className="grid grid-cols-2 gap-2">
-                <div><label className="text-xs text-muted">Fruits / day</label><input type="number" value={fruitsPerDay} onChange={e => setFruitsPerDay(e.target.value)} placeholder="2" className="w-full mt-1 rounded-xl bg-card border border-card-border px-3 py-2 text-xs outline-none focus:border-accent font-mono" /></div>
-                <div><label className="text-xs text-muted">Veggies / day (servings)</label><input type="number" value={veggiesPerDay} onChange={e => setVeggiesPerDay(e.target.value)} placeholder="3" className="w-full mt-1 rounded-xl bg-card border border-card-border px-3 py-2 text-xs outline-none focus:border-accent font-mono" /></div>
-                <div><label className="text-xs text-muted">Fish / week</label><input type="number" value={fishPerWeek} onChange={e => setFishPerWeek(e.target.value)} placeholder="2" className="w-full mt-1 rounded-xl bg-card border border-card-border px-3 py-2 text-xs outline-none focus:border-accent font-mono" /></div>
-                <div><label className="text-xs text-muted">Red meat / week</label><input type="number" value={redMeatPerWeek} onChange={e => setRedMeatPerWeek(e.target.value)} placeholder="3" className="w-full mt-1 rounded-xl bg-card border border-card-border px-3 py-2 text-xs outline-none focus:border-accent font-mono" /></div>
-                <div><label className="text-xs text-muted">Ultra-processed / week</label><input type="number" value={ultraProcessedPerWeek} onChange={e => setUltraProcessedPerWeek(e.target.value)} placeholder="5" className="w-full mt-1 rounded-xl bg-card border border-card-border px-3 py-2 text-xs outline-none focus:border-accent font-mono" /></div>
-                <div><label className="text-xs text-muted">Fast food / week</label><input type="number" value={fastFoodPerWeek} onChange={e => setFastFoodPerWeek(e.target.value)} placeholder="1" className="w-full mt-1 rounded-xl bg-card border border-card-border px-3 py-2 text-xs outline-none focus:border-accent font-mono" /></div>
-              </div>
-
-              <div><label className="text-xs text-muted-foreground mb-2 block">Food allergies/intolerances</label>
-                <div className="flex flex-wrap gap-2">
-                  {['gluten', 'dairy', 'nuts', 'seafood', 'eggs', 'soy', 'shellfish'].map(f => (
-                    <button key={f} onClick={() => toggle<string>(setFoodAllergies as (f: (p: string[]) => string[]) => void, f)} className={clsx('px-3 py-1.5 rounded-xl text-xs capitalize transition-all', foodAllergies.includes(f) ? 'bg-warning/20 text-warning border border-warning/50' : 'bg-card border border-card-border text-muted-foreground')}>{f}</button>
-                  ))}
-                </div>
-              </div>
-              <div>
-                <label className="text-xs text-muted-foreground">Other allergies / sensitivities</label>
-                <input type="text" value={foodAllergiesCustom} onChange={e => setFoodAllergiesCustom(e.target.value)} placeholder="e.g. nightshades, FODMAPs, histamine..." className="w-full mt-1 rounded-xl bg-card border border-card-border px-3 py-2.5 text-sm outline-none focus:border-accent" />
-              </div>
-
-              <p className="text-xs text-accent uppercase tracking-wider mt-2">Caffeine, alcohol, intermittent fasting</p>
-              <div className="grid grid-cols-2 gap-3">
-                <div><label className="text-xs text-muted-foreground">Alcohol (drinks/week)</label><input type="number" value={alcoholPerWeek} onChange={e => setAlcoholPerWeek(parseInt(e.target.value) || 0)} min={0} max={50} className="w-full mt-1 rounded-xl bg-card border border-card-border px-3 py-2.5 text-sm outline-none focus:border-accent font-mono" /></div>
-                <div><label className="text-xs text-muted-foreground">Caffeine (servings/day)</label><input type="number" value={caffeineServings} onChange={e => setCaffeineServings(parseInt(e.target.value) || 0)} min={0} max={10} className="w-full mt-1 rounded-xl bg-card border border-card-border px-3 py-2.5 text-sm outline-none focus:border-accent font-mono" /></div>
-                <div className="col-span-2"><label className="text-xs text-muted-foreground">Caffeine cutoff time (last coffee/tea)</label><input type="time" value={coffeeCutoffTime} onChange={e => setCoffeeCutoffTime(e.target.value)} className="w-full mt-1 rounded-xl bg-card border border-card-border px-3 py-2.5 text-sm outline-none focus:border-accent font-mono" /></div>
-              </div>
-              <div className="flex items-center gap-3"><button onClick={() => setTriedIF(!triedIF)} className={clsx('w-6 h-6 rounded-lg border-2 flex items-center justify-center shrink-0', triedIF ? 'bg-accent border-accent' : 'border-card-border')}>{triedIF && <span className="text-black text-xs">✓</span>}</button><span className="text-sm">Practice intermittent fasting</span></div>
-              {triedIF && (
-                <div>
-                  <label className="text-xs text-muted-foreground">Eating window</label>
-                  <select value={ifWindow} onChange={e => setIfWindow(e.target.value)} className="w-full mt-1 rounded-xl bg-card border border-card-border px-3 py-2.5 text-sm outline-none focus:border-accent">
-                    <option value="">Select...</option>
-                    <option value="12:12">12:12</option>
-                    <option value="14:10">14:10</option>
-                    <option value="16:8">16:8</option>
-                    <option value="18:6">18:6</option>
-                    <option value="20:4">20:4 / OMAD</option>
-                    <option value="extended">Extended fasts (24h+)</option>
-                  </select>
-                </div>
-              )}
-
-              <p className="text-xs text-accent uppercase tracking-wider mt-2">Smoking / vaping / substances</p>
-              <div className="flex items-center gap-3"><button onClick={() => setSmoker(!smoker)} className={clsx('w-6 h-6 rounded-lg border-2 flex items-center justify-center shrink-0', smoker ? 'bg-warning border-warning' : 'border-card-border')}>{smoker && <span className="text-black text-xs">✓</span>}</button><span className="text-sm">I smoke or vape nicotine</span></div>
-              {smoker && (
-                <>
-                  <div><label className="text-xs text-muted-foreground mb-2 block">Type</label>
-                    <div className="flex gap-2">
-                      {([{ v: 'cigarettes', l: '🚬 Cigarettes' }, { v: 'vape', l: '💨 Vape' }, { v: 'both', l: 'Both' }] as const).map(({ v, l }) => (
-                        <button key={v} onClick={() => setSmokingType(v)} className={clsx('flex-1 py-2 rounded-xl text-xs font-medium transition-all', smokingType === v ? 'bg-warning text-black' : 'bg-card border border-card-border text-muted-foreground')}>{l}</button>
-                      ))}
-                    </div>
-                  </div>
-                  <div className="grid grid-cols-2 gap-3">
-                    {(smokingType === 'cigarettes' || smokingType === 'both') && (
-                      <div><label className="text-xs text-muted-foreground">Cigarettes/day</label><input type="number" value={cigarettesPerDay} onChange={e => setCigarettesPerDay(e.target.value)} className="w-full mt-1 rounded-xl bg-card border border-card-border px-3 py-2.5 text-sm outline-none focus:border-accent font-mono" /></div>
-                    )}
-                    {(smokingType === 'vape' || smokingType === 'both') && (
-                      <div><label className="text-xs text-muted-foreground">Vape puffs/day (est.)</label><input type="number" value={vapePuffsPerDay} onChange={e => setVapePuffsPerDay(e.target.value)} className="w-full mt-1 rounded-xl bg-card border border-card-border px-3 py-2.5 text-sm outline-none focus:border-accent font-mono" /></div>
-                    )}
-                  </div>
-                </>
-              )}
-              <div>
-                <label className="text-xs text-muted-foreground">Recreational drugs (confidential — shapes interactions)</label>
-                <input type="text" value={recreationalDrugs} onChange={e => setRecreationalDrugs(e.target.value)} placeholder="e.g. cannabis weekends, none, occasional psychedelics..." className="w-full mt-1 rounded-xl bg-card border border-card-border px-3 py-2.5 text-sm outline-none focus:border-accent" />
-              </div>
-            </CollapseSection>
-
-            {/* Exercise */}
-            <CollapseSection title="🏋️ Exerciții și mișcare" expanded={lifestyleExpanded.exercise} onToggle={() => setLifestyleExpanded(p => ({ ...p, exercise: !p.exercise }))}>
-              <div className="grid grid-cols-2 gap-3">
-                <div><label className="text-xs text-muted-foreground">Cardio (min/week)</label><input type="number" value={cardioMin} onChange={e => setCardioMin(parseInt(e.target.value) || 0)} min={0} max={1000} className="w-full mt-1 rounded-xl bg-card border border-card-border px-3 py-2.5 text-sm outline-none focus:border-accent font-mono" /></div>
-                <div><label className="text-xs text-muted-foreground">Strength sessions/week</label><input type="number" value={strengthSessions} onChange={e => setStrengthSessions(parseInt(e.target.value) || 0)} min={0} max={7} className="w-full mt-1 rounded-xl bg-card border border-card-border px-3 py-2.5 text-sm outline-none focus:border-accent font-mono" /></div>
-                <div><label className="text-xs text-muted-foreground">Daily steps (avg)</label><input type="number" value={stepsPerDay} onChange={e => setStepsPerDay(e.target.value)} placeholder="8000" className="w-full mt-1 rounded-xl bg-card border border-card-border px-3 py-2.5 text-sm outline-none focus:border-accent font-mono" /></div>
-                <div><label className="text-xs text-muted-foreground">Self-rated fitness (1-10): <span className="text-accent font-medium">{fitnessLevel}</span></label><input type="range" min={1} max={10} value={fitnessLevel} onChange={e => setFitnessLevel(parseInt(e.target.value))} className="w-full mt-2 h-2 bg-card-border rounded-lg appearance-none cursor-pointer accent-[#34d399]" /></div>
-              </div>
-
-              <div>
-                <label className="text-xs text-muted-foreground mb-2 block">Types of exercise you do</label>
-                <div className="flex flex-wrap gap-2">
-                  {['running', 'cycling', 'swimming', 'weights', 'calisthenics', 'HIIT', 'hiking', 'team sports', 'crossfit', 'martial arts', 'climbing', 'dance'].map(ex => (
-                    <button key={ex} onClick={() => toggle<string>(setExercisesDone as (f: (p: string[]) => string[]) => void, ex)} className={clsx('px-3 py-1.5 rounded-xl text-xs capitalize transition-all', exercisesDone.includes(ex) ? 'bg-accent/20 text-accent border border-accent/50' : 'bg-card border border-card-border text-muted-foreground')}>{ex}</button>
-                  ))}
-                </div>
-              </div>
-
-              <p className="text-xs text-accent uppercase tracking-wider mt-2">Strength benchmarks (if lifting — optional)</p>
-              <div className="grid grid-cols-2 gap-2">
-                <div><label className="text-xs text-muted">Max pull-ups</label><input type="number" value={maxPullups} onChange={e => setMaxPullups(e.target.value)} className="w-full mt-1 rounded-xl bg-card border border-card-border px-3 py-2 text-xs outline-none focus:border-accent font-mono" /></div>
-                <div><label className="text-xs text-muted">Squat 1RM (kg)</label><input type="number" value={squatWeight} onChange={e => setSquatWeight(e.target.value)} className="w-full mt-1 rounded-xl bg-card border border-card-border px-3 py-2 text-xs outline-none focus:border-accent font-mono" /></div>
-                <div><label className="text-xs text-muted">Bench 1RM (kg)</label><input type="number" value={benchWeight} onChange={e => setBenchWeight(e.target.value)} className="w-full mt-1 rounded-xl bg-card border border-card-border px-3 py-2 text-xs outline-none focus:border-accent font-mono" /></div>
-                <div><label className="text-xs text-muted">Deadlift 1RM (kg)</label><input type="number" value={deadliftWeight} onChange={e => setDeadliftWeight(e.target.value)} className="w-full mt-1 rounded-xl bg-card border border-card-border px-3 py-2 text-xs outline-none focus:border-accent font-mono" /></div>
-              </div>
-
-              <div className="grid grid-cols-3 gap-2">
-                <button onClick={() => setYogaPilates(!yogaPilates)} className={clsx('p-3 rounded-xl text-xs text-center transition-all', yogaPilates ? 'bg-accent/20 text-accent border border-accent/50' : 'bg-card border border-card-border text-muted-foreground')}>🧘 Yoga / Pilates</button>
-                <button onClick={() => setSauna(!sauna)} className={clsx('p-3 rounded-xl text-xs text-center transition-all', sauna ? 'bg-accent/20 text-accent border border-accent/50' : 'bg-card border border-card-border text-muted-foreground')}>🔥 Sauna regularly</button>
-                <button onClick={() => setIceBath(!iceBath)} className={clsx('p-3 rounded-xl text-xs text-center transition-all', iceBath ? 'bg-accent/20 text-accent border border-accent/50' : 'bg-card border border-card-border text-muted-foreground')}>🧊 Cold plunge</button>
-              </div>
-
-              <div>
-                <label className="text-xs text-muted-foreground">Current injuries / limitations</label>
-                <textarea value={injuries} onChange={e => setInjuries(e.target.value)} rows={2} placeholder="e.g. right knee meniscus, shoulder impingement..." className="w-full mt-1 rounded-xl bg-card border border-card-border px-3 py-2.5 text-xs outline-none focus:border-accent resize-none" />
-              </div>
-              <div>
-                <label className="text-xs text-muted-foreground">Chronic pain (location + severity)</label>
-                <input type="text" value={chronicPain} onChange={e => setChronicPain(e.target.value)} placeholder="e.g. low back 4/10 after sitting" className="w-full mt-1 rounded-xl bg-card border border-card-border px-3 py-2.5 text-sm outline-none focus:border-accent" />
-              </div>
-            </CollapseSection>
-
-            {/* Mental/Stress */}
-            <CollapseSection title="🧠 Sănătate mentală și stres" expanded={lifestyleExpanded.mental} onToggle={() => setLifestyleExpanded(p => ({ ...p, mental: !p.mental }))}>
-              <div><label className="text-xs text-muted-foreground mb-2 block">Stress level (1-10): <span className="text-accent font-medium">{stressLevel}</span></label>
-                <input type="range" min={1} max={10} value={stressLevel} onChange={e => setStressLevel(parseInt(e.target.value))} className="w-full h-2 bg-card-border rounded-lg appearance-none cursor-pointer accent-[#34d399]" />
-              </div>
-              <div><label className="text-xs text-muted-foreground mb-2 block">Happiness / life satisfaction (1-10): <span className="text-accent font-medium">{happinessScore}</span></label>
-                <input type="range" min={1} max={10} value={happinessScore} onChange={e => setHappinessScore(parseInt(e.target.value))} className="w-full h-2 bg-card-border rounded-lg appearance-none cursor-pointer accent-[#34d399]" />
-              </div>
-              <div><label className="text-xs text-muted-foreground mb-2 block">Sense of purpose / meaning (1-10): <span className="text-accent font-medium">{lifeSenseOfPurpose}</span></label>
-                <input type="range" min={1} max={10} value={lifeSenseOfPurpose} onChange={e => setLifeSenseOfPurpose(parseInt(e.target.value))} className="w-full h-2 bg-card-border rounded-lg appearance-none cursor-pointer accent-[#34d399]" />
-              </div>
-              <div><label className="text-xs text-muted-foreground mb-2 block">Meditation / mindfulness</label>
-                <div className="flex gap-2">
-                  {(['none', 'occasional', 'daily'] as const).map(v => (
-                    <button key={v} onClick={() => setMeditationPractice(v)} className={clsx('flex-1 py-2 rounded-xl text-xs font-medium capitalize transition-all', meditationPractice === v ? 'bg-accent text-black' : 'bg-card border border-card-border text-muted-foreground')}>{v}</button>
-                  ))}
-                </div>
-              </div>
-
-              <div className="grid grid-cols-2 gap-2">
-                <button onClick={() => setDepressionSymptoms(!depressionSymptoms)} className={clsx('p-3 rounded-xl text-xs text-left transition-all', depressionSymptoms ? 'bg-warning/20 text-warning border border-warning/50' : 'bg-card border border-card-border text-muted-foreground')}>
-                  <div className={clsx('w-4 h-4 rounded border-2 inline-flex items-center justify-center mr-2 text-xs', depressionSymptoms ? 'bg-warning border-warning text-black' : 'border-card-border')}>{depressionSymptoms ? '✓' : ''}</div>
-                  Current depression symptoms
-                </button>
-                <button onClick={() => setAnxietySymptoms(!anxietySymptoms)} className={clsx('p-3 rounded-xl text-xs text-left transition-all', anxietySymptoms ? 'bg-warning/20 text-warning border border-warning/50' : 'bg-card border border-card-border text-muted-foreground')}>
-                  <div className={clsx('w-4 h-4 rounded border-2 inline-flex items-center justify-center mr-2 text-xs', anxietySymptoms ? 'bg-warning border-warning text-black' : 'border-card-border')}>{anxietySymptoms ? '✓' : ''}</div>
-                  Current anxiety symptoms
-                </button>
-                <button onClick={() => setTherapyNow(!therapyNow)} className={clsx('p-3 rounded-xl text-xs text-left transition-all', therapyNow ? 'bg-accent/20 text-accent border border-accent/50' : 'bg-card border border-card-border text-muted-foreground')}>
-                  <div className={clsx('w-4 h-4 rounded border-2 inline-flex items-center justify-center mr-2 text-xs', therapyNow ? 'bg-accent border-accent text-black' : 'border-card-border')}>{therapyNow ? '✓' : ''}</div>
-                  Currently in therapy
-                </button>
-                <div className="col-span-1">
-                  <label className="text-xs text-muted">Psych meds (if any)</label>
-                  <input type="text" value={psychMeds} onChange={e => setPsychMeds(e.target.value)} placeholder="e.g. SSRI, ADHD meds..." className="w-full mt-1 rounded-lg bg-card border border-card-border px-2 py-2 text-xs outline-none focus:border-accent" />
-                </div>
-              </div>
-
-              <div>
-                <label className="text-xs text-muted-foreground">Top 3 stressors in your life</label>
-                <textarea value={topStressors} onChange={e => setTopStressors(e.target.value)} rows={2} placeholder="e.g. work deadlines, finances, relationship with parents..." className="w-full mt-1 rounded-xl bg-card border border-card-border px-3 py-2.5 text-xs outline-none focus:border-accent resize-none" />
-              </div>
-              <div>
-                <label className="text-xs text-muted-foreground">Flow activities (things that make you lose track of time)</label>
-                <input type="text" value={flowActivities} onChange={e => setFlowActivities(e.target.value)} placeholder="e.g. coding, painting, climbing, gardening..." className="w-full mt-1 rounded-xl bg-card border border-card-border px-3 py-2.5 text-sm outline-none focus:border-accent" />
-              </div>
-              <div className="grid grid-cols-2 gap-3">
-                <div><label className="text-xs text-muted-foreground">Total screen time (hrs/day)</label><input type="number" step="0.5" value={screenTimeDaily} onChange={e => setScreenTimeDaily(e.target.value)} placeholder="8" className="w-full mt-1 rounded-xl bg-card border border-card-border px-3 py-2.5 text-sm outline-none focus:border-accent font-mono" /></div>
-                <div><label className="text-xs text-muted-foreground">Social media (hrs/day)</label><input type="number" step="0.5" value={socialMediaDaily} onChange={e => setSocialMediaDaily(e.target.value)} placeholder="2" className="w-full mt-1 rounded-xl bg-card border border-card-border px-3 py-2.5 text-sm outline-none focus:border-accent font-mono" /></div>
-              </div>
-            </CollapseSection>
-
-            {/* Medical */}
-            <CollapseSection title="⚕️ Medical" expanded={lifestyleExpanded.medical} onToggle={() => setLifestyleExpanded(p => ({ ...p, medical: !p.medical }))}>
-
-              <div><label className="text-xs text-muted-foreground mb-2 block">Diagnosed conditions</label>
-                <div className="flex flex-wrap gap-2">
-                  {CONDITIONS.map(c => (
-                    <button key={c} onClick={() => toggle<string>(setConditions as (f: (p: string[]) => string[]) => void, c)} className={clsx('px-3 py-1.5 rounded-xl text-xs transition-all', conditions.includes(c) ? 'bg-warning/20 text-warning border border-warning/50' : 'bg-card border border-card-border text-muted-foreground')}>{c}</button>
-                  ))}
-                </div>
-              </div>
-              <div><label className="text-xs text-muted-foreground mb-2 block">Family history</label>
-                <div className="flex flex-wrap gap-2">
-                  {FAMILY_CONDITIONS.map(c => (
-                    <button key={c} onClick={() => toggle<string>(setFamilyHistory as (f: (p: string[]) => string[]) => void, c)} className={clsx('px-3 py-1.5 rounded-xl text-xs transition-all', familyHistory.includes(c) ? 'bg-accent/20 text-accent border border-accent/50' : 'bg-card border border-card-border text-muted-foreground')}>{c}</button>
-                  ))}
-                </div>
-              </div>
-              <div>
-                <div className="flex items-center justify-between mb-2">
-                  <label className="text-xs text-muted-foreground">Current medications</label>
-                  <button onClick={addMedication} className="flex items-center gap-1 text-xs text-accent"><Plus className="w-3 h-3" /> Add</button>
-                </div>
-                {medications.length === 0 && <p className="text-xs text-muted">None. Click &quot;Add&quot; if you take any.</p>}
-                <div className="space-y-2">
-                  {medications.map((m, i) => (
-                    <div key={i} className="flex gap-2 items-center">
-                      <input value={m.name} onChange={e => updateMed(i, 'name', e.target.value)} placeholder="Name (e.g. Metformin)" className="flex-1 rounded-lg bg-card border border-card-border px-2 py-1.5 text-xs outline-none focus:border-accent" />
-                      <input value={m.dose} onChange={e => updateMed(i, 'dose', e.target.value)} placeholder="500mg" className="w-20 rounded-lg bg-card border border-card-border px-2 py-1.5 text-xs outline-none focus:border-accent" />
-                      <select value={m.frequency} onChange={e => updateMed(i, 'frequency', e.target.value)} className="rounded-lg bg-card border border-card-border px-2 py-1.5 text-xs outline-none focus:border-accent">
-                        <option value="daily">daily</option>
-                        <option value="2x/day">2x/day</option>
-                        <option value="3x/day">3x/day</option>
-                        <option value="every other day">every other day</option>
-                        <option value="weekly">weekly</option>
-                        <option value="monthly">monthly</option>
-                        <option value="as needed">as needed</option>
-                      </select>
-                      <button onClick={() => removeMed(i)} aria-label={`Remove medication ${m.name || i + 1}`} className="p-2.5 text-muted hover:text-danger"><X className="w-4 h-4" /></button>
-                    </div>
-                  ))}
-                </div>
-              </div>
-              <div><label className="text-xs text-muted-foreground">Current supplements (comma-separated)</label>
-                <input type="text" value={supplements} onChange={e => setSupplements(e.target.value)} placeholder="Vitamin D, Omega-3, Magnesium..." className="w-full mt-1 rounded-xl bg-card border border-card-border px-3 py-2.5 text-sm outline-none focus:border-accent" />
-              </div>
-
-              <p className="text-xs text-accent uppercase tracking-wider mt-2">History</p>
-              <div>
-                <label className="text-xs text-muted-foreground">Past surgeries or hospitalizations</label>
-                <textarea value={surgeries} onChange={e => setSurgeries(e.target.value)} rows={2} placeholder="e.g. appendectomy 2015, knee arthroscopy 2022" className="w-full mt-1 rounded-xl bg-card border border-card-border px-3 py-2.5 text-xs outline-none focus:border-accent resize-none" />
-              </div>
-              <div className="grid grid-cols-2 gap-3">
-                <div><label className="text-xs text-muted-foreground">Last blood test</label><input type="date" value={lastBloodTestDate} onChange={e => setLastBloodTestDate(e.target.value)} className="w-full mt-1 rounded-xl bg-card border border-card-border px-3 py-2.5 text-sm outline-none focus:border-accent font-mono" /></div>
-                <div><label className="text-xs text-muted-foreground">Last physical exam</label><input type="date" value={lastPhysicalDate} onChange={e => setLastPhysicalDate(e.target.value)} className="w-full mt-1 rounded-xl bg-card border border-card-border px-3 py-2.5 text-sm outline-none focus:border-accent font-mono" /></div>
-              </div>
-
-              <div className="flex items-center gap-3"><button onClick={() => setHadCovid(!hadCovid)} className={clsx('w-6 h-6 rounded-lg border-2 flex items-center justify-center shrink-0', hadCovid ? 'bg-accent border-accent' : 'border-card-border')}>{hadCovid && <span className="text-black text-xs">✓</span>}</button><span className="text-sm">I&apos;ve had COVID-19</span></div>
-              {hadCovid && (
-                <div className="grid grid-cols-2 gap-3">
-                  <div><label className="text-xs text-muted-foreground">How many times?</label><input type="number" value={covidCount} onChange={e => setCovidCount(e.target.value)} placeholder="1" className="w-full mt-1 rounded-xl bg-card border border-card-border px-3 py-2.5 text-sm outline-none focus:border-accent font-mono" /></div>
-                  <div className="flex items-end"><label className="flex items-center gap-2 text-sm"><button onClick={() => setLongCovid(!longCovid)} className={clsx('w-6 h-6 rounded-lg border-2 flex items-center justify-center shrink-0', longCovid ? 'bg-warning border-warning' : 'border-card-border')}>{longCovid && <span className="text-black text-xs">✓</span>}</button>Long COVID symptoms</label></div>
-                </div>
-              )}
-
-              <div><label className="text-xs text-muted-foreground">Antibiotic courses in the last 12 months</label>
-                <select value={antibioticsLastYear} onChange={e => setAntibioticsLastYear(e.target.value)} className="w-full mt-1 rounded-xl bg-card border border-card-border px-3 py-2.5 text-sm outline-none focus:border-accent">
-                  <option value="">Select...</option>
-                  <option value="0">None</option>
-                  <option value="1">1 course</option>
-                  <option value="2">2 courses</option>
-                  <option value="3+">3 or more</option>
-                </select>
-              </div>
-
-              <div><label className="text-xs text-muted-foreground">Vaccines up to date?</label>
-                <select value={vaccinesUpToDate} onChange={e => setVaccinesUpToDate(e.target.value)} className="w-full mt-1 rounded-xl bg-card border border-card-border px-3 py-2.5 text-sm outline-none focus:border-accent">
-                  <option value="">Select...</option>
-                  <option value="yes">Yes, fully up to date</option>
-                  <option value="mostly">Mostly — missing some</option>
-                  <option value="no">No</option>
-                  <option value="selective">Selective (covid/flu only)</option>
-                </select>
-              </div>
-
-              <p className="text-xs text-accent uppercase tracking-wider mt-2">Sex & reproductive</p>
-              <div><label className="text-xs text-muted-foreground mb-2 block">Libido (1-10): <span className="text-accent font-medium">{libidoScore}</span></label>
-                <input type="range" min={1} max={10} value={libidoScore} onChange={e => setLibidoScore(parseInt(e.target.value))} className="w-full h-2 bg-card-border rounded-lg appearance-none cursor-pointer accent-[#34d399]" />
-              </div>
-
-              {sex === 'male' && (
-                <div>
-                  <label className="text-xs text-muted-foreground">Morning erections — frequency</label>
-                  <select value={morningErection} onChange={e => setMorningErection(e.target.value)} className="w-full mt-1 rounded-xl bg-card border border-card-border px-3 py-2.5 text-sm outline-none focus:border-accent">
-                    <option value="">Select...</option>
-                    <option value="daily">Daily / most mornings</option>
-                    <option value="several_week">Several per week</option>
-                    <option value="rare">Rare</option>
-                    <option value="never">Never</option>
-                  </select>
-                </div>
-              )}
-
-              {sex === 'female' && (
-                <>
-                  <div><label className="text-xs text-muted-foreground">Menstrual cycle</label>
-                    <select value={menstrualRegular} onChange={e => setMenstrualRegular(e.target.value)} className="w-full mt-1 rounded-xl bg-card border border-card-border px-3 py-2.5 text-sm outline-none focus:border-accent">
-                      <option value="">Select...</option>
-                      <option value="regular">Regular</option>
-                      <option value="irregular">Irregular</option>
-                      <option value="absent">Absent (not pregnant)</option>
-                      <option value="menopause">Post-menopause</option>
-                    </select>
-                  </div>
-                  <div><label className="text-xs text-muted-foreground mb-2 block">PMS severity (0-10): <span className="text-accent font-medium">{pmsSeverity}</span></label>
-                    <input type="range" min={0} max={10} value={pmsSeverity} onChange={e => setPmsSeverity(parseInt(e.target.value))} className="w-full h-2 bg-card-border rounded-lg appearance-none cursor-pointer accent-[#34d399]" />
-                  </div>
-                  <div><label className="text-xs text-muted-foreground">Menopause status</label>
-                    <select value={menopauseStatus} onChange={e => setMenopauseStatus(e.target.value)} className="w-full mt-1 rounded-xl bg-card border border-card-border px-3 py-2.5 text-sm outline-none focus:border-accent">
-                      <option value="">Not applicable</option>
-                      <option value="pre">Pre-menopausal</option>
-                      <option value="peri">Peri-menopausal</option>
-                      <option value="post">Post-menopausal (on HRT)</option>
-                      <option value="post_no_hrt">Post-menopausal (no HRT)</option>
-                    </select>
-                  </div>
-                  <div className="flex items-center gap-3"><button onClick={() => setHormonalContraception(!hormonalContraception)} className={clsx('w-6 h-6 rounded-lg border-2 flex items-center justify-center shrink-0', hormonalContraception ? 'bg-accent border-accent' : 'border-card-border')}>{hormonalContraception && <span className="text-black text-xs">✓</span>}</button><span className="text-sm">Using hormonal contraception (pill, IUD, ring)</span></div>
-                </>
-              )}
-
-              <div><label className="text-xs text-muted-foreground">Children</label>
-                <select value={hadChildren} onChange={e => setHadChildren(e.target.value)} className="w-full mt-1 rounded-xl bg-card border border-card-border px-3 py-2.5 text-sm outline-none focus:border-accent">
-                  <option value="">Prefer not to say</option>
-                  <option value="none">None</option>
-                  <option value="planning">Planning soon</option>
-                  <option value="1">1 child</option>
-                  <option value="2">2 children</option>
-                  <option value="3+">3 or more</option>
-                </select>
-              </div>
-
-              <p className="text-xs text-accent uppercase tracking-wider mt-2">Daily hygiene</p>
-              <div className="grid grid-cols-2 gap-2">
-                <button onClick={() => setFlossDaily(!flossDaily)} className={clsx('p-3 rounded-xl text-xs text-center transition-all', flossDaily ? 'bg-accent/20 text-accent border border-accent/50' : 'bg-card border border-card-border text-muted-foreground')}>🦷 Floss daily</button>
-                <button onClick={() => setSpfDaily(!spfDaily)} className={clsx('p-3 rounded-xl text-xs text-center transition-all', spfDaily ? 'bg-accent/20 text-accent border border-accent/50' : 'bg-card border border-card-border text-muted-foreground')}>☀️ SPF daily</button>
-              </div>
-
-              <p className="text-xs text-warning uppercase tracking-wider mt-2">⚠️ Acute red flags (check any that apply)</p>
-              <div className="grid grid-cols-1 gap-2">
-                {[
-                  'Unexplained weight loss >5kg in 6 months',
-                  'Blood in stool or urine',
-                  'Chest pain on exertion',
-                  'Severe headache / vision changes',
-                  'Persistent fever > 2 weeks',
-                  'New lumps or masses',
-                  'Fainting / syncope',
-                  'Shortness of breath at rest',
-                ].map(f => (
-                  <button key={f} onClick={() => toggle<string>(setRedFlagsAcute as (fn: (p: string[]) => string[]) => void, f)} className={clsx('flex items-center gap-2 px-3 py-2 rounded-xl text-xs text-left transition-all', redFlagsAcute.includes(f) ? 'bg-danger/20 text-danger border border-danger/50' : 'bg-card border border-card-border text-muted-foreground')}>
-                    <div className={clsx('w-4 h-4 rounded border-2 flex items-center justify-center text-xs', redFlagsAcute.includes(f) ? 'bg-danger border-danger text-black' : 'border-card-border')}>{redFlagsAcute.includes(f) ? '✓' : ''}</div>
-                    {f}
-                  </button>
-                ))}
-              </div>
-              {redFlagsAcute.length > 0 && (
-                <p className="text-xs text-danger p-2 rounded-lg bg-danger/10 border border-danger/30">⚠️ See a doctor promptly — these symptoms need medical evaluation, not a supplement protocol.</p>
-              )}
-            </CollapseSection>
-
-            {/* Environment */}
-            <CollapseSection title="🌍 Mediu și expuneri" expanded={lifestyleExpanded.environment} onToggle={() => setLifestyleExpanded(p => ({ ...p, environment: !p.environment }))}>
-              <div><label className="text-xs text-muted-foreground">Housing type</label>
-                <select value={housingType} onChange={e => setHousingType(e.target.value)} className="w-full mt-1 rounded-xl bg-card border border-card-border px-3 py-2.5 text-sm outline-none focus:border-accent">
-                  <option value="">Select...</option>
-                  <option value="apartment_city">Apartment — city center</option>
-                  <option value="apartment_suburb">Apartment — suburban</option>
-                  <option value="house_suburb">House — suburban</option>
-                  <option value="house_rural">House — rural</option>
-                  <option value="house_mountain">House — mountain / clean air</option>
-                </select>
-              </div>
-              <div><label className="text-xs text-muted-foreground">Air pollution level where you live</label>
-                <select value={pollutionLevel} onChange={e => setPollutionLevel(e.target.value)} className="w-full mt-1 rounded-xl bg-card border border-card-border px-3 py-2.5 text-sm outline-none focus:border-accent">
-                  <option value="">Not sure</option>
-                  <option value="very_low">Very low (rural, coast, mountain)</option>
-                  <option value="low">Low</option>
-                  <option value="moderate">Moderate (most cities)</option>
-                  <option value="high">High (industrial / megacity)</option>
-                  <option value="very_high">Very high</option>
-                </select>
-              </div>
-              <div className="grid grid-cols-2 gap-2">
-                <button onClick={() => setMoldAtHome(!moldAtHome)} className={clsx('p-3 rounded-xl text-xs text-center transition-all', moldAtHome ? 'bg-warning/20 text-warning border border-warning/50' : 'bg-card border border-card-border text-muted-foreground')}>🧪 Visible mold at home</button>
-                <button onClick={() => setAirPurifier(!airPurifier)} className={clsx('p-3 rounded-xl text-xs text-center transition-all', airPurifier ? 'bg-accent/20 text-accent border border-accent/50' : 'bg-card border border-card-border text-muted-foreground')}>💨 Air purifier</button>
-                <button onClick={() => setTeflonNonstick(!teflonNonstick)} className={clsx('p-3 rounded-xl text-xs text-center transition-all', teflonNonstick ? 'bg-warning/20 text-warning border border-warning/50' : 'bg-card border border-card-border text-muted-foreground')}>🍳 Teflon non-stick</button>
-                <div className="col-span-1">
-                  <label className="text-xs text-muted">Water filter</label>
-                  <select value={waterFilter} onChange={e => setWaterFilter(e.target.value)} className="w-full mt-1 rounded-lg bg-card border border-card-border px-2 py-2 text-xs outline-none focus:border-accent">
-                    <option value="">Select</option>
-                    <option value="none">None — tap</option>
-                    <option value="carbon">Carbon / pitcher</option>
-                    <option value="ro">Reverse osmosis</option>
-                    <option value="bottled">Bottled only</option>
-                  </select>
-                </div>
-              </div>
-              <div><label className="text-xs text-muted-foreground">Plastic food contact (water bottles, containers)</label>
-                <select value={plasticFoodContact} onChange={e => setPlasticFoodContact(e.target.value)} className="w-full mt-1 rounded-xl bg-card border border-card-border px-3 py-2.5 text-sm outline-none focus:border-accent">
-                  <option value="">Select...</option>
-                  <option value="minimal">Minimal — glass / steel</option>
-                  <option value="some">Some plastic</option>
-                  <option value="heavy">Heavy — bottled water, microwave plastic</option>
-                </select>
-              </div>
-              <div>
-                <label className="text-xs text-muted-foreground">Daily outdoor sunlight (minutes)</label>
-                <input type="number" value={sunlightMinutes} onChange={e => setSunlightMinutes(e.target.value)} placeholder="20" className="w-full mt-1 rounded-xl bg-card border border-card-border px-3 py-2.5 text-sm outline-none focus:border-accent font-mono" />
-              </div>
-            </CollapseSection>
-
-            {/* Social */}
-            <CollapseSection title="👥 Social și relații" expanded={lifestyleExpanded.social} onToggle={() => setLifestyleExpanded(p => ({ ...p, social: !p.social }))}>
-              <div><label className="text-xs text-muted-foreground">Relationship status</label>
-                <select value={relationshipStatus} onChange={e => setRelationshipStatus(e.target.value)} className="w-full mt-1 rounded-xl bg-card border border-card-border px-3 py-2.5 text-sm outline-none focus:border-accent">
-                  <option value="">Prefer not to say</option>
-                  <option value="single">Single</option>
-                  <option value="dating">Dating</option>
-                  <option value="partnered">In a relationship</option>
-                  <option value="married">Married / civil partnership</option>
-                  <option value="divorced">Divorced / separated</option>
-                  <option value="widowed">Widowed</option>
-                </select>
-              </div>
-              <div><label className="text-xs text-muted-foreground mb-2 block">Relationship satisfaction (1-10): <span className="text-accent font-medium">{relationshipSatisfaction}</span></label>
-                <input type="range" min={1} max={10} value={relationshipSatisfaction} onChange={e => setRelationshipSatisfaction(parseInt(e.target.value))} className="w-full h-2 bg-card-border rounded-lg appearance-none cursor-pointer accent-[#34d399]" />
-              </div>
-              <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <label className="text-xs text-muted-foreground">Close friends count</label>
-                  <input type="number" value={closeFriendsCount} onChange={e => setCloseFriendsCount(e.target.value)} placeholder="3" className="w-full mt-1 rounded-xl bg-card border border-card-border px-3 py-2.5 text-sm outline-none focus:border-accent font-mono" />
-                </div>
-                <div>
-                  <label className="text-xs text-muted-foreground mb-2 block">Loneliness (1-10): <span className="text-accent font-medium">{lonelinessLevel}</span></label>
-                  <input type="range" min={1} max={10} value={lonelinessLevel} onChange={e => setLonelinessLevel(parseInt(e.target.value))} className="w-full mt-2 h-2 bg-card-border rounded-lg appearance-none cursor-pointer accent-[#34d399]" />
-                </div>
-              </div>
-              <div className="grid grid-cols-2 gap-2">
-                <button onClick={() => setPet(!pet)} className={clsx('p-3 rounded-xl text-xs text-center transition-all', pet ? 'bg-accent/20 text-accent border border-accent/50' : 'bg-card border border-card-border text-muted-foreground')}>🐶 Have a pet</button>
-                <button onClick={() => setHasCommunity(!hasCommunity)} className={clsx('p-3 rounded-xl text-xs text-center transition-all', hasCommunity ? 'bg-accent/20 text-accent border border-accent/50' : 'bg-card border border-card-border text-muted-foreground')}>🏘️ Community / group</button>
-              </div>
-            </CollapseSection>
-          </div>
+          <Step3Lifestyle
+            lifestyleExpanded={lifestyleExpanded} setLifestyleExpanded={setLifestyleExpanded}
+            wearable={wearable}
+            sex={sex}
+            toggle={toggle}
+            sleepHours={sleepHours} setSleepHours={setSleepHours}
+            sleepQuality={sleepQuality} setSleepQuality={setSleepQuality}
+            bedtime={bedtime} setBedtime={setBedtime}
+            wakeTime={wakeTime} setWakeTime={setWakeTime}
+            idealBedtime={idealBedtime} setIdealBedtime={setIdealBedtime}
+            idealWakeTime={idealWakeTime} setIdealWakeTime={setIdealWakeTime}
+            lastNight1Hours={lastNight1Hours} setLastNight1Hours={setLastNight1Hours}
+            lastNight1Score={lastNight1Score} setLastNight1Score={setLastNight1Score}
+            lastNight2Hours={lastNight2Hours} setLastNight2Hours={setLastNight2Hours}
+            lastNight2Score={lastNight2Score} setLastNight2Score={setLastNight2Score}
+            lastNight3Hours={lastNight3Hours} setLastNight3Hours={setLastNight3Hours}
+            lastNight3Score={lastNight3Score} setLastNight3Score={setLastNight3Score}
+            chronotype={chronotype} setChronotype={setChronotype}
+            timeToFallAsleep={timeToFallAsleep} setTimeToFallAsleep={setTimeToFallAsleep}
+            wakeUpsPerNight={wakeUpsPerNight} setWakeUpsPerNight={setWakeUpsPerNight}
+            napsDaily={napsDaily} setNapsDaily={setNapsDaily}
+            bedroomTemp={bedroomTemp} setBedroomTemp={setBedroomTemp}
+            sleepApneaChecked={sleepApneaChecked} setSleepApneaChecked={setSleepApneaChecked}
+            phoneInBedroom={phoneInBedroom} setPhoneInBedroom={setPhoneInBedroom}
+            sleepIssues={sleepIssues} setSleepIssues={setSleepIssues}
+            sleepIssuesCustom={sleepIssuesCustom} setSleepIssuesCustom={setSleepIssuesCustom}
+            dietType={dietType} setDietType={setDietType}
+            dietTypeCustom={dietTypeCustom} setDietTypeCustom={setDietTypeCustom}
+            mealsPerDay={mealsPerDay} setMealsPerDay={setMealsPerDay}
+            hydration={hydration} setHydration={setHydration}
+            firstMealTime={firstMealTime} setFirstMealTime={setFirstMealTime}
+            lastMealTime={lastMealTime} setLastMealTime={setLastMealTime}
+            typicalDay={typicalDay} setTypicalDay={setTypicalDay}
+            cooksAtHome={cooksAtHome} setCooksAtHome={setCooksAtHome}
+            fruitsPerDay={fruitsPerDay} setFruitsPerDay={setFruitsPerDay}
+            veggiesPerDay={veggiesPerDay} setVeggiesPerDay={setVeggiesPerDay}
+            fishPerWeek={fishPerWeek} setFishPerWeek={setFishPerWeek}
+            redMeatPerWeek={redMeatPerWeek} setRedMeatPerWeek={setRedMeatPerWeek}
+            ultraProcessedPerWeek={ultraProcessedPerWeek} setUltraProcessedPerWeek={setUltraProcessedPerWeek}
+            fastFoodPerWeek={fastFoodPerWeek} setFastFoodPerWeek={setFastFoodPerWeek}
+            foodAllergies={foodAllergies} setFoodAllergies={setFoodAllergies}
+            foodAllergiesCustom={foodAllergiesCustom} setFoodAllergiesCustom={setFoodAllergiesCustom}
+            alcoholPerWeek={alcoholPerWeek} setAlcoholPerWeek={setAlcoholPerWeek}
+            caffeineServings={caffeineServings} setCaffeineServings={setCaffeineServings}
+            coffeeCutoffTime={coffeeCutoffTime} setCoffeeCutoffTime={setCoffeeCutoffTime}
+            triedIF={triedIF} setTriedIF={setTriedIF}
+            ifWindow={ifWindow} setIfWindow={setIfWindow}
+            smoker={smoker} setSmoker={setSmoker}
+            smokingType={smokingType} setSmokingType={setSmokingType}
+            cigarettesPerDay={cigarettesPerDay} setCigarettesPerDay={setCigarettesPerDay}
+            vapePuffsPerDay={vapePuffsPerDay} setVapePuffsPerDay={setVapePuffsPerDay}
+            recreationalDrugs={recreationalDrugs} setRecreationalDrugs={setRecreationalDrugs}
+            cardioMin={cardioMin} setCardioMin={setCardioMin}
+            strengthSessions={strengthSessions} setStrengthSessions={setStrengthSessions}
+            stepsPerDay={stepsPerDay} setStepsPerDay={setStepsPerDay}
+            fitnessLevel={fitnessLevel} setFitnessLevel={setFitnessLevel}
+            exercisesDone={exercisesDone} setExercisesDone={setExercisesDone}
+            maxPullups={maxPullups} setMaxPullups={setMaxPullups}
+            squatWeight={squatWeight} setSquatWeight={setSquatWeight}
+            benchWeight={benchWeight} setBenchWeight={setBenchWeight}
+            deadliftWeight={deadliftWeight} setDeadliftWeight={setDeadliftWeight}
+            yogaPilates={yogaPilates} setYogaPilates={setYogaPilates}
+            sauna={sauna} setSauna={setSauna}
+            iceBath={iceBath} setIceBath={setIceBath}
+            injuries={injuries} setInjuries={setInjuries}
+            chronicPain={chronicPain} setChronicPain={setChronicPain}
+            stressLevel={stressLevel} setStressLevel={setStressLevel}
+            happinessScore={happinessScore} setHappinessScore={setHappinessScore}
+            lifeSenseOfPurpose={lifeSenseOfPurpose} setLifeSenseOfPurpose={setLifeSenseOfPurpose}
+            meditationPractice={meditationPractice} setMeditationPractice={setMeditationPractice}
+            depressionSymptoms={depressionSymptoms} setDepressionSymptoms={setDepressionSymptoms}
+            anxietySymptoms={anxietySymptoms} setAnxietySymptoms={setAnxietySymptoms}
+            therapyNow={therapyNow} setTherapyNow={setTherapyNow}
+            psychMeds={psychMeds} setPsychMeds={setPsychMeds}
+            topStressors={topStressors} setTopStressors={setTopStressors}
+            flowActivities={flowActivities} setFlowActivities={setFlowActivities}
+            screenTimeDaily={screenTimeDaily} setScreenTimeDaily={setScreenTimeDaily}
+            socialMediaDaily={socialMediaDaily} setSocialMediaDaily={setSocialMediaDaily}
+            conditions={conditions} setConditions={setConditions}
+            familyHistory={familyHistory} setFamilyHistory={setFamilyHistory}
+            medications={medications} addMedication={addMedication}
+            removeMed={removeMed} updateMed={updateMed}
+            supplements={supplements} setSupplements={setSupplements}
+            surgeries={surgeries} setSurgeries={setSurgeries}
+            lastBloodTestDate={lastBloodTestDate} setLastBloodTestDate={setLastBloodTestDate}
+            lastPhysicalDate={lastPhysicalDate} setLastPhysicalDate={setLastPhysicalDate}
+            hadCovid={hadCovid} setHadCovid={setHadCovid}
+            covidCount={covidCount} setCovidCount={setCovidCount}
+            longCovid={longCovid} setLongCovid={setLongCovid}
+            antibioticsLastYear={antibioticsLastYear} setAntibioticsLastYear={setAntibioticsLastYear}
+            vaccinesUpToDate={vaccinesUpToDate} setVaccinesUpToDate={setVaccinesUpToDate}
+            libidoScore={libidoScore} setLibidoScore={setLibidoScore}
+            morningErection={morningErection} setMorningErection={setMorningErection}
+            menstrualRegular={menstrualRegular} setMenstrualRegular={setMenstrualRegular}
+            pmsSeverity={pmsSeverity} setPmsSeverity={setPmsSeverity}
+            menopauseStatus={menopauseStatus} setMenopauseStatus={setMenopauseStatus}
+            hormonalContraception={hormonalContraception} setHormonalContraception={setHormonalContraception}
+            hadChildren={hadChildren} setHadChildren={setHadChildren}
+            flossDaily={flossDaily} setFlossDaily={setFlossDaily}
+            spfDaily={spfDaily} setSpfDaily={setSpfDaily}
+            redFlagsAcute={redFlagsAcute} setRedFlagsAcute={setRedFlagsAcute}
+            housingType={housingType} setHousingType={setHousingType}
+            pollutionLevel={pollutionLevel} setPollutionLevel={setPollutionLevel}
+            moldAtHome={moldAtHome} setMoldAtHome={setMoldAtHome}
+            airPurifier={airPurifier} setAirPurifier={setAirPurifier}
+            teflonNonstick={teflonNonstick} setTeflonNonstick={setTeflonNonstick}
+            waterFilter={waterFilter} setWaterFilter={setWaterFilter}
+            plasticFoodContact={plasticFoodContact} setPlasticFoodContact={setPlasticFoodContact}
+            sunlightMinutes={sunlightMinutes} setSunlightMinutes={setSunlightMinutes}
+            relationshipStatus={relationshipStatus} setRelationshipStatus={setRelationshipStatus}
+            relationshipSatisfaction={relationshipSatisfaction} setRelationshipSatisfaction={setRelationshipSatisfaction}
+            closeFriendsCount={closeFriendsCount} setCloseFriendsCount={setCloseFriendsCount}
+            lonelinessLevel={lonelinessLevel} setLonelinessLevel={setLonelinessLevel}
+            pet={pet} setPet={setPet}
+            hasCommunity={hasCommunity} setHasCommunity={setHasCommunity}
+          />
         )}
 
         {/* STEP 3 — Day-to-Day */}
