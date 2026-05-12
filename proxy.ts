@@ -45,8 +45,13 @@ export default async function proxy(request: NextRequest) {
     '/', '/login', '/auth/callback', '/sitemap.xml', '/robots.txt',
     '/privacy', '/terms', '/pricing', '/changelog',
     '/biomarkers', '/patterns',
-    // Static assets that shouldn't go through auth: PWA manifest, icons, OG.
-    '/manifest.webmanifest', '/opengraph-image', '/twitter-image',
+    // Static assets that shouldn't go through auth: PWA manifest, icons, OG,
+    // and the service worker file. /sw.js MUST be public — without it the
+    // browser can't fetch worker updates, leaving users stuck on whatever
+    // SW version they last installed. That bug previously caused "This page
+    // couldn't load" on /dashboard for clients with an expired session who
+    // had no way to update past the cached 307s.
+    '/sw.js', '/manifest.webmanifest', '/opengraph-image', '/twitter-image',
     '/icon', '/apple-icon',
   ]);
   // Public prefixes — anything under these is treated as marketing/api.
@@ -93,6 +98,15 @@ export default async function proxy(request: NextRequest) {
   return supabaseResponse;
 }
 
+// Matcher excludes:
+//   - _next/static, _next/image — Next's build output, never auth-gated.
+//   - favicon.ico — Chrome fetches without cookies, would 307 noisily.
+//   - Static file extensions at any path: svg/png/jpg/jpeg/gif/webp images,
+//     js/json/css scripts + data, woff/woff2/ttf/otf/eot fonts, ico icons,
+//     map sourcemaps, webmanifest, txt.
+//   This belt-and-suspenders pair with the PUBLIC_EXACT allowlist: even if
+//   we forget to add a new static path there, the file extension regex
+//   below keeps the middleware out of static asset delivery entirely.
 export const config = {
-  matcher: ['/((?!_next/static|_next/image|favicon.ico|.*\\.(?:svg|png|jpg|jpeg|gif|webp)$).*)'],
+  matcher: ['/((?!_next/static|_next/image|favicon.ico|.*\\.(?:svg|png|jpg|jpeg|gif|webp|ico|js|json|css|woff|woff2|ttf|otf|eot|map|webmanifest|txt)$).*)'],
 };
