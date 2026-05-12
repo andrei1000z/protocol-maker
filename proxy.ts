@@ -35,7 +35,26 @@ export default async function proxy(request: NextRequest) {
   const path = request.nextUrl.pathname;
   // Demo mode: anyone can view /dashboard?demo=1 (sample protocol, no real data)
   const isDemoMode = path === '/dashboard' && request.nextUrl.searchParams.has('demo');
-  const isPublic = path === '/' || path === '/login' || path.startsWith('/api') || path === '/auth/callback' || path.startsWith('/share') || path === '/privacy' || path === '/terms' || path === '/sitemap.xml' || path === '/robots.txt' || isDemoMode;
+
+  // Public allowlist — everything else requires a Supabase session. Marketing
+  // pages MUST live in here; otherwise the proxy 307s anonymous visitors to
+  // /login before they can read the pricing page or biomarker explanations
+  // (which defeats the point of having them as marketing surfaces).
+  // Keep this list flat + comma-separated for greppability.
+  const PUBLIC_EXACT = new Set<string>([
+    '/', '/login', '/auth/callback', '/sitemap.xml', '/robots.txt',
+    '/privacy', '/terms', '/pricing', '/changelog',
+    '/biomarkers', '/patterns',
+    // Static assets that shouldn't go through auth: PWA manifest, icons, OG.
+    '/manifest.webmanifest', '/opengraph-image', '/twitter-image',
+    '/icon', '/apple-icon',
+  ]);
+  // Public prefixes — anything under these is treated as marketing/api.
+  const PUBLIC_PREFIXES = ['/api', '/share', '/r/', '/biomarkers/', '/patterns/'];
+
+  const isPublic = isDemoMode
+    || PUBLIC_EXACT.has(path)
+    || PUBLIC_PREFIXES.some(p => path.startsWith(p));
 
   // Every redirect we emit has to carry forward the Set-Cookie headers
   // that Supabase wrote to `supabaseResponse` during getUser(). If we
