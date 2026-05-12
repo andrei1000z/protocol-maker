@@ -15,6 +15,7 @@ import { BiomarkerValue, UserProfile } from '@/lib/types';
 import { getProtocolRateLimit, checkRateLimit } from '@/lib/rate-limit';
 import { logger, describeError } from '@/lib/logger';
 import { logAiTokens, usageFromAnthropic, usageFromGroq, type AiTokenUsage } from '@/lib/ai-costs';
+import { getAnthropicKey } from '@/lib/anthropic-key';
 import { trackServer } from '@/lib/analytics';
 import { inspectProtocolShape } from '@/lib/engine/schemas';
 import { describeMealsForPrompt, type MealRow } from '@/lib/engine/meals';
@@ -262,12 +263,17 @@ export async function POST(request: Request) {
       supplementFeedbackSummary ?? undefined,
     );
 
+    // Resolve which Anthropic key to use — user's BYOK if they set one in
+    // settings, otherwise the platform key. Source threads into telemetry so
+    // cost dashboards can show "user paid" vs "platform paid".
+    const anthropicResolved = await getAnthropicKey(supabase, user.id);
+
     // Try Claude Opus first (best medical reasoning), fallback to Groq, then deterministic
     try {
-      if (process.env.ANTHROPIC_API_KEY) {
+      if (anthropicResolved.key) {
         firstProviderTried = 'claude';
         try {
-          const r = await generateWithClaude(prompt);
+          const r = await generateWithClaude(prompt, anthropicResolved.key);
           protocolJson = r.json;
           tokenUsage = r.usage;
           modelUsed = 'claude-sonnet-4-5';
@@ -591,11 +597,11 @@ function classifyProviderError(err: unknown): string {
   return 'unknown';
 }
 
-async function generateWithClaude(prompt: string): Promise<{ json: Record<string, unknown>; usage: AiTokenUsage }> {
-  const apiKey = process.env.ANTHROPIC_API_KEY;
-  if (!apiKey) throw new Error('ANTHROPIC_API_KEY missing');
+async function generateWithClaude(prompt: string, apiKey?: string): Promise<{ json: Record<string, unknown>; usage: AiTokenUsage }> {
+  const resolvedKey = apiKey || process.env.ANTHROPIC_API_KEY;
+  if (!resolvedKey) throw new Error('ANTHROPIC_API_KEY missing');
 
-  const anthropic = new Anthropic({ apiKey });
+  const anthropic = new Anthropic({ apiKey: resolvedKey });
 
   // PROMPT CACHING: the system prefix is ~15k tokens of identical reference data
   // across every user (Bryan's blueprint, intervention rules, budget tables, tips,

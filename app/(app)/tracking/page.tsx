@@ -15,6 +15,7 @@ import {
 } from '@/lib/utils/streak';
 import { StreakWidget } from '@/components/tracking/StreakWidget';
 import { HabitsTab } from '@/components/tracking/HabitsTab';
+import { VoiceLogButton } from '@/components/tracking/VoiceLogButton';
 import { SmartLogSheet, countBucketPending, countAllPendingUpToNow, type TimeBucket } from '@/components/tracking/SmartLogSheet';
 import { MetricTimeline } from '@/components/tracking/MetricTimeline';
 import { useProtocolStaleness } from '@/lib/hooks/useProtocolStaleness';
@@ -870,6 +871,11 @@ export default function TrackingPage() {
 
       {activeTab === 'habits' && (
         <>
+          {/* Voice log — Web Speech API on the device (Romanian), AI parses
+              the transcript into daily_metrics fields, preview-then-save.
+              Hidden on browsers without Web Speech (mainly iOS pre-PWA). */}
+          <VoiceLogButton onApplied={() => { invalidate.statistics(); invalidate.liveScores(); }} />
+
           {/* Streak + milestone progress widget. Celebration toast fires once
               per milestone crossing (stored per-user in localStorage). */}
           {myData?.profile?.id && (

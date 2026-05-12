@@ -58,6 +58,8 @@ export interface ProfileRow {
   onboarding_completed?: boolean | null;
   onboarding_step?: number | null;
   onboarding_data?: Record<string, unknown> | null;
+  // BYOK Anthropic — presence flag only (real key is server-side redacted).
+  hasAnthropicKey?: boolean;
 }
 
 export interface BloodTestRow {

@@ -5,6 +5,7 @@ import { logger, describeError } from '@/lib/logger';
 import { getSaveProfileRateLimit, checkRateLimit } from '@/lib/rate-limit';
 import { trackServer } from '@/lib/analytics';
 import { OnboardingDataSchema } from '@/lib/engine/schemas';
+import { isAnthropicKeyShape } from '@/lib/anthropic-key';
 
 // Validates profile inputs at the API boundary. Ranges are sanity checks —
 // the DB has its own CHECK constraints as defense in depth. All fields are
@@ -46,6 +47,9 @@ const ProfileSchema = z.object({
   notifProtocolRegen:    z.boolean().optional(),
   notifRetestReminders:  z.boolean().optional(),
   notifStreakMilestones: z.boolean().optional(),
+  // BYOK Anthropic key (F14). Pass empty string to clear. Validated by shape
+  // (Anthropic keys start with sk- and are 20-256 chars) before persistence.
+  anthropicApiKey: z.string().max(256).optional().nullable(),
 }).passthrough();  // extra fields are dropped; Zod ignores them during .passthrough
 
 export async function POST(request: Request) {
@@ -117,6 +121,15 @@ export async function POST(request: Request) {
     ];
     for (const [k, col] of mapping) {
       if (k in body) updates[col] = body[k];
+    }
+
+    // BYOK key — accept empty string as "clear my key", otherwise enforce the
+    // sk-... shape before persisting. Anything else is silently dropped so a
+    // malformed key never reaches the DB.
+    if ('anthropicApiKey' in body) {
+      const k = body.anthropicApiKey;
+      if (k === '' || k === null) updates.anthropic_api_key = null;
+      else if (typeof k === 'string' && isAnthropicKeyShape(k)) updates.anthropic_api_key = k;
     }
 
     const { error } = await supabase.from('profiles').update(updates).eq('id', user.id);

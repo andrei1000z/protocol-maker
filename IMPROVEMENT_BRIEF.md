@@ -224,6 +224,57 @@ Why: Romanian GPs don't follow Attia/Johnson. A clinical-style summary lets the 
 
 ---
 
+## Status update — 2026-05-12 (post Phase 7-13 shipping)
+
+The first four commit batches of this brief landed live:
+
+- ✅ **Phase 7** (`260b29b`) — EU launch readiness: security headers, GDPR cookie consent, full privacy rewrite, PDF parser hardening.
+- ✅ **Phase 8** (`7d35aa3`) — audit_log table + helper, full account deletion with provider revoke, F3 calendar `.ics` export, F12 non-shaming streak break, GitHub Actions CI, cron banner RO.
+- ✅ **Phase 9** (`844d61a`) — `/share/clinical/[slug]` doctor-share view, PrivacyControls in Settings, mobile TOC drawer fully RO, settings exports + share links Romanised.
+- ✅ **Phase 10+** (this push) — BYOK Anthropic key (Settings UI + /api/save-profile + /api/generate-protocol wiring + my-data redaction), Vault encryption prep migration, Web Push (SW handlers + subscribe endpoint + Settings UI), F4 voice log on tracking, F5 weekly digest cron (dry-run mode until Resend keys), F8 household schema, F9 referral RO sweep.
+
+### Still not done — and why
+
+**Items that need owner action (cannot be done from code alone):**
+- 1.4 Supabase EU migration — requires Supabase dashboard project move. Privacy page already documents SCCs as the interim path.
+- 5.1 monetisation timing — Stripe live credentials required. Schema is ready; UI gate needs the owner's pricing decision.
+- F2 HealthKit / Health Connect — requires native iOS app shell (HealthKit) or signed Android package (Health Connect). Web cannot reach these APIs.
+- F6 lab APIs — no public APIs without partner contracts at Synevo / Regina Maria / MedLife / Bioclinica.
+- F7 pharmacy aggregator — legal review for scraping eMAG / Catena / Sensiblu / Help Net, or signed partner.
+- F15 CGM (Libre / Dexcom) — both vendors require partner-program access for app integrations.
+
+**Items deferred because the risk-to-reward in a single iteration is wrong:**
+- 2.3 onboarding refactor (2042 lines, 181 useState calls) — needs a dedicated session with full regression coverage. Partial refactor is worse than no refactor.
+- 2.4 dashboard server/client split (~1500 lines, ~6 SWR hooks woven in) — same risk profile as 2.3.
+
+**Items effectively done by a different path:**
+- 3.8 PDF export — `/share/clinical/[slug]` carries a print stylesheet that emits a clean A4 one-pager. File → Print → Save as PDF in any browser produces the same artefact a `react-pdf` SDK would, without the 250 KB dep.
+- 5.6 Sentry — `lib/logger.ts` already redacts PII and is the single hook point. Wiring `@sentry/nextjs` is one block in `emit()` away when the owner provisions a DSN; not adding the SDK weight until that happens.
+- F13 doctor invite — `/share/clinical/[slug]` is the doctor invite. Optional expiration UI in Settings already exists. A bespoke "doctor email + magic link" iteration is a follow-up.
+
+### Migrations to apply manually (Supabase SQL Editor, in order)
+
+All idempotent — safe to re-run.
+
+1. `supabase/migrations/0003_audit_log.sql` — append-only audit_log + log_audit() helper.
+2. `supabase/migrations/0004_byok_and_vault_prep.sql` — profiles.anthropic_api_key column + encrypt_pii/decrypt_pii helpers (vault not yet active in app code).
+3. `supabase/migrations/0005_push_subscriptions.sql` — Web Push subscription rows.
+4. `supabase/migrations/0006_household.sql` — household_owner_id + household_role columns on profiles (UI follow-up).
+
+Until these run, the dependent features no-op gracefully: BYOK card shows "salvarea a eșuat (column missing)", push card stays at "available" but subscribe returns 500, etc. Nothing else breaks.
+
+### Owner env vars to set in Vercel for full feature parity
+
+- `NEXT_PUBLIC_VAPID_PUBLIC_KEY` + `VAPID_PRIVATE_KEY` + `VAPID_SUBJECT` — Web Push; generate with `npx web-push generate-vapid-keys`. Without these, PushNotificationsCard renders the "Not configured" state.
+- `RESEND_API_KEY` + `RESEND_FROM` — weekly digest send. Without them the cron runs in dry-run mode and emits `weekly_digest.dry_run` log entries (one per opted-in user).
+- `CRON_SECRET` — required for both `/api/cron/daily-regenerate` and `/api/cron/weekly-digest`; both fail closed when unset.
+
+### Server-side send wiring still pending
+
+The Web Push table exists, the SW handles push events, the client subscribes successfully — but there is no `/api/push/send` endpoint yet because it requires the `web-push` library (or a manual JWT signer) and VAPID keys. Add the route + dep after generating VAPID; the rest of the plumbing is in place.
+
+---
+
 ## Phase 4 — New features (proposals, 30–60 h depending on scope picked)
 
 The owner agreed to **balanced scope including new features**. These are concrete proposals — each with a one-line value statement, rough effort, and a "ship-it-or-skip" criterion. The owner picks. Do not start building these without confirmation.

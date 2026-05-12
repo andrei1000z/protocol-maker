@@ -10,6 +10,8 @@ import {
 import { OAuthPermissionsModal } from '@/components/settings/OAuthPermissionsModal';
 import { NotificationPrefs } from '@/components/settings/NotificationPrefs';
 import { PrivacyControls } from '@/components/settings/PrivacyControls';
+import { AnthropicByokCard } from '@/components/settings/AnthropicByokCard';
+import { PushNotificationsCard } from '@/components/settings/PushNotificationsCard';
 import { ThemePicker } from '@/components/settings/ThemePicker';
 import { LanguagePicker } from '@/components/settings/LanguagePicker';
 import {
@@ -476,7 +478,7 @@ function ReferralCard({ referralCode }: { referralCode?: string | null }) {
   const shareUrl = typeof window !== 'undefined'
     ? `${window.location.origin}/r/${referralCode}`
     : `/r/${referralCode}`;
-  const shareText = `Check out Protocol — it built me a personalized longevity protocol in under a minute. Use my code ${referralCode} to skip the waitlist.`;
+  const shareText = `Verifică Protocol — mi-a făcut un plan personalizat de longevitate în mai puțin de un minut, pe analizele mele. Folosește codul ${referralCode} ca să sari peste listă.`;
 
   const copyLink = () => {
     navigator.clipboard.writeText(shareUrl);
@@ -485,10 +487,10 @@ function ReferralCard({ referralCode }: { referralCode?: string | null }) {
   };
 
   return (
-    <SettingsCard icon={Sparkles} title="Invite a friend" subtitle="Your referral code — share with anyone interested">
-      <div className="rounded-xl p-4 bg-gradient-to-br from-accent/[0.06] via-accent/[0.02] to-transparent border border-accent/25 space-y-3">
+    <SettingsCard icon={Sparkles} title="Invită un prieten" subtitle="Codul tău de referință — distribuie-l celor interesați">
+      <div className="rounded-xl p-4 bg-gradient-to-br from-accent/6 via-accent/2 to-transparent border border-accent/25 space-y-3">
         <div className="flex items-center gap-3 flex-wrap">
-          <span className="text-xs uppercase tracking-widest text-muted">Your code</span>
+          <span className="text-xs uppercase tracking-widest text-muted">Codul tău</span>
           <code className="text-lg font-mono font-bold tracking-widest text-accent bg-accent/10 px-3 py-1 rounded-lg border border-accent/25">
             {referralCode}
           </code>
@@ -502,7 +504,7 @@ function ReferralCard({ referralCode }: { referralCode?: string | null }) {
           <button
             onClick={copyLink}
             className="shrink-0 p-2 rounded-xl bg-accent text-black hover:bg-accent-bright transition-colors"
-            aria-label="Copy referral link"
+            aria-label="Copiază link-ul de referință"
           >
             {copied ? <Check className="w-4 h-4" /> : <Copy className="w-4 h-4" />}
           </button>
@@ -515,8 +517,8 @@ function ReferralCard({ referralCode }: { referralCode?: string | null }) {
             WhatsApp
           </a>
         </div>
-        <p className="text-[11px] text-muted-foreground leading-relaxed">
-          Anyone who signs up with your link gets attributed to you. Referral rewards come with the paid tier launch.
+        <p className="text-xs text-muted-foreground leading-relaxed">
+          Oricine se înscrie folosind link-ul tău e atribuit ție. Recompensele pentru referrals vin odată cu lansarea variantei plătite.
         </p>
       </div>
     </SettingsCard>
@@ -1258,6 +1260,15 @@ export default function SettingsPage() {
       {/* Privacy — reset of cookie consent (the banner re-appears so the user
           can revisit their analytics opt-in/out without clearing site data). */}
       <PrivacyControls />
+
+      {/* BYOK — power-user plug their own Anthropic key. `hasAnthropicKey` is
+          the presence flag served by /api/my-data (the raw key is redacted). */}
+      <AnthropicByokCard hasKey={!!(profile as Record<string, unknown>).hasAnthropicKey} />
+
+      {/* Web Push opt-in. Renders a "not configured" state when
+          NEXT_PUBLIC_VAPID_PUBLIC_KEY is missing — feature degrades
+          gracefully until the owner generates a VAPID pair. */}
+      <PushNotificationsCard />
 
       {/* Notification preferences — writes through /api/save-profile with
           a partial payload so toggling a switch doesn't null unrelated

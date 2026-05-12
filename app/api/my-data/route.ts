@@ -27,8 +27,17 @@ export async function GET(request: Request) {
       supabase.from('blood_tests').select('id, taken_at, biomarkers, lab_name').eq('user_id', user.id).is('deleted_at', null).order('taken_at', { ascending: false }),
     ]);
 
+    // Redact the BYOK key — the column exists on the row but only the
+    // presence flag (hasAnthropicKey) is safe to send to the client. The
+    // raw key never crosses the network after save.
+    const profile = profileRes.data as Record<string, unknown> | null;
+    const profileSafe: Record<string, unknown> | null = profile ? (() => {
+      const { anthropic_api_key, ...rest } = profile as { anthropic_api_key?: string | null } & Record<string, unknown>;
+      return { ...rest, hasAnthropicKey: !!anthropic_api_key };
+    })() : null;
+
     const baseBody = {
-      profile: profileRes.data,
+      profile: profileSafe,
       protocol: protocolRes.data,
       bloodTests: bloodTestsRes.data || [],
     };
