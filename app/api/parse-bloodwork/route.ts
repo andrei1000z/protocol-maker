@@ -34,12 +34,35 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: `PDF too large (${Math.round(file.size / 1024 / 1024)} MB, max 10 MB). Please upload the lab report only, not a full medical record archive.` }, { status: 413 });
     }
 
-    // Extract text from PDF
+    // Extract text from PDF, with a 15s hard timeout to prevent a malformed
+    // or pathologically nested PDF from holding the worker hostage past the
+    // route's maxDuration.
     const buffer = Buffer.from(await file.arrayBuffer());
     // eslint-disable-next-line @typescript-eslint/no-require-imports
     const pdfParse = require('pdf-parse');
-    const pdf = await pdfParse(buffer);
-    const pdfText: string = pdf.text;
+    const PARSE_TIMEOUT_MS = 15_000;
+    const pdf: { text: string; numpages?: number } = await Promise.race([
+      pdfParse(buffer),
+      new Promise<never>((_, reject) =>
+        setTimeout(() => reject(new Error('PDF parsing timeout — file too complex')), PARSE_TIMEOUT_MS)
+      ),
+    ]);
+
+    // Page cap: legit lab reports are 1-8 pages. >50 pages is almost certainly
+    // either a scanned medical record dump or a zip-bomb-style PDF crafted
+    // to exhaust memory.
+    const MAX_PDF_PAGES = 50;
+    if (pdf.numpages && pdf.numpages > MAX_PDF_PAGES) {
+      return NextResponse.json({
+        error: `PDF too long (${pdf.numpages} pages, max ${MAX_PDF_PAGES}). Upload only the lab report pages.`,
+      }, { status: 413 });
+    }
+
+    // Strip angle brackets before sending to Groq — defense against prompt
+    // injection via crafted PDF text that tries to wedge in fake instructions
+    // like "<system>...</system>". The lab data we care about is numeric,
+    // not markup, so this is safe.
+    const pdfText: string = (pdf.text || '').replace(/[<>]/g, ' ');
 
     if (!pdfText || pdfText.trim().length < 50) {
       return NextResponse.json({ error: 'Could not extract text from PDF. Try manual entry.' }, { status: 400 });

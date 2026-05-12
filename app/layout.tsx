@@ -1,6 +1,6 @@
 import type { Metadata, Viewport } from "next";
 import { Inter, JetBrains_Mono } from "next/font/google";
-import { Analytics } from "@vercel/analytics/react";
+import { CookieConsent } from "@/components/layout/CookieConsent";
 import { SWRegister } from "@/components/layout/SWRegister";
 import { InstallPrompt } from "@/components/layout/InstallPrompt";
 import { ToastViewport } from "@/components/layout/ToastViewport";
@@ -141,7 +141,9 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         <Providers>
           {children}
         </Providers>
-        <Analytics />
+        {/* Cookie consent gates Vercel Analytics — analytics only mounts after
+            the user has actively opted in (GDPR "prior consent"). */}
+        <CookieConsent />
         <SWRegister />
         <InstallPrompt />
         {/* Global toast viewport — listens for events from lib/toast.ts.
