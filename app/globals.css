@@ -2,69 +2,80 @@
 @plugin "@tailwindcss/typography";
 
 /* ============================================================================
-   PROTOCOL MAKER — Modern minimalist dark theme
-   Inspired by Linear, Apple Health, Arc Browser.
-   Deep slate base, soft emerald accent, refined typography, glass cards.
-   ============================================================================ */
-
-/* ============================================================================
-   THEME — variables shipped in two presets: dark (default) + light.
-   The HTML `data-theme` attribute switches between them. The ThemeProvider
-   in lib/theme.ts writes that attribute on mount based on the user's saved
-   preference (or system preference) — no flash of wrong theme because the
-   inline boot script in app/layout.tsx applies it pre-hydration.
+   PROTOCOL MAKER — Ultra liquid glass theme
+   ----------------------------------------------------------------------------
+   Inspired by iOS 17 materials, visionOS depth, Arc browser refinement.
+   - Multi-layer glass: tint + blur + brightness + saturation
+   - Specular highlight + iridescent rim on cards
+   - Ambient aurora moving slowly behind everything
+   - All existing class names preserved — visual upgrade only
    ============================================================================ */
 
 :root, [data-theme="dark"] {
-  /* Surface layers — subtle elevation through lightness, not borders */
-  --background: #08090d;
-  --surface-1: #0e1014;
-  --surface-2: #13161c;
-  --surface-3: #1a1e26;
+  /* Surface layers — slightly cooler base for the glass to read clearer */
+  --background: #06080d;
+  --surface-1: #0f1218;
+  --surface-2: #161a22;
+  --surface-3: #1d222b;
   --foreground: #ecedef;
 
-  /* Keep legacy names working */
-  --card: #0e1014;
-  --card-hover: #13161c;
-  --card-border: #1d2128;
-  --card-border-hover: #2b3039;
+  --card: #0f1218;
+  --card-hover: #161a22;
+  --card-border: #20242d;
+  --card-border-hover: #2e3340;
 
-  /* Accent: refined emerald instead of neon */
+  /* Refined emerald — slightly more luminous on the dark base */
   --accent: #34d399;
   --accent-dim: #10b981;
   --accent-bright: #6ee7b7;
-  --accent-glow: rgba(52, 211, 153, 0.12);
-  --accent-subtle: rgba(52, 211, 153, 0.05);
+  --accent-glow: rgba(52, 211, 153, 0.14);
+  --accent-subtle: rgba(52, 211, 153, 0.06);
 
-  /* Semantic */
   --muted: #6b7280;
   --muted-foreground: #9ca3af;
   --danger: #f87171;
   --warning: #fbbf24;
   --info: #60a5fa;
 
-  /* Biomarker classification — refined palette */
   --optimal: #34d399;
   --suboptimal: #fbbf24;
   --deficient: #fb923c;
   --critical: #f87171;
 
-  /* Radii & shadows */
+  /* Radii & shadows — tuned for glass (softer, more diffused) */
   --radius-sm: 8px;
   --radius-md: 12px;
   --radius-lg: 16px;
   --radius-xl: 20px;
+  --radius-2xl: 24px;
   --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.4);
-  --shadow-md: 0 4px 16px rgba(0, 0, 0, 0.4), 0 1px 2px rgba(0, 0, 0, 0.5);
-  --shadow-lg: 0 8px 32px rgba(0, 0, 0, 0.5), 0 2px 4px rgba(0, 0, 0, 0.6);
+  --shadow-md:
+    0 4px 16px rgba(0, 0, 0, 0.4),
+    0 1px 2px rgba(0, 0, 0, 0.5),
+    inset 0 1px 0 rgba(255, 255, 255, 0.04);
+  --shadow-lg:
+    0 12px 40px rgba(0, 0, 0, 0.55),
+    0 2px 6px rgba(0, 0, 0, 0.5),
+    inset 0 1px 0 rgba(255, 255, 255, 0.05);
   --shadow-glow: 0 0 24px var(--accent-glow);
+
+  /* Glass material tokens — used by .glass-card / .liquid-glass / .glass-pill */
+  --glass-tint: rgba(20, 24, 32, 0.55);
+  --glass-tint-strong: rgba(15, 18, 24, 0.7);
+  --glass-rim: rgba(255, 255, 255, 0.08);
+  --glass-rim-strong: rgba(255, 255, 255, 0.14);
+  --glass-spec: rgba(255, 255, 255, 0.05);
+  --glass-blur: 18px;
+  --glass-blur-strong: 28px;
+
+  /* Aurora colours used by body::before / .ambient-orbs */
+  --aurora-1: rgba(52, 211, 153, 0.08);
+  --aurora-2: rgba(96, 165, 250, 0.06);
+  --aurora-3: rgba(168, 85, 247, 0.04);
 }
 
-/* Light theme — hand-tuned to keep the same emerald-on-dark personality
-   without the eye-strain of pure white. The accent stays slightly darker
-   (#059669) so it has enough contrast on a near-white surface. */
 [data-theme="light"] {
-  --background: #f7f8fa;
+  --background: #f5f7fb;
   --surface-1: #ffffff;
   --surface-2: #f1f3f7;
   --surface-3: #e8ebf0;
@@ -78,7 +89,7 @@
   --accent: #059669;
   --accent-dim: #047857;
   --accent-bright: #10b981;
-  --accent-glow: rgba(5, 150, 105, 0.10);
+  --accent-glow: rgba(5, 150, 105, 0.12);
   --accent-subtle: rgba(5, 150, 105, 0.05);
 
   --muted: #6b7280;
@@ -93,9 +104,27 @@
   --critical: #dc2626;
 
   --shadow-sm: 0 1px 2px rgba(15, 23, 42, 0.06);
-  --shadow-md: 0 4px 16px rgba(15, 23, 42, 0.06), 0 1px 2px rgba(15, 23, 42, 0.04);
-  --shadow-lg: 0 8px 32px rgba(15, 23, 42, 0.08), 0 2px 4px rgba(15, 23, 42, 0.04);
+  --shadow-md:
+    0 4px 16px rgba(15, 23, 42, 0.07),
+    0 1px 2px rgba(15, 23, 42, 0.04),
+    inset 0 1px 0 rgba(255, 255, 255, 0.6);
+  --shadow-lg:
+    0 12px 40px rgba(15, 23, 42, 0.10),
+    0 2px 6px rgba(15, 23, 42, 0.05),
+    inset 0 1px 0 rgba(255, 255, 255, 0.7);
   --shadow-glow: 0 0 24px var(--accent-glow);
+
+  --glass-tint: rgba(255, 255, 255, 0.7);
+  --glass-tint-strong: rgba(255, 255, 255, 0.85);
+  --glass-rim: rgba(255, 255, 255, 0.9);
+  --glass-rim-strong: rgba(255, 255, 255, 1);
+  --glass-spec: rgba(15, 23, 42, 0.04);
+  --glass-blur: 18px;
+  --glass-blur-strong: 28px;
+
+  --aurora-1: rgba(5, 150, 105, 0.06);
+  --aurora-2: rgba(37, 99, 235, 0.04);
+  --aurora-3: rgba(168, 85, 247, 0.03);
 }
 
 @theme inline {
@@ -138,18 +167,34 @@ body {
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
   letter-spacing: -0.011em;
+  /* Subtle noise to break the uniformity of large dark surfaces; barely
+     visible but kills banding on gradients. Inlined SVG so no extra request. */
+  background-image:
+    url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='160' height='160'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='2' stitchTiles='stitch'/><feColorMatrix values='0 0 0 0 1  0 0 0 0 1  0 0 0 0 1  0 0 0 0.025 0'/></filter><rect width='100%' height='100%' filter='url(%23n)' opacity='0.45'/></svg>");
+  background-size: 160px 160px;
+  background-attachment: fixed;
 }
 
-/* Ambient background gradient — subtle aurora */
+/* Ambient aurora — three slow-drifting radial gradients behind everything.
+   Picks up subtle motion that liquid glass cards refract through. */
 body::before {
   content: "";
   position: fixed;
-  inset: 0;
+  inset: -20%;
   pointer-events: none;
   z-index: -1;
   background:
-    radial-gradient(ellipse at top left, rgba(52, 211, 153, 0.04) 0%, transparent 50%),
-    radial-gradient(ellipse at bottom right, rgba(96, 165, 250, 0.03) 0%, transparent 50%);
+    radial-gradient(40% 50% at 20% 25%, var(--aurora-1) 0%, transparent 60%),
+    radial-gradient(35% 45% at 80% 70%, var(--aurora-2) 0%, transparent 60%),
+    radial-gradient(30% 40% at 55% 90%, var(--aurora-3) 0%, transparent 60%);
+  animation: auroraDrift 32s ease-in-out infinite alternate;
+  will-change: transform;
+}
+
+@keyframes auroraDrift {
+  0%   { transform: translate3d(-2%, -1%, 0) scale(1.02); }
+  50%  { transform: translate3d(1%, 2%, 0) scale(1.05); }
+  100% { transform: translate3d(-1%, 1%, 0) scale(1.03); }
 }
 
 /* Tabular numerals on monospace */
@@ -159,7 +204,6 @@ body::before {
   font-variant-numeric: tabular-nums;
 }
 
-/* Headings — tighter */
 h1, h2, h3, h4 {
   letter-spacing: -0.02em;
   font-feature-settings: "cv11", "ss01";
@@ -178,7 +222,11 @@ h1, h2, h3, h4 {
 /* ── Scrollbar — minimal ──────────────────────────────────────────────────── */
 ::-webkit-scrollbar { width: 6px; height: 6px; }
 ::-webkit-scrollbar-track { background: transparent; }
-::-webkit-scrollbar-thumb { background: var(--card-border); border-radius: 3px; transition: background 0.2s; }
+::-webkit-scrollbar-thumb {
+  background: var(--card-border);
+  border-radius: 3px;
+  transition: background 0.2s;
+}
 ::-webkit-scrollbar-thumb:hover { background: var(--card-border-hover); }
 * { scrollbar-width: thin; scrollbar-color: var(--card-border) transparent; }
 
@@ -226,48 +274,148 @@ input[type="range"]::-moz-range-thumb {
   cursor: pointer;
 }
 
-/* ── Glass card effect ────────────────────────────────────────────────────── */
-.glass-card {
-  background: linear-gradient(180deg, rgba(255, 255, 255, 0.02) 0%, rgba(255, 255, 255, 0) 100%),
-              var(--surface-1);
+/* ============================================================================
+   LIQUID GLASS — the headline material upgrade.
+   Three layers stacked via background-image:
+     1. Inner specular sheen on the top edge (linear-gradient white→transparent)
+     2. Soft radial highlight in the upper-left corner
+     3. The tinted glass body itself (semi-transparent surface colour)
+   Plus a thin rim border that picks up the accent on hover and a backdrop-
+   filter blur that lifts whatever's behind it into a frosted layer.
+   ============================================================================ */
+.glass-card,
+.liquid-glass,
+.metric-tile {
+  position: relative;
+  background-color: var(--glass-tint);
+  background-image:
+    linear-gradient(180deg, var(--glass-spec) 0%, transparent 30%),
+    radial-gradient(120% 60% at 0% 0%, var(--glass-rim) 0%, transparent 50%);
+  background-blend-mode: screen, normal;
   border: 1px solid var(--card-border);
-  backdrop-filter: blur(12px);
-  -webkit-backdrop-filter: blur(12px);
-  box-shadow: var(--shadow-sm);
-  transition: border-color 0.2s, transform 0.2s, box-shadow 0.2s;
+  backdrop-filter: blur(var(--glass-blur)) saturate(140%);
+  -webkit-backdrop-filter: blur(var(--glass-blur)) saturate(140%);
+  box-shadow: var(--shadow-md);
+  transition:
+    border-color 0.25s ease,
+    transform 0.2s ease,
+    box-shadow 0.3s ease,
+    background-color 0.3s ease;
 }
+
+.glass-card::after,
+.liquid-glass::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  pointer-events: none;
+  /* Iridescent rim — picks up a hint of accent + warm white on the top-left
+     edge. Subtle in dark mode, almost invisible in light mode (the white-on-
+     white still reads as a soft glass bevel). */
+  background:
+    linear-gradient(135deg, var(--glass-rim-strong) 0%, transparent 35%, transparent 70%, var(--glass-rim) 100%);
+  -webkit-mask:
+    linear-gradient(#000 0 0) content-box,
+    linear-gradient(#000 0 0);
+  -webkit-mask-composite: xor;
+          mask-composite: exclude;
+  padding: 1px;
+  opacity: 0.6;
+  transition: opacity 0.25s ease;
+}
+
 .glass-card:hover {
   border-color: var(--card-border-hover);
+  box-shadow:
+    var(--shadow-lg),
+    0 0 0 1px var(--card-border-hover);
+}
+.glass-card:hover::after,
+.liquid-glass:hover::after {
+  opacity: 1;
 }
 
+/* Strong-blur variant for hero / top-level cards — used by the dashboard
+   diagnostic hero, the AskAIPill, the cookie consent banner. */
+.liquid-glass {
+  background-color: var(--glass-tint-strong);
+  backdrop-filter: blur(var(--glass-blur-strong)) saturate(160%) brightness(1.05);
+  -webkit-backdrop-filter: blur(var(--glass-blur-strong)) saturate(160%) brightness(1.05);
+  box-shadow: var(--shadow-lg);
+}
+
+/* Liquid hover-lift — applies a subtle vertical translate + accent rim glow.
+   Cards that opt into this feel "alive" without the cartoon hover-pop. */
+.liquid-hover {
+  transition:
+    transform 0.25s cubic-bezier(0.16, 1, 0.3, 1),
+    box-shadow 0.3s ease,
+    border-color 0.25s ease;
+}
+.liquid-hover:hover {
+  transform: translateY(-1px);
+  border-color: rgba(52, 211, 153, 0.25);
+  box-shadow:
+    var(--shadow-lg),
+    0 0 0 1px rgba(52, 211, 153, 0.2),
+    0 12px 32px rgba(52, 211, 153, 0.08);
+}
+
+/* Hero card — keeps the radial gradient personality with the new glass base. */
 .hero-card {
-  background:
-    radial-gradient(ellipse at top right, rgba(52, 211, 153, 0.08) 0%, transparent 60%),
-    radial-gradient(ellipse at bottom left, rgba(96, 165, 250, 0.04) 0%, transparent 50%),
-    var(--surface-1);
+  position: relative;
+  background-color: var(--glass-tint-strong);
+  background-image:
+    radial-gradient(ellipse 60% 50% at 100% 0%, rgba(52, 211, 153, 0.10) 0%, transparent 60%),
+    radial-gradient(ellipse 50% 40% at 0% 100%, rgba(96, 165, 250, 0.06) 0%, transparent 50%),
+    linear-gradient(180deg, var(--glass-spec) 0%, transparent 30%);
   border: 1px solid var(--card-border);
-  box-shadow: var(--shadow-md);
+  backdrop-filter: blur(var(--glass-blur-strong)) saturate(160%);
+  -webkit-backdrop-filter: blur(var(--glass-blur-strong)) saturate(160%);
+  box-shadow: var(--shadow-lg);
+  overflow: hidden;
+}
+.hero-card::before {
+  /* Specular sweep — a faint diagonal highlight that suggests light hitting
+     glass. Animated very slowly so it reads as ambient. */
+  content: "";
+  position: absolute;
+  inset: -50% -10% auto auto;
+  width: 60%;
+  height: 200%;
+  background: linear-gradient(115deg, transparent 30%, rgba(255, 255, 255, 0.04) 50%, transparent 70%);
+  transform: rotate(8deg);
+  animation: specularSweep 14s ease-in-out infinite;
+  pointer-events: none;
 }
 
-/* ── Metric tile (big number + label) ─────────────────────────────────────── */
+@keyframes specularSweep {
+  0%, 100% { transform: rotate(8deg) translateX(0); opacity: 0.6; }
+  50%      { transform: rotate(8deg) translateX(-30%); opacity: 1; }
+}
+
+/* ── Metric tile — uses the glass treatment + tighter padding ──────────────── */
 .metric-tile {
-  background: var(--surface-2);
-  border: 1px solid var(--card-border);
   border-radius: var(--radius-lg);
   padding: 1.25rem 1rem;
-  transition: border-color 0.2s, transform 0.15s;
 }
 .metric-tile:hover {
   border-color: var(--card-border-hover);
+  transform: translateY(-1px);
+}
+
+/* ── Glass pill — for inline chips that want the same material ─────────────── */
+.glass-pill {
+  background-color: var(--glass-tint);
+  border: 1px solid var(--card-border);
+  backdrop-filter: blur(8px) saturate(140%);
+  -webkit-backdrop-filter: blur(8px) saturate(140%);
 }
 
 /* ── Progress ring ────────────────────────────────────────────────────────── */
-.progress-ring {
-  transform: rotate(-90deg);
-}
-.progress-ring-bg {
-  stroke: var(--card-border);
-}
+.progress-ring { transform: rotate(-90deg); }
+.progress-ring-bg { stroke: var(--card-border); }
 .progress-ring-fg {
   stroke: var(--accent);
   stroke-linecap: round;
@@ -294,12 +442,17 @@ input[type="range"]::-moz-range-thumb {
 }
 @keyframes pulseGlow {
   0%, 100% { box-shadow: 0 0 16px var(--accent-glow); }
-  50% { box-shadow: 0 0 32px rgba(52, 211, 153, 0.25); }
+  50% { box-shadow: 0 0 32px rgba(52, 211, 153, 0.28); }
+}
+@keyframes liquidBlob {
+  0%, 100% { border-radius: 32% 68% 64% 36% / 49% 41% 59% 51%; transform: translate(0, 0) scale(1); }
+  33%      { border-radius: 56% 44% 28% 72% / 36% 64% 36% 64%; transform: translate(8%, -4%) scale(1.05); }
+  66%      { border-radius: 42% 58% 70% 30% / 65% 36% 64% 35%; transform: translate(-4%, 6%) scale(0.98); }
 }
 
 .animate-fade-in-up { animation: fadeInUp 0.5s cubic-bezier(0.16, 1, 0.3, 1) backwards; }
-.animate-fade-in { animation: fadeIn 0.3s ease-out backwards; }
-.animate-scale-in { animation: scaleIn 0.3s cubic-bezier(0.16, 1, 0.3, 1) backwards; }
+.animate-fade-in    { animation: fadeIn 0.3s ease-out backwards; }
+.animate-scale-in   { animation: scaleIn 0.3s cubic-bezier(0.16, 1, 0.3, 1) backwards; }
 .animate-pulse-glow { animation: pulseGlow 2.5s ease-in-out infinite; }
 
 .stagger-1 { animation-delay: 50ms; }
@@ -327,53 +480,75 @@ input[type="range"]::-moz-range-thumb {
 
 /* ── CTA glow ─────────────────────────────────────────────────────────────── */
 .glow-cta {
-  box-shadow: 0 0 40px rgba(52, 211, 153, 0.25), 0 4px 16px rgba(0, 0, 0, 0.4);
+  position: relative;
+  box-shadow:
+    0 0 40px rgba(52, 211, 153, 0.28),
+    0 4px 16px rgba(0, 0, 0, 0.4),
+    inset 0 1px 0 rgba(255, 255, 255, 0.15);
   transition: box-shadow 0.3s, transform 0.15s;
 }
 .glow-cta:hover {
-  box-shadow: 0 0 60px rgba(52, 211, 153, 0.4), 0 8px 24px rgba(0, 0, 0, 0.5);
+  box-shadow:
+    0 0 60px rgba(52, 211, 153, 0.42),
+    0 10px 28px rgba(0, 0, 0, 0.5),
+    inset 0 1px 0 rgba(255, 255, 255, 0.2);
   transform: translateY(-1px);
 }
-.glow-cta:active {
-  transform: translateY(0);
-}
+.glow-cta:active { transform: translateY(0); }
 
 /* ── Grid background pattern ──────────────────────────────────────────────── */
 .grid-bg {
   background-image:
-    linear-gradient(rgba(255, 255, 255, 0.02) 1px, transparent 1px),
-    linear-gradient(90deg, rgba(255, 255, 255, 0.02) 1px, transparent 1px);
+    linear-gradient(rgba(255, 255, 255, 0.025) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(255, 255, 255, 0.025) 1px, transparent 1px);
   background-size: 48px 48px;
   mask-image: radial-gradient(ellipse at center, black 30%, transparent 80%);
 }
 
-/* ── Classification pill ──────────────────────────────────────────────────── */
-.pill-optimal    { background: rgba(52, 211, 153, 0.12); color: var(--optimal); border: 1px solid rgba(52, 211, 153, 0.2); }
-.pill-suboptimal { background: rgba(251, 191, 36, 0.1); color: var(--suboptimal); border: 1px solid rgba(251, 191, 36, 0.2); }
-.pill-deficient  { background: rgba(251, 146, 60, 0.1); color: var(--deficient); border: 1px solid rgba(251, 146, 60, 0.2); }
-.pill-critical   { background: rgba(248, 113, 113, 0.1); color: var(--critical); border: 1px solid rgba(248, 113, 113, 0.25); }
+/* ── Classification pill — glass treatment ────────────────────────────────── */
+.pill-optimal    { background: rgba(52, 211, 153, 0.14); color: var(--optimal); border: 1px solid rgba(52, 211, 153, 0.25); backdrop-filter: blur(8px); }
+.pill-suboptimal { background: rgba(251, 191, 36, 0.12); color: var(--suboptimal); border: 1px solid rgba(251, 191, 36, 0.25); backdrop-filter: blur(8px); }
+.pill-deficient  { background: rgba(251, 146, 60, 0.12); color: var(--deficient); border: 1px solid rgba(251, 146, 60, 0.25); backdrop-filter: blur(8px); }
+.pill-critical   { background: rgba(248, 113, 113, 0.12); color: var(--critical); border: 1px solid rgba(248, 113, 113, 0.3); backdrop-filter: blur(8px); }
+
+/* ── Decorative liquid blobs — for use behind hero sections / pricing ─────── */
+.liquid-blob {
+  position: absolute;
+  pointer-events: none;
+  filter: blur(60px);
+  opacity: 0.5;
+  animation: liquidBlob 18s ease-in-out infinite;
+  will-change: transform, border-radius;
+}
+.liquid-blob.b-accent { background: var(--accent-glow); }
+.liquid-blob.b-blue   { background: rgba(96, 165, 250, 0.10); }
+.liquid-blob.b-purple { background: rgba(168, 85, 247, 0.08); }
 
 /* ── Print ────────────────────────────────────────────────────────────────── */
 @page { size: A4; margin: 12mm; }
 @media print {
-  nav, header, .no-print { display: none !important; }
+  nav, header, .no-print, .liquid-blob { display: none !important; }
   body { background: white !important; color: black !important; }
-  body::before { display: none; }
-  .glass-card, .hero-card, .metric-tile { background: white !important; border-color: #d4d4d8 !important; }
+  body::before, body { background-image: none !important; }
+  .glass-card, .liquid-glass, .hero-card, .metric-tile {
+    background: white !important;
+    backdrop-filter: none !important;
+    -webkit-backdrop-filter: none !important;
+    border-color: #d4d4d8 !important;
+    box-shadow: none !important;
+  }
+  .glass-card::after, .liquid-glass::after, .hero-card::before { display: none !important; }
   .bg-card, .bg-background, .bg-surface-1, .bg-surface-2 { background: white !important; }
   .text-accent { color: #059669 !important; }
   .text-muted, .text-muted-foreground { color: #52525b !important; }
-  /* Keep each card together on one page — scores + drivers shouldn't split across a break. */
-  .glass-card, .hero-card, .metric-tile,
+  .glass-card, .liquid-glass, .hero-card, .metric-tile,
   .rounded-2xl, .rounded-xl {
     border: 1px solid #e4e4e7 !important;
     page-break-inside: avoid;
     break-inside: avoid;
   }
-  /* Force new section on h2 so the export reads as titled chapters. */
   h2 { break-before: auto; page-break-after: avoid; }
   h1, h2, h3 { color: black !important; }
-  /* Hide sticky nav scroll affordances on paper. */
   [class*="sticky"] { position: static !important; }
 }
 
@@ -384,4 +559,13 @@ input[type="range"]::-moz-range-thumb {
     transition-duration: 0.01ms !important;
   }
   body::before { display: none; }
+  .liquid-blob { display: none; }
+  .hero-card::before { display: none; }
+}
+
+/* ── Browsers that don't support backdrop-filter ──────────────────────────── */
+@supports not ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) {
+  .glass-card, .liquid-glass, .hero-card, .metric-tile, .glass-pill {
+    background-color: var(--surface-1);
+  }
 }
