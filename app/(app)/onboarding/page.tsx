@@ -3,9 +3,12 @@
 import { useState, useRef, useEffect, useMemo } from 'react';
 import { BIOMARKER_DB, BIG_11_CODES, BIOMARKER_CATEGORIES, CATEGORY_LABELS } from '@/lib/engine/biomarkers';
 import { classifyBiomarker } from '@/lib/engine/classifier';
-import { SMARTWATCH_BRANDS, SMART_RING_BRANDS, HOME_EQUIPMENT, type DeviceBrand } from '@/lib/engine/device-catalog';
+import { SMARTWATCH_BRANDS, SMART_RING_BRANDS, HOME_EQUIPMENT } from '@/lib/engine/device-catalog';
 import { CONDITIONS, FAMILY_CONDITIONS, GOALS, SLEEP_ISSUES } from '@/lib/engine/onboarding-options';
 import { GeneratingScreen } from '@/components/protocol/GeneratingScreen';
+import { DevicePicker } from '@/components/onboarding/DevicePicker';
+import { EquipmentRow } from '@/components/onboarding/EquipmentRow';
+import { CollapseSection } from '@/components/onboarding/CollapseSection';
 import { Upload, FileText, ChevronDown, ChevronUp, Plus, X } from 'lucide-react';
 import clsx from 'clsx';
 
@@ -15,178 +18,8 @@ const STEPS = ['De bază', 'Analize', 'Stil de viață', 'Rutină zilnică', 'Ob
 // old drafts safely instead of trying to parse them against a new shape.
 const ONBOARDING_DRAFT_KEY = 'protocol:onboarding-draft:v1';
 
-// ─────────────────────────────────────────────────────────────────────────────
-// DevicePicker — "None / Brand A / Brand B / ... / Other"; clicking a brand
-// reveals a searchable model dropdown. "Other" reveals a free-text input.
-// ─────────────────────────────────────────────────────────────────────────────
-function DevicePicker({
-  label, icon, brands, brand, model, other,
-  onBrandChange, onModelChange, onOtherChange,
-}: {
-  label: string;
-  icon: string;
-  brands: DeviceBrand[];
-  brand: string;
-  model: string;
-  other: string;
-  onBrandChange: (v: string) => void;
-  onModelChange: (v: string) => void;
-  onOtherChange: (v: string) => void;
-}) {
-  const [search, setSearch] = useState('');
-  const currentBrand = brands.find(b => b.name === brand);
-  const filteredModels = useMemo(() => {
-    if (!currentBrand) return [];
-    const q = search.toLowerCase().trim();
-    if (!q) return currentBrand.models;
-    return currentBrand.models.filter(m => m.name.toLowerCase().includes(q));
-  }, [currentBrand, search]);
-
-  return (
-    <div className="rounded-2xl bg-card border border-card-border p-3 space-y-3">
-      <div className="flex items-center gap-2">
-        <span className="text-base">{icon}</span>
-        <label className="text-xs font-medium">{label}</label>
-      </div>
-      <div className="grid grid-cols-2 sm:grid-cols-3 gap-1.5">
-        <button
-          onClick={() => { onBrandChange('none'); onModelChange(''); onOtherChange(''); }}
-          className={clsx('py-2 rounded-xl text-[11px] font-medium transition-all',
-            brand === 'none' ? 'bg-accent text-black' : 'bg-background border border-card-border text-muted-foreground hover:border-accent/40')}
-        >
-          I don&apos;t have one
-        </button>
-        {brands.map(b => (
-          <button
-            key={b.name}
-            onClick={() => { onBrandChange(b.name); onModelChange(''); onOtherChange(''); setSearch(''); }}
-            className={clsx('py-2 rounded-xl text-[11px] font-medium transition-all whitespace-nowrap',
-              brand === b.name ? 'bg-accent text-black' : 'bg-background border border-card-border text-muted-foreground hover:border-accent/40')}
-          >
-            {b.name}
-          </button>
-        ))}
-        <button
-          onClick={() => { onBrandChange('Other'); onModelChange(''); }}
-          className={clsx('py-2 rounded-xl text-[11px] font-medium transition-all',
-            brand === 'Other' ? 'bg-accent text-black' : 'bg-background border border-card-border text-muted-foreground hover:border-accent/40')}
-        >
-          Other
-        </button>
-      </div>
-
-      {/* Model picker for selected brand */}
-      {currentBrand && (
-        <div className="space-y-2">
-          <input
-            type="text"
-            value={search}
-            onChange={e => setSearch(e.target.value)}
-            placeholder={`Search ${currentBrand.name} models…`}
-            className="w-full rounded-xl bg-background border border-card-border px-3 py-2 text-xs outline-none focus:border-accent"
-          />
-          <div className="max-h-40 overflow-y-auto space-y-1 scrollbar-thin">
-            {filteredModels.length === 0 ? (
-              <p className="text-[11px] text-muted-foreground px-2 py-1.5">No match — pick &ldquo;Other&rdquo; and type your model.</p>
-            ) : filteredModels.map(m => (
-              <button
-                key={m.name}
-                onClick={() => onModelChange(m.name)}
-                className={clsx('w-full text-left px-3 py-2 rounded-lg text-[12px] transition-colors',
-                  model === m.name ? 'bg-accent/15 text-accent border border-accent/30' : 'bg-background border border-card-border text-foreground/80 hover:border-accent/30')}
-              >
-                {m.name}
-                {model === m.name && <span className="ml-2 text-xs text-accent">✓ selected</span>}
-              </button>
-            ))}
-          </div>
-          {model && (
-            <p className="text-xs text-accent">
-              ✓ {currentBrand.name} {model} — AI will use its capabilities in your tracking setup.
-            </p>
-          )}
-        </div>
-      )}
-
-      {/* Free-form "Other" input */}
-      {brand === 'Other' && (
-        <div className="space-y-2">
-          <label className="text-[11px] text-muted-foreground">Spune-ne marca + modelul:</label>
-          <input
-            type="text"
-            value={other}
-            onChange={e => onOtherChange(e.target.value)}
-            placeholder="e.g. Coros Pace 3 · Suunto Ocean · custom build"
-            className="w-full rounded-xl bg-background border border-card-border px-3 py-2 text-sm outline-none focus:border-accent"
-          />
-          <p className="text-xs text-muted-foreground">The AI will infer what it measures from the model name.</p>
-        </div>
-      )}
-    </div>
-  );
-}
-
-// Equipment row — Yes / No / Will buy tri-state with optional notes field
-function EquipmentRow({
-  item, status, note, onStatus, onNote,
-}: {
-  item: (typeof HOME_EQUIPMENT)[number];
-  status: 'yes' | 'no' | 'will_buy' | undefined;
-  note: string;
-  onStatus: (s: 'yes' | 'no' | 'will_buy') => void;
-  onNote: (s: string) => void;
-}) {
-  return (
-    <div className="p-3 rounded-xl bg-card border border-card-border space-y-2.5">
-      <div className="flex items-start gap-3">
-        <span className="text-lg shrink-0 mt-0.5">{item.icon}</span>
-        <div className="flex-1 min-w-0">
-          <p className="text-sm font-medium">{item.label}</p>
-          <p className="text-xs text-muted-foreground leading-snug mt-0.5">{item.whyItMatters}</p>
-        </div>
-      </div>
-      <div className="grid grid-cols-3 gap-1.5">
-        {([
-          { v: 'yes',       l: 'Yes, I have' },
-          { v: 'no',        l: 'No' },
-          { v: 'will_buy',  l: 'Will buy' },
-        ] as const).map(opt => (
-          <button
-            key={opt.v}
-            onClick={() => onStatus(opt.v)}
-            className={clsx('py-1.5 rounded-lg text-[11px] font-medium transition-all',
-              status === opt.v
-                ? opt.v === 'yes' ? 'bg-accent text-black'
-                  : opt.v === 'will_buy' ? 'bg-amber-500/20 text-amber-400 border border-amber-500/40'
-                  : 'bg-surface-3 text-foreground border border-card-border'
-                : 'bg-background border border-card-border text-muted-foreground hover:border-accent/30')}
-          >
-            {opt.l}
-          </button>
-        ))}
-      </div>
-      {status === 'yes' && (
-        <input
-          type="text"
-          value={note}
-          onChange={e => onNote(e.target.value)}
-          placeholder="Optional: brand, model, how many, where (e.g. 'Dyson Pure Cool — 2 units, bedroom + living room')"
-          className="w-full rounded-lg bg-background border border-card-border px-3 py-1.5 text-[11px] outline-none focus:border-accent"
-        />
-      )}
-      {status === 'will_buy' && item.buyQuery && (
-        <a
-          href={`https://www.emag.ro/search/${encodeURIComponent(item.buyQuery)}`}
-          target="_blank"
-          rel="noopener noreferrer"
-          className="block text-[11px] text-accent hover:underline"
-        >
-          🛒 Search on eMAG {item.priceHintRon ? `(~${item.priceHintRon} RON)` : ''} ↗
-        </a>
-      )}
-    </div>
-  );
-}
+// DevicePicker, EquipmentRow, CollapseSection are now in components/onboarding/.
+// They're imported at the top of this file.
 
 interface Medication { name: string; dose: string; frequency: string; }
 
@@ -2376,14 +2209,4 @@ export default function OnboardingPage() {
   );
 }
 
-function CollapseSection({ title, expanded, onToggle, children }: { title: string; expanded: boolean; onToggle: () => void; children: React.ReactNode }) {
-  return (
-    <div className="rounded-2xl bg-card border border-card-border overflow-hidden">
-      <button onClick={onToggle} className="w-full flex items-center justify-between p-4 text-left hover:bg-background/50 transition-colors">
-        <span className="text-sm font-semibold">{title}</span>
-        {expanded ? <ChevronUp className="w-4 h-4 text-muted" /> : <ChevronDown className="w-4 h-4 text-muted" />}
-      </button>
-      {expanded && <div className="px-4 pb-4 space-y-3 border-t border-card-border">{children}</div>}
-    </div>
-  );
-}
+// CollapseSection moved to components/onboarding/CollapseSection.tsx

@@ -25,6 +25,12 @@ import { MedicalDisclaimer } from '@/components/dashboard/MedicalDisclaimer';
 import { FirstVisitTour } from '@/components/dashboard/FirstVisitTour';
 import { FallbackBanner } from '@/components/dashboard/FallbackBanner';
 import { LastRefreshedChip } from '@/components/dashboard/LastRefreshedChip';
+import { Section } from '@/components/dashboard/Section';
+import { DashboardEmptyState as EmptyState } from '@/components/dashboard/EmptyState';
+import { IncompleteProtocolBanner } from '@/components/dashboard/IncompleteProtocolBanner';
+import { LiveDriftChip } from '@/components/dashboard/LiveDriftChip';
+import { CronRegenBanner } from '@/components/dashboard/CronRegenBanner';
+import { RegenDiffToast } from '@/components/dashboard/RegenDiffToast';
 import clsx from 'clsx';
 import dynamic from 'next/dynamic';
 
@@ -56,190 +62,9 @@ const TOC_ITEMS = [
   { id: 'flex', label: 'Strategii flex', icon: '🧘' },
 ];
 
-function Section({ id, title, icon, subtitle, action, children, className }: { id?: string; title: string; icon: string; subtitle?: string; action?: React.ReactNode; children: React.ReactNode; className?: string }) {
-  return (
-    <div id={id} className={clsx('glass-card rounded-2xl p-6 space-y-5 scroll-mt-20 animate-fade-in-up', className)}>
-      <div className="flex items-start justify-between gap-4">
-        <div className="flex-1 min-w-0">
-          <h2 className="text-xl font-semibold tracking-tight flex items-center gap-2.5">
-            <span className="text-2xl">{icon}</span>{title}
-          </h2>
-          {subtitle && <p className="text-xs text-muted-foreground mt-1.5 max-w-lg leading-relaxed">{subtitle}</p>}
-        </div>
-        {action && <div className="shrink-0">{action}</div>}
-      </div>
-      {children}
-    </div>
-  );
-}
-
-function EmptyState({ message, allowRegenerate }: { message: string; allowRegenerate?: boolean }) {
-  // When `allowRegenerate` is true, show an inline button so the user can
-  // trigger a fresh AI generation right from the missing section instead
-  // of scrolling to the footer.
-  const regen = async () => {
-    // Hit the regenerate endpoint directly (no onboarding reset needed if the
-    // user already has a profile). Redirect to dashboard with a cache-buster
-    // so SWR re-reads the fresh protocol.
-    const res = await fetch('/api/generate-protocol', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ profile: {}, biomarkers: [] }),
-    });
-    if (res.ok) window.location.href = '/dashboard';
-    else window.location.href = '/onboarding';  // fallback: let onboarding resync
-  };
-  return (
-    <div className="p-8 rounded-xl bg-background/50 border border-dashed border-card-border text-center space-y-3">
-      <p className="text-xs text-muted-foreground">{message}</p>
-      {allowRegenerate ? (
-        <div className="space-y-2">
-          <p className="text-xs text-muted">This looks like an incomplete generation — regenerate to fill it in.</p>
-          <button onClick={regen} className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-accent text-black text-xs font-semibold hover:bg-accent-bright transition-colors">
-            ↻ Regenerate protocol
-          </button>
-        </div>
-      ) : (
-        <p className="text-xs text-muted mt-1.5">Upload blood work or complete more onboarding for richer data.</p>
-      )}
-    </div>
-  );
-}
-
-// Alerts the user that their currently-stored protocol is missing required
-// sections (usually because an older AI generation returned a sparse JSON
-// that slipped past our validation layer). Offers an inline regenerate.
-// Tight UX: one sentence + one button. Regeneration fires /api/generate-protocol
-// which, post Round 14 fix, will merge in any still-missing fallback sections.
-function IncompleteProtocolBanner({ missing }: { missing: string[] }) {
-  const [regenerating, setRegenerating] = useState(false);
-  const doRegen = async () => {
-    setRegenerating(true);
-    try {
-      const res = await fetch('/api/generate-protocol', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ profile: {}, biomarkers: [] }),
-      });
-      if (res.ok) {
-        window.location.href = '/dashboard';
-        return;
-      }
-    } catch { /* network — fall through to onboarding */ }
-    window.location.href = '/onboarding';
-  };
-  return (
-    <div className="rounded-2xl bg-amber-500/[0.06] border border-amber-500/30 p-4 flex items-start gap-3 animate-fade-in-up">
-      <div className="w-10 h-10 rounded-xl bg-amber-500/15 border border-amber-500/30 flex items-center justify-center shrink-0">
-        <span className="text-base">⚠️</span>
-      </div>
-      <div className="flex-1 min-w-0">
-        <p className="text-sm font-semibold text-warning">Your protocol is incomplete — missing {missing.join(' + ')}</p>
-        <p className="text-[11px] text-muted-foreground mt-0.5 leading-relaxed">
-          The AI returned a partial response last time. One tap to regenerate fills every section with fresh data based on your profile and biomarkers.
-        </p>
-      </div>
-      <button
-        onClick={doRegen}
-        disabled={regenerating}
-        className="shrink-0 inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-accent text-black text-xs font-semibold hover:bg-accent-bright disabled:opacity-60 transition-colors"
-      >
-        {regenerating ? 'Regenerating…' : '↻ Regenerate now'}
-      </button>
-    </div>
-  );
-}
-
-// Notifies the user their protocol was auto-regenerated by the 3 AM cron
-// since their last visit, so new numbers on the dashboard don't feel like
-// they came from nowhere. Dismissal is stored per protocol id in localStorage,
-// so the banner won't come back until the NEXT cron regenerates.
-// Small chip that surfaces a live-refinement delta next to a hero metric.
-// "direction: up" = improvement (accent green), "down" = decline (danger red).
-function LiveDriftChip({ label, direction, value, title }: {
-  label: string;
-  direction: 'up' | 'down';
-  value: string;
-  title?: string;
-}) {
-  const tone = direction === 'up'
-    ? 'bg-accent/10 text-accent border-accent/25'
-    : 'bg-red-500/10 text-danger border-red-500/25';
-  const arrow = direction === 'up' ? '↑' : '↓';
-  return (
-    <span
-      title={title}
-      className={clsx(
-        'inline-flex items-center gap-1 mt-2 ml-2 text-xs font-mono px-2 py-0.5 rounded-full border',
-        tone,
-      )}
-    >
-      <span className="w-1.5 h-1.5 rounded-full bg-current animate-pulse" />
-      {label} {arrow} {value}
-    </span>
-  );
-}
-
-// One-shot toast showing the delta from the user's most recent regen.
-// Written by the tracking page's Refresh button into localStorage; we read
-// it on mount, render it once, then clear so a refresh doesn't re-show.
-function RegenDiffToast() {
-  const [diff, setDiff] = useState<{
-    scoreDelta: number | null;
-    bioAgeDelta: number | null;
-    paceDelta: number | null;
-    supplementsAdded: number;
-    supplementsRemoved: number;
-  } | null>(null);
-  const [dismissed, setDismissed] = useState(false);
-
-  useEffect(() => {
-    if (typeof window === 'undefined') return;
-    try {
-      const raw = localStorage.getItem('protocol:regen-diff:latest');
-      if (!raw) return;
-      const parsed = JSON.parse(raw) as { diff?: unknown; ts?: number };
-      // 5-minute TTL so stale diffs don't pop up after a cache hit
-      if (parsed?.ts && Date.now() - parsed.ts < 5 * 60_000 && parsed.diff) {
-        setDiff(parsed.diff as typeof diff);
-      }
-      localStorage.removeItem('protocol:regen-diff:latest');
-    } catch { /* corrupt or quota — ignore */ }
-  }, []);
-
-  if (!diff || dismissed) return null;
-  const bits: string[] = [];
-  if (typeof diff.scoreDelta === 'number' && diff.scoreDelta !== 0) {
-    bits.push(`${diff.scoreDelta > 0 ? '+' : ''}${diff.scoreDelta} score`);
-  }
-  if (typeof diff.bioAgeDelta === 'number' && Math.abs(diff.bioAgeDelta) >= 0.1) {
-    bits.push(`${diff.bioAgeDelta > 0 ? '+' : ''}${diff.bioAgeDelta.toFixed(1)}y bio age`);
-  }
-  if (typeof diff.paceDelta === 'number' && Math.abs(diff.paceDelta) >= 0.01) {
-    bits.push(`${diff.paceDelta > 0 ? '+' : ''}${diff.paceDelta.toFixed(2)} pace`);
-  }
-  if (diff.supplementsAdded > 0) bits.push(`+${diff.supplementsAdded} supplements`);
-  if (diff.supplementsRemoved > 0) bits.push(`−${diff.supplementsRemoved} supplements`);
-
-  return (
-    <div className="rounded-2xl bg-gradient-to-r from-accent/[0.12] to-accent/[0.04] border border-accent/30 p-4 flex items-center gap-3 animate-fade-in-up no-print">
-      <span className="text-xl shrink-0">✨</span>
-      <div className="flex-1 min-w-0">
-        <p className="text-sm font-semibold text-accent">Protocol refreshed</p>
-        <p className="text-[11px] text-muted-foreground mt-0.5">
-          {bits.length > 0 ? bits.join(' · ') : 'No major changes from last version.'}
-        </p>
-      </div>
-      <button
-        onClick={() => setDismissed(true)}
-        aria-label="Dismiss"
-        className="shrink-0 text-[11px] text-muted-foreground hover:text-foreground px-2 py-1"
-      >
-        Dismiss
-      </button>
-    </div>
-  );
-}
+// Section, EmptyState, IncompleteProtocolBanner, LiveDriftChip, RegenDiffToast
+// moved to components/dashboard/. CronRegenBanner moved below by the same
+// refactor. All are imported at the top of this file.
 
 // Today's Focus — pulls 1-2 entries from dailySchedule matching the current
 // time window + priority ranking. Re-computes every 60s so urgency transitions
@@ -306,45 +131,7 @@ function TodaysFocusBlock({ schedule }: { schedule: ScheduleEntry[] }) {
   );
 }
 
-function CronRegenBanner({ createdAt, protocolId }: { createdAt: string; protocolId: string }) {
-  const [dismissed, setDismissed] = useState<boolean | null>(null);
-
-  useEffect(() => {
-    // Client-only check — localStorage isn't available during SSR
-    try {
-      const seen = localStorage.getItem(`protocol:cron-banner-seen:${protocolId}`);
-      setDismissed(seen === '1');
-    } catch { setDismissed(false); }
-  }, [protocolId]);
-
-  // Only show if the cron ran in the last 48h (older = user clearly knows already)
-  const hoursOld = (Date.now() - new Date(createdAt).getTime()) / 3_600_000;
-  if (dismissed !== false || hoursOld > 48) return null;
-
-  const dismiss = () => {
-    try { localStorage.setItem(`protocol:cron-banner-seen:${protocolId}`, '1'); } catch { /* ignore */ }
-    setDismissed(true);
-  };
-
-  const when = hoursOld < 12 ? 'azi-noapte' : hoursOld < 24 ? 'mai devreme azi' : 'ieri';
-  return (
-    <div className="rounded-2xl bg-gradient-to-r from-blue-500/[0.08] to-accent/[0.05] border border-blue-500/25 p-4 flex items-center gap-3 animate-fade-in-up">
-      <div className="w-10 h-10 rounded-xl bg-blue-500/15 border border-blue-500/30 flex items-center justify-center shrink-0">
-        <span className="text-base">🌙</span>
-      </div>
-      <div className="flex-1 min-w-0">
-        <p className="text-sm font-semibold text-blue-400">Protocolul tău s-a actualizat {when}</p>
-        <p className="text-xs text-muted-foreground mt-0.5">Analiză proaspătă pe baza datelor tale recente. Derulează mai jos să vezi ce s-a schimbat față de versiunea precedentă.</p>
-      </div>
-      <button
-        onClick={dismiss}
-        className="shrink-0 px-3 py-1.5 rounded-lg bg-surface-2 border border-card-border text-xs font-medium text-muted-foreground hover:text-foreground hover:border-accent/30 transition-colors"
-      >
-        Închide
-      </button>
-    </div>
-  );
-}
+// CronRegenBanner moved to components/dashboard/CronRegenBanner.tsx
 
 function Badge({ classification }: { classification: Classification }) {
   return (
